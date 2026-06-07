@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SuperShop — Management System</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/ZXingBrowser.min.js"></script>
 <style>
 :root{
   /* Dark theme — deep navy + vibrant accents */
@@ -232,22 +233,50 @@ canvas{display:block}
 /* ── BARCODE SCANNER ── */
 .pos-scanner-btn{flex-shrink:0;background:linear-gradient(135deg,var(--accent),#c0223d);border:none;color:#fff;width:40px;height:40px;border-radius:9px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:.18s;box-shadow:0 2px 8px rgba(255,77,109,.3)}
 .pos-scanner-btn:hover{transform:scale(1.06);box-shadow:0 4px 14px rgba(255,77,109,.4)}
-.pos-scanner-btn.scanning{background:linear-gradient(135deg,var(--success),#00a885);box-shadow:0 0 0 0 rgba(0,212,168,.4);animation:scanPulse 1.2s infinite}
+.pos-scanner-btn.scanning{background:linear-gradient(135deg,var(--success),#00a885);animation:scanPulse 1.2s infinite}
 @keyframes scanPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,212,168,.5)}50%{box-shadow:0 0 0 10px rgba(0,212,168,0)}}
-.scanner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:700;align-items:center;justify-content:center;flex-direction:column;gap:14px}
-.scanner-overlay.show{display:flex}
-.scanner-box{width:260px;height:260px;border:2px solid var(--success);border-radius:14px;position:relative;overflow:hidden;background:#0a1a0a}
-.scanner-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--success),transparent);animation:scanLine 2s linear infinite;box-shadow:0 0 10px var(--success)}
-@keyframes scanLine{0%{top:8px;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:calc(100% - 8px);opacity:0}}
-.scanner-corner{position:absolute;width:22px;height:22px;border-color:var(--success);border-style:solid}
-.scanner-corner.tl{top:8px;left:8px;border-width:3px 0 0 3px;border-radius:4px 0 0 0}
-.scanner-corner.tr{top:8px;right:8px;border-width:3px 3px 0 0;border-radius:0 4px 0 0}
-.scanner-corner.bl{bottom:8px;left:8px;border-width:0 0 3px 3px;border-radius:0 0 0 4px}
-.scanner-corner.br{bottom:8px;right:8px;border-width:0 3px 3px 0;border-radius:0 0 4px 0}
-.scanner-label{color:var(--text2);font-size:13px;text-align:center}
-.scanner-manual{background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;width:260px;display:flex;align-items:center;gap:8px}
-.scanner-manual input{flex:1;background:none;border:none;color:var(--text);font-size:14px;outline:none;font-family:inherit}
-.scanner-manual input::placeholder{color:var(--text2)}
+.scanner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:700;align-items:flex-start;justify-content:center;padding-top:20px;overflow-y:auto}
+.scanner-overlay.show{display:flex;flex-direction:column;align-items:center;gap:12px}
+.scanner-modal{background:var(--card);border:1.5px solid var(--border);border-radius:16px;width:100%;max-width:420px;overflow:hidden}
+.scanner-tabs{display:flex;border-bottom:1px solid var(--border)}
+.scanner-tab{flex:1;padding:12px;background:none;border:none;color:var(--text2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;border-bottom:2px solid transparent}
+.scanner-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(255,77,109,.04)}
+.scanner-tab:hover:not(.active){background:var(--card2);color:var(--text)}
+/* Camera view */
+.scanner-cam-area{position:relative;background:#000;height:260px;overflow:hidden}
+#scannerVideo{width:100%;height:100%;object-fit:cover;display:block}
+#scannerCanvas{display:none}
+.scan-overlay-box{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.scan-frame{width:200px;height:160px;position:relative}
+.scan-frame::before,.scan-frame::after{content:'';position:absolute;width:28px;height:28px;border-color:#00d4a8;border-style:solid}
+.scan-frame::before{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0}
+.scan-frame::after{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0}
+.scan-frame .c2::before{content:'';position:absolute;top:0;right:0;width:28px;height:28px;border-color:#00d4a8;border-style:solid;border-width:3px 3px 0 0;border-radius:0 4px 0 0}
+.scan-frame .c2::after{content:'';position:absolute;bottom:0;left:0;width:28px;height:28px;border-color:#00d4a8;border-style:solid;border-width:0 0 3px 3px;border-radius:0 0 0 4px}
+.scan-laser{position:absolute;left:10%;right:10%;height:2px;background:linear-gradient(90deg,transparent,#00d4a8,transparent);top:0;animation:laserScan 2s ease-in-out infinite;box-shadow:0 0 8px #00d4a8}
+@keyframes laserScan{0%,100%{top:8px;opacity:.3}50%{top:calc(100% - 8px);opacity:1}}
+.scanner-cam-status{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:12px;text-align:center;padding:6px;display:flex;align-items:center;justify-content:center;gap:6px}
+.scanner-cam-controls{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--card2)}
+.cam-ctrl-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-size:12px;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;transition:.15s}
+.cam-ctrl-btn:hover{border-color:var(--accent);color:var(--accent)}
+.cam-ctrl-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* Manual input tab */
+.scanner-manual-area{padding:20px}
+.scanner-manual-area input{width:100%;background:var(--primary);border:2px solid var(--border);color:var(--text);padding:12px 14px;border-radius:10px;font-family:inherit;font-size:16px;outline:none;text-align:center;letter-spacing:2px;transition:.2s;margin-bottom:10px}
+.scanner-manual-area input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,77,109,.12)}
+.scanner-result-display{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:8px;min-height:52px;display:flex;align-items:center;gap:10px}
+.scanner-result-display .sr-icon{font-size:28px;flex-shrink:0}
+.scanner-result-display .sr-info{flex:1}
+.scanner-result-display .sr-name{font-size:14px;font-weight:600;color:var(--text)}
+.scanner-result-display .sr-price{font-size:13px;color:var(--accent2);font-weight:700}
+.scanner-result-display .sr-empty{font-size:13px;color:var(--text2)}
+.scanner-footer{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
+.scan-history{padding:0 14px 12px;max-height:120px;overflow-y:auto}
+.scan-history-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(42,58,80,.3);font-size:12px}
+.scan-history-item:last-child{border:none}
+.scan-history-item .sh-name{flex:1;color:var(--text)}
+.scan-history-item .sh-qty{color:var(--accent2);font-weight:700}
+.scan-history-item .sh-time{color:var(--text2);font-size:10px}
 /* POS status bar */
 .pos-status-bar{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px;flex-wrap:wrap;flex-shrink:0}
 .pos-stat-chip{background:var(--card2);border:1px solid var(--border);border-radius:99px;padding:3px 10px;display:flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--text2)}
@@ -1348,23 +1377,72 @@ body.light-theme .table-wrap{border-color:#dde6ef}
 
 <!-- BARCODE SCANNER OVERLAY -->
 <div class="scanner-overlay" id="scannerOverlay" onclick="if(event.target===this)closeScanner()">
-  <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:4px">📷 বারকোড স্ক্যান করুন</div>
-  <div class="scanner-box">
-    <div class="scanner-corner tl"></div>
-    <div class="scanner-corner tr"></div>
-    <div class="scanner-corner bl"></div>
-    <div class="scanner-corner br"></div>
-    <div class="scanner-line"></div>
-    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(0,212,168,.3);font-size:72px">⬛</div>
+  <div class="scanner-modal">
+    <!-- Tabs -->
+    <div class="scanner-tabs">
+      <button class="scanner-tab active" id="tabCam" onclick="switchScannerTab('cam')">📷 ক্যামেরা স্ক্যান</button>
+      <button class="scanner-tab" id="tabManual" onclick="switchScannerTab('manual')">⌨️ ম্যানুয়াল / Scanner</button>
+    </div>
+
+    <!-- Camera Tab -->
+    <div id="scanCamTab">
+      <div class="scanner-cam-area">
+        <video id="scannerVideo" playsinline autoplay muted></video>
+        <canvas id="scannerCanvas"></canvas>
+        <div class="scan-overlay-box">
+          <div class="scan-frame">
+            <div class="c2"></div>
+            <div class="scan-laser"></div>
+          </div>
+        </div>
+        <div class="scanner-cam-status" id="camStatus">
+          <span id="camStatusDot" style="width:8px;height:8px;border-radius:50%;background:var(--warning);display:inline-block"></span>
+          <span id="camStatusText">ক্যামেরা চালু হচ্ছে...</span>
+        </div>
+      </div>
+      <!-- Camera controls -->
+      <div class="scanner-cam-controls">
+        <button class="cam-ctrl-btn" id="torchBtn" onclick="toggleTorch()" title="ফ্ল্যাশলাইট">🔦 Flash</button>
+        <button class="cam-ctrl-btn" id="flipCamBtn" onclick="flipCamera()" title="ক্যামেরা বদলান">🔄 ফ্লিপ</button>
+        <button class="cam-ctrl-btn" id="pauseBtn" onclick="togglePause()" title="পজ">⏸️ পজ</button>
+      </div>
+    </div>
+
+    <!-- Manual / USB Scanner Tab -->
+    <div id="scanManualTab" style="display:none">
+      <div class="scanner-manual-area">
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;text-align:center">
+          USB/Bluetooth Scanner বা manually barcode নম্বর লিখুন
+        </p>
+        <input type="text" id="scannerInput" placeholder="বারকোড স্ক্যান বা টাইপ করুন..."
+          autofocus autocomplete="off"
+          oninput="previewBarcode(this.value)"
+          onkeydown="if(event.key==='Enter'){scannerSubmit();event.preventDefault()}">
+        <!-- Result preview -->
+        <div class="scanner-result-display" id="scanResultDisplay">
+          <span class="sr-empty">বারকোড স্ক্যান বা টাইপ করুন...</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-primary btn-full" onclick="scannerSubmit()">✅ কার্টে যোগ করুন</button>
+          <button class="btn btn-ghost" onclick="$('scannerInput').value='';previewBarcode('')">🗑️</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan History -->
+    <div id="scanHistoryWrap" style="border-top:1px solid var(--border)">
+      <div style="padding:8px 14px 4px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">
+        🕐 সাম্প্রতিক স্ক্যান
+      </div>
+      <div class="scan-history" id="scanHistory"><div style="padding:8px 14px;font-size:12px;color:var(--text2)">কোনো স্ক্যান নেই</div></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="scanner-footer">
+      <div id="scannerMsg" style="flex:1;font-size:13px;min-height:20px"></div>
+      <button onclick="closeScanner()" class="btn btn-ghost btn-sm">✕ বন্ধ করুন</button>
+    </div>
   </div>
-  <div class="scanner-label">ক্যামেরার সামনে বারকোড ধরুন<br><small style="color:rgba(255,255,255,.4)">অথবা নিচে manually টাইপ করুন</small></div>
-  <div class="scanner-manual">
-    <span style="font-size:18px">🔢</span>
-    <input id="scannerInput" placeholder="বারকোড নম্বর লিখুন..." autofocus onkeydown="if(event.key==='Enter')scannerSubmit()">
-    <button onclick="scannerSubmit()" style="background:var(--accent);border:none;color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">যোগ করুন</button>
-  </div>
-  <div id="scannerMsg" style="font-size:12px;min-height:18px;color:var(--text2)"></div>
-  <button onclick="closeScanner()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 24px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;margin-top:4px">বন্ধ করুন</button>
 </div>
 
     <!-- SALES -->
@@ -3263,39 +3341,269 @@ function saveProfile(){
 }
 
 // ══════════════════════════════════════
-//  BARCODE SCANNER
+//  BARCODE SCANNER — CAMERA + MANUAL
 // ══════════════════════════════════════
-function openScanner(){
+let _scannerStream=null;
+let _codeReader=null;
+let _scanPaused=false;
+let _facingMode='environment'; // rear camera default
+let _torchOn=false;
+let _scanHistory=[];
+let _activeTab='cam';
+
+function switchScannerTab(tab){
+  _activeTab=tab;
+  $('tabCam').classList.toggle('active',tab==='cam');
+  $('tabManual').classList.toggle('active',tab==='manual');
+  $('scanCamTab').style.display=tab==='cam'?'block':'none';
+  $('scanManualTab').style.display=tab==='manual'?'block':'none';
+  if(tab==='cam') startCamera();
+  else{
+    stopCamera();
+    const si=$('scannerInput');
+    if(si) setTimeout(()=>si.focus(),100);
+  }
+}
+
+async function openScanner(){
   const ov=$('scannerOverlay');
   ov.classList.add('show');
-  const si=$('scannerInput');
-  if(si){si.value='';setTimeout(()=>si.focus(),200);}
+  document.body.style.overflow='hidden';
+  _scanPaused=false;
   $('scannerMsg').textContent='';
+  $('scannerMsg').style.color='var(--text2)';
+  renderScanHistory();
   const btn=$('scannerBtn');
   if(btn) btn.classList.add('scanning');
+  // Start camera tab by default
+  switchScannerTab('cam');
 }
+
 function closeScanner(){
-  $('scannerOverlay').classList.remove('show');
+  stopCamera();
+  const ov=$('scannerOverlay');
+  ov.classList.remove('show');
+  document.body.style.overflow='';
   const btn=$('scannerBtn');
   if(btn) btn.classList.remove('scanning');
+  const si=$('scannerInput');
+  if(si) si.value='';
+  previewBarcode('');
 }
+
+async function startCamera(){
+  stopCamera();
+  setCamStatus('⏳','ক্যামেরা চালু হচ্ছে...','var(--warning)');
+  try{
+    const constraints={video:{facingMode:_facingMode,width:{ideal:1280},height:{ideal:720}}};
+    _scannerStream=await navigator.mediaDevices.getUserMedia(constraints);
+    const vid=$('scannerVideo');
+    vid.srcObject=_scannerStream;
+    await vid.play();
+    setCamStatus('🟢','স্ক্যান করুন — বারকোড ফ্রেমে ধরুন','var(--success)');
+    startZXing();
+  }catch(err){
+    const msg=err.name==='NotAllowedError'?'ক্যামেরা অ্যাক্সেস অস্বীকৃত — অনুমতি দিন'
+      :err.name==='NotFoundError'?'কোনো ক্যামেরা পাওয়া যায়নি'
+      :'ক্যামেরা চালু হয়নি: '+err.message;
+    setCamStatus('🔴',msg,'var(--danger)');
+    // Auto switch to manual tab
+    setTimeout(()=>switchScannerTab('manual'),1500);
+  }
+}
+
+function stopCamera(){
+  if(_codeReader){try{_codeReader.reset();}catch(e){}; _codeReader=null;}
+  if(_scannerStream){
+    _scannerStream.getTracks().forEach(t=>t.stop());
+    _scannerStream=null;
+  }
+  const vid=$('scannerVideo');
+  if(vid){vid.srcObject=null;}
+}
+
+function startZXing(){
+  // Check ZXing available
+  if(typeof window.ZXingBrowser === 'undefined' && typeof window.ZXing === 'undefined'){
+    // Fallback: use canvas-based simple scan loop
+    startSimpleScanLoop();
+    return;
+  }
+  try{
+    const ZXing = window.ZXingBrowser || window.ZXing;
+    const hints = new Map();
+    const formats = [
+      ZXing.BarcodeFormat?.QR_CODE,
+      ZXing.BarcodeFormat?.CODE_128,
+      ZXing.BarcodeFormat?.CODE_39,
+      ZXing.BarcodeFormat?.EAN_13,
+      ZXing.BarcodeFormat?.EAN_8,
+      ZXing.BarcodeFormat?.UPC_A,
+      ZXing.BarcodeFormat?.UPC_E,
+      ZXing.BarcodeFormat?.ITF,
+      ZXing.BarcodeFormat?.DATA_MATRIX,
+    ].filter(Boolean);
+    if(formats.length) hints.set(ZXing.DecodeHintType?.POSSIBLE_FORMATS, formats);
+    _codeReader = new (ZXing.BrowserMultiFormatReader || ZXing.MultiFormatReader)(hints);
+    const vid=$('scannerVideo');
+    _codeReader.decodeFromVideoElement(vid,(result,err)=>{
+      if(_scanPaused) return;
+      if(result) onBarcodeDetected(result.getText());
+    });
+  }catch(e){
+    startSimpleScanLoop();
+  }
+}
+
+// Fallback canvas-based scan loop (uses Image API)
+function startSimpleScanLoop(){
+  setCamStatus('🟡','ক্যামেরা চালু — ম্যানুয়াল মোড ব্যবহার করুন','var(--warning)');
+}
+
+function onBarcodeDetected(code){
+  if(!code||_scanPaused) return;
+  _scanPaused=true; // pause briefly to avoid duplicate reads
+  const found=findProductByBarcode(code);
+  if(found){
+    addToPOS(found.id);
+    addScanHistory(found,code);
+    renderScanHistory();
+    showScanMsg(`✅ "${found.name}" যোগ হয়েছে`,true);
+    toast(`📷 "${found.name}" স্ক্যান হয়েছে`,'success');
+    // beep sound
+    playBeep(true);
+    setTimeout(()=>{_scanPaused=false;},1500);
+  }else{
+    showScanMsg(`❌ পণ্য পাওয়া যায়নি: ${code}`,false);
+    playBeep(false);
+    setTimeout(()=>{_scanPaused=false;},2000);
+  }
+}
+
+function setCamStatus(dot,text,color){
+  const d=$('camStatusDot'),t=$('camStatusText');
+  if(d) d.style.background=color;
+  if(t) t.textContent=text;
+}
+
+function showScanMsg(msg,ok){
+  const el=$('scannerMsg');
+  if(!el) return;
+  el.textContent=msg;
+  el.style.color=ok?'var(--success)':'var(--danger)';
+  if(ok) setTimeout(()=>{if(el)el.textContent='';},3000);
+}
+
+async function toggleTorch(){
+  if(!_scannerStream) return;
+  const track=_scannerStream.getVideoTracks()[0];
+  if(!track) return;
+  try{
+    _torchOn=!_torchOn;
+    await track.applyConstraints({advanced:[{torch:_torchOn}]});
+    const btn=$('torchBtn');
+    if(btn) btn.classList.toggle('active',_torchOn);
+    btn.textContent=_torchOn?'🔦 চালু':'🔦 Flash';
+  }catch(e){
+    toast('ফ্ল্যাশ সাপোর্টেড নয়','warn');
+  }
+}
+
+function flipCamera(){
+  _facingMode=_facingMode==='environment'?'user':'environment';
+  const btn=$('flipCamBtn');
+  if(btn) btn.textContent=_facingMode==='user'?'🤳 ফ্রন্ট':'🔄 ফ্লিপ';
+  startCamera();
+}
+
+function togglePause(){
+  _scanPaused=!_scanPaused;
+  const btn=$('pauseBtn');
+  if(btn){
+    btn.textContent=_scanPaused?'▶️ চালু':'⏸️ পজ';
+    btn.classList.toggle('active',_scanPaused);
+  }
+  setCamStatus(
+    _scanPaused?'🟡':'🟢',
+    _scanPaused?'স্ক্যান পজ করা হয়েছে':'স্ক্যান করুন — বারকোড ফ্রেমে ধরুন',
+    _scanPaused?'var(--warning)':'var(--success)'
+  );
+}
+
+// Manual input preview
+function previewBarcode(val){
+  const disp=$('scanResultDisplay');
+  if(!disp) return;
+  val=val.trim();
+  if(!val){
+    disp.innerHTML='<span class="sr-empty">বারকোড স্ক্যান বা টাইপ করুন...</span>';
+    return;
+  }
+  const found=findProductByBarcode(val);
+  if(found){
+    const img=found.img?`<img src="${found.img}" style="width:36px;height:36px;border-radius:7px;object-fit:cover">`:`<span style="font-size:28px">${found.icon||'📦'}</span>`;
+    disp.innerHTML=`${img}<div class="sr-info"><div class="sr-name">${found.name}</div><div class="sr-price">${fmt(found.price)} | স্টক: ${found.stock}</div></div><span class="badge badge-success">✓</span>`;
+  }else{
+    disp.innerHTML=`<span style="font-size:22px">🔍</span><span class="sr-empty">"${val}" — পণ্য পাওয়া যায়নি</span>`;
+  }
+}
+
 function scannerSubmit(){
   const si=$('scannerInput');
   const code=(si?.value||'').trim();
-  if(!code) return;
-  const result=findProductByBarcode(code);
-  if(result){
-    addToPOS(result.id);
-    $('scannerMsg').textContent=`✅ "${result.name}" যোগ হয়েছে`;
-    $('scannerMsg').style.color='var(--success)';
-    si.value='';
-    si.focus();
-    setTimeout(()=>{if($('scannerMsg'))$('scannerMsg').textContent='';},2000);
+  if(!code){toast('বারকোড লিখুন','warn');return;}
+  const found=findProductByBarcode(code);
+  if(found){
+    addToPOS(found.id);
+    addScanHistory(found,code);
+    renderScanHistory();
+    showScanMsg(`✅ "${found.name}" যোগ হয়েছে`,true);
+    toast(`🛒 "${found.name}" যোগ হয়েছে`);
+    playBeep(true);
+    if(si){si.value='';previewBarcode('');si.focus();}
   }else{
-    $('scannerMsg').textContent=`❌ "${code}" — পণ্য পাওয়া যায়নি`;
-    $('scannerMsg').style.color='var(--danger)';
-    si.select();
+    showScanMsg(`❌ "${code}" — পণ্য পাওয়া যায়নি`,false);
+    playBeep(false);
+    if(si) si.select();
   }
+}
+
+// Scan history
+function addScanHistory(product,code){
+  _scanHistory.unshift({name:product.name,code,qty:1,time:new Date().toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'})});
+  if(_scanHistory.length>8) _scanHistory.pop();
+}
+
+function renderScanHistory(){
+  const el=$('scanHistory');
+  if(!el) return;
+  if(!_scanHistory.length){
+    el.innerHTML='<div style="padding:8px 14px;font-size:12px;color:var(--text2)">কোনো স্ক্যান নেই</div>';
+    return;
+  }
+  el.innerHTML=_scanHistory.map(h=>`
+    <div class="scan-history-item">
+      <span style="font-size:16px">📦</span>
+      <span class="sh-name">${h.name}</span>
+      <span class="sh-qty">×${h.qty}</span>
+      <span class="sh-time">${h.time}</span>
+    </div>`).join('');
+}
+
+// Beep sound
+function playBeep(success){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.frequency.value=success?880:220;
+    osc.type=success?'sine':'square';
+    gain.gain.setValueAtTime(.3,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+(success?.15:.3));
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime+(success?.15:.3));
+  }catch(e){}
 }
 function findProductByBarcode(code){
   const q=code.trim().toLowerCase();
@@ -3578,7 +3886,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       closeCustAuth();
       closeCustDropdown();
       closeSidebar();
-      closeScanner();
+      closeScanner(); // stops camera too
     }
   });
 
