@@ -229,6 +229,30 @@ canvas{display:block}
 .pos-left{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
 
 /* Search */
+/* ── BARCODE SCANNER ── */
+.pos-scanner-btn{flex-shrink:0;background:linear-gradient(135deg,var(--accent),#c0223d);border:none;color:#fff;width:40px;height:40px;border-radius:9px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:.18s;box-shadow:0 2px 8px rgba(255,77,109,.3)}
+.pos-scanner-btn:hover{transform:scale(1.06);box-shadow:0 4px 14px rgba(255,77,109,.4)}
+.pos-scanner-btn.scanning{background:linear-gradient(135deg,var(--success),#00a885);box-shadow:0 0 0 0 rgba(0,212,168,.4);animation:scanPulse 1.2s infinite}
+@keyframes scanPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,212,168,.5)}50%{box-shadow:0 0 0 10px rgba(0,212,168,0)}}
+.scanner-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:700;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.scanner-overlay.show{display:flex}
+.scanner-box{width:260px;height:260px;border:2px solid var(--success);border-radius:14px;position:relative;overflow:hidden;background:#0a1a0a}
+.scanner-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--success),transparent);animation:scanLine 2s linear infinite;box-shadow:0 0 10px var(--success)}
+@keyframes scanLine{0%{top:8px;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:calc(100% - 8px);opacity:0}}
+.scanner-corner{position:absolute;width:22px;height:22px;border-color:var(--success);border-style:solid}
+.scanner-corner.tl{top:8px;left:8px;border-width:3px 0 0 3px;border-radius:4px 0 0 0}
+.scanner-corner.tr{top:8px;right:8px;border-width:3px 3px 0 0;border-radius:0 4px 0 0}
+.scanner-corner.bl{bottom:8px;left:8px;border-width:0 0 3px 3px;border-radius:0 0 0 4px}
+.scanner-corner.br{bottom:8px;right:8px;border-width:0 3px 3px 0;border-radius:0 0 4px 0}
+.scanner-label{color:var(--text2);font-size:13px;text-align:center}
+.scanner-manual{background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;width:260px;display:flex;align-items:center;gap:8px}
+.scanner-manual input{flex:1;background:none;border:none;color:var(--text);font-size:14px;outline:none;font-family:inherit}
+.scanner-manual input::placeholder{color:var(--text2)}
+/* POS status bar */
+.pos-status-bar{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px;flex-wrap:wrap;flex-shrink:0}
+.pos-stat-chip{background:var(--card2);border:1px solid var(--border);border-radius:99px;padding:3px 10px;display:flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--text2)}
+.pos-stat-chip b{color:var(--text)}
+/* POS search bar */
 .pos-search-bar{display:flex;gap:8px;align-items:center;flex-shrink:0}
 .pos-search-bar input{
   flex:1;background:var(--card);border:1.5px solid var(--border);color:var(--text);
@@ -1154,7 +1178,7 @@ body.light-theme .table-wrap{border-color:#dde6ef}
         <button class="btn btn-primary" onclick="openProductModal()">➕ নতুন পণ্য</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>পণ্যের নাম</th><th class="hide-xs">ক্যাটাগরি</th><th>দাম</th><th>স্টক</th><th>একশন</th></tr></thead>
+        <thead><tr><th>#</th><th>পণ্যের নাম</th><th class="hide-xs">ক্যাটাগরি</th><th class="hide-xs">বারকোড</th><th>দাম</th><th>স্টক</th><th>একশন</th></tr></thead>
         <tbody id="productsBody"></tbody>
       </table></div>
       <div class="pagination" id="productsPagination"></div>
@@ -1201,10 +1225,21 @@ body.light-theme .table-wrap{border-color:#dde6ef}
       <div class="pos-grid">
         <!-- LEFT: Product Panel -->
         <div class="pos-left">
+          <!-- Search + Scanner -->
           <div class="pos-search-bar">
-            <input type="text" id="posSearch" placeholder="🔍 পণ্য খুঁজুন বা বারকোড স্ক্যান করুন..." oninput="renderPOS()">
+            <input type="text" id="posSearch" placeholder="🔍 পণ্য বা বারকোড নম্বর লিখুন..." oninput="renderPOS()" onkeydown="posSearchKeydown(event)">
+            <button class="pos-scanner-btn" id="scannerBtn" onclick="openScanner()" title="বারকোড স্ক্যান করুন">📷</button>
           </div>
+          <!-- Status bar -->
+          <div class="pos-status-bar" id="posStatusBar">
+            <span class="pos-stat-chip">📦 পণ্য: <b id="psTotal">0</b></span>
+            <span class="pos-stat-chip">🛒 কার্টে: <b id="psBill">0</b></span>
+            <span class="pos-stat-chip" id="psLowStock" style="display:none">⚠️ কম স্টক: <b id="psLowCount" style="color:var(--danger)">0</b></span>
+            <span class="pos-stat-chip rt-dot" style="background:none;border:none;padding:0;margin-left:auto"></span>
+          </div>
+          <!-- Category tabs -->
           <div class="pos-cat-tabs" id="posCatTabs"></div>
+          <!-- Products grid -->
           <div class="pos-products" id="posProducts"></div>
         </div>
 
@@ -1310,6 +1345,27 @@ body.light-theme .table-wrap{border-color:#dde6ef}
       </div><!-- end pos-grid -->
       </div><!-- end pos-wrap -->
     </div><!-- end page-pos -->
+
+<!-- BARCODE SCANNER OVERLAY -->
+<div class="scanner-overlay" id="scannerOverlay" onclick="if(event.target===this)closeScanner()">
+  <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:4px">📷 বারকোড স্ক্যান করুন</div>
+  <div class="scanner-box">
+    <div class="scanner-corner tl"></div>
+    <div class="scanner-corner tr"></div>
+    <div class="scanner-corner bl"></div>
+    <div class="scanner-corner br"></div>
+    <div class="scanner-line"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(0,212,168,.3);font-size:72px">⬛</div>
+  </div>
+  <div class="scanner-label">ক্যামেরার সামনে বারকোড ধরুন<br><small style="color:rgba(255,255,255,.4)">অথবা নিচে manually টাইপ করুন</small></div>
+  <div class="scanner-manual">
+    <span style="font-size:18px">🔢</span>
+    <input id="scannerInput" placeholder="বারকোড নম্বর লিখুন..." autofocus onkeydown="if(event.key==='Enter')scannerSubmit()">
+    <button onclick="scannerSubmit()" style="background:var(--accent);border:none;color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">যোগ করুন</button>
+  </div>
+  <div id="scannerMsg" style="font-size:12px;min-height:18px;color:var(--text2)"></div>
+  <button onclick="closeScanner()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 24px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;margin-top:4px">বন্ধ করুন</button>
+</div>
 
     <!-- SALES -->
     <div class="page" id="page-sales">
@@ -2267,6 +2323,7 @@ function renderProducts(){
       <td>${(prodPage-1)*PERPAGE+i+1}</td>
       <td><span style="margin-right:6px">${p.icon||'📦'}</span>${p.name}</td>
       <td class="hide-xs">${c.icon||''} ${c.name||'—'}</td>
+      <td class="hide-xs"><code style="font-size:11px;color:var(--text2)">${p.barcode||'—'}</code></td>
       <td>${fmt(p.price)}</td>
       <td><span class="badge badge-${low?'danger':'success'}">${p.stock} ${low?'⚠️':''}</span></td>
       <td style="display:flex;gap:6px">
@@ -2292,6 +2349,13 @@ function openProductModal(id){
       <div class="form-group"><label>দাম (৳) *</label><input id="mp_price" type="number" value="${p?.price||''}"></div>
       <div class="form-group"><label>স্টক পরিমাণ *</label><input id="mp_stock" type="number" value="${p?.stock||''}"></div>
     </div>
+    <div class="form-group">
+      <label>🔢 বারকোড / SKU <span style="color:var(--text2);font-size:11px">(POS স্ক্যানে ব্যবহার হবে)</span></label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="mp_barcode" value="${p?.barcode||''}" placeholder="বারকোড নম্বর বা SKU" style="flex:1">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="const b='BC'+Date.now().toString().slice(-8);document.getElementById('mp_barcode').value=b;toast('বারকোড তৈরি: '+b)">⚡ তৈরি</button>
+      </div>
+    </div>
     <div class="form-group"><label>পণ্যের ছবি</label>
       <div class="img-upload-box" onclick="document.getElementById('mp_imgFile').click()" id="mp_imgBox">
         ${p?.img?`<img src="${p.img}" id="mp_imgPreview"><div class="img-overlay">📷 পরিবর্তন</div>`
@@ -2306,35 +2370,22 @@ function openProductModal(id){
   window.mp_imgData = p?.img||null;
 }
 
-function removeProductImg(){
-  const fi=$('mp_imgFile');const box=$('mp_imgBox');
-  if(fi) fi.value='';
-  if(box) box.innerHTML=`<span style="font-size:28px">📷</span><span>ছবি আপলোড করুন</span><span style="font-size:11px;color:var(--text2)">JPG, PNG, WEBP</span>`;
-  window.mp_imgData=null;
-}
-
-function previewProductImg(input){
-  if(!input.files||!input.files[0])return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    window.mp_imgData=e.target.result;
-    const box=$('mp_imgBox');
-    box.innerHTML=`<img src="${e.target.result}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:var(--radius)"><div class="img-overlay">📷 পরিবর্তন</div>`;
-  };
-  reader.readAsDataURL(input.files[0]);
-}
-
 function saveProduct(id){
   const name=$('mp_name').value.trim();
   const price=parseFloat($('mp_price').value);
   const stock=parseInt($('mp_stock').value);
   if(!name||isNaN(price)||isNaN(stock)){toast('সব তথ্য পূরণ করুন','warn');return;}
   const imgData=window.mp_imgData||null;
+  const barcode=($('mp_barcode')||{value:''}).value.trim();
+  if(barcode){
+    const dup=DB.products.find(x=>x.barcode===barcode&&x.id!==id);
+    if(dup){toast(`বারকোড "${barcode}" আগে থেকেই "${dup.name}" তে আছে`,'warn');return;}
+  }
   if(id){
     const p=DB.products.find(x=>x.id===id);
-    Object.assign(p,{name,cat:$('mp_cat').value,price,stock,desc:$('mp_desc').value,icon:$('mp_icon').value,img:imgData});
+    Object.assign(p,{name,cat:$('mp_cat').value,price,stock,desc:$('mp_desc').value,icon:$('mp_icon').value,img:imgData,barcode});
   }else{
-    DB.products.push({id:`p${uid()}`,name,cat:$('mp_cat').value,price,stock,desc:$('mp_desc').value,icon:$('mp_icon').value,img:imgData});
+    DB.products.push({id:`p${uid()}`,name,cat:$('mp_cat').value,price,stock,desc:$('mp_desc').value,icon:$('mp_icon').value,img:imgData,barcode});
   }
   save(KEYS.products,DB.products);closeModal();renderProducts();renderShop();
   toast(id?'পণ্য আপডেট হয়েছে':'নতুন পণ্য যোগ হয়েছে');
@@ -2533,11 +2584,11 @@ function renderPOS(){
   // Init cashTenderRow visibility
   const cr=$('cashTenderRow');
   if(cr) cr.style.display=_posPayment==='Cash'?'flex':'none';
-  // Category tabs — rebuild if cats changed
+  // Category tabs — rebuild when cats change
   const tabsEl=$('posCatTabs');
   if(tabsEl&&!tabsEl.dataset.built){
     tabsEl.dataset.built='1';
-    tabsEl.innerHTML=`<button class="pos-cat-tab active" onclick="filterPOSCat('',this)">সব</button>`
+    tabsEl.innerHTML=`<button class="pos-cat-tab active" onclick="filterPOSCat('',this)">🏪 সব</button>`
       +DB.cats.map(c=>`<button class="pos-cat-tab" onclick="filterPOSCat('${c.id}',this)">${c.icon||''} ${c.name}</button>`).join('');
   }
   // Customer suggestions
@@ -2546,9 +2597,20 @@ function renderPOS(){
     const names=[...new Set([...DB.orders,...DB.sales].map(o=>o.custName).filter(Boolean))];
     dl.innerHTML=names.map(n=>`<option value="${n}">`).join('');
   }
+  // Status bar
+  const lowStockCount=DB.products.filter(p=>p.stock>0&&p.stock<5).length;
+  const totalAvail=DB.products.filter(p=>p.stock>0).length;
+  const billCount=posBill.reduce((s,i)=>s+i.qty,0);
+  const ps=$('psTotal');if(ps) ps.textContent=totalAvail;
+  const pb=$('psBill');if(pb) pb.textContent=billCount;
+  const plsEl=$('psLowStock');const plcEl=$('psLowCount');
+  if(plsEl) plsEl.style.display=lowStockCount>0?'flex':'none';
+  if(plcEl) plcEl.textContent=lowStockCount;
+  // Filter products
   const list=DB.products.filter(p=>
-    p.stock>0&&
-    (!q||p.name.toLowerCase().includes(q))&&
+    (!q||p.name.toLowerCase().includes(q)||
+      (p.barcode&&p.barcode.toLowerCase().includes(q))||
+      (p.desc&&p.desc.toLowerCase().includes(q)))&&
     (!_posCatFilter||p.cat===_posCatFilter)
   );
   const inBill=new Set(posBill.map(x=>x.productId));
@@ -2556,16 +2618,29 @@ function renderPOS(){
     const added=inBill.has(p.id);
     const qty=added?posBill.find(x=>x.productId===p.id).qty:0;
     const outOfStock=p.stock<1;
-    return`<div class="pos-card${added?' added':''}${outOfStock?' pos-card-out':''}" onclick="${outOfStock?'':` addToPOS('${p.id}')`}" style="${outOfStock?'opacity:.55;cursor:not-allowed':''}">
+    const lowStock=p.stock>0&&p.stock<5;
+    return`<div class="pos-card${added?' added':''}${outOfStock?' pos-card-out':''}"
+      onclick="${outOfStock?'':` addToPOS('${p.id}')`}"
+      style="${outOfStock?'opacity:.5;cursor:not-allowed':''}"
+      title="${p.name}${p.barcode?` | 🔢${p.barcode}`:''}">
       <div class="pos-img">${p.img?`<img src="${p.img}" alt="">`:`<span class="pos-icon">${p.icon||'📦'}</span>`}</div>
-      <h4 title="${p.name}">${p.name}</h4>
+      <h4>${p.name}</h4>
       <div class="pos-price">${fmt(p.price)}</div>
-      <div class="pos-stock-label">${outOfStock?'<span style="color:var(--danger)">শেষ</span>':`<span>স্টক: ${p.stock}</span>`}</div>
+      <div class="pos-stock-label">
+        ${outOfStock?'<span style="color:var(--danger)">স্টক শেষ</span>'
+          :lowStock?`<span style="color:var(--warning)">⚠️ ${p.stock} বাকি</span>`
+          :`<span>স্টক: ${p.stock}</span>`}
+      </div>
+      ${p.barcode?`<div style="font-size:9px;color:var(--text2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔢 ${p.barcode}</div>`:''}
       <span class="pos-added-badge">${qty}</span>
       ${outOfStock?'<div class="pos-out-label">স্টক শেষ</div>':''}
     </div>`;
   }).join('')
-  :'<div class="empty-state" style="grid-column:1/-1;padding:24px"><div class="ei">📦</div><p>কোনো পণ্য নেই</p></div>';
+  :`<div class="empty-state" style="grid-column:1/-1;padding:24px">
+      <div class="ei">${q?'🔍':'📦'}</div>
+      <p>${q?`"${q}" পাওয়া যায়নি`:'কোনো পণ্য নেই'}</p>
+      ${q?`<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="$('posSearch').value='';renderPOS()">✕ ক্লিয়ার করুন</button>`:''}
+    </div>`;
 }
 
 function filterPOSCat(catId,btn){
@@ -3188,8 +3263,85 @@ function saveProfile(){
 }
 
 // ══════════════════════════════════════
-//  REALTIME UPDATE
+//  BARCODE SCANNER
 // ══════════════════════════════════════
+function openScanner(){
+  const ov=$('scannerOverlay');
+  ov.classList.add('show');
+  const si=$('scannerInput');
+  if(si){si.value='';setTimeout(()=>si.focus(),200);}
+  $('scannerMsg').textContent='';
+  const btn=$('scannerBtn');
+  if(btn) btn.classList.add('scanning');
+}
+function closeScanner(){
+  $('scannerOverlay').classList.remove('show');
+  const btn=$('scannerBtn');
+  if(btn) btn.classList.remove('scanning');
+}
+function scannerSubmit(){
+  const si=$('scannerInput');
+  const code=(si?.value||'').trim();
+  if(!code) return;
+  const result=findProductByBarcode(code);
+  if(result){
+    addToPOS(result.id);
+    $('scannerMsg').textContent=`✅ "${result.name}" যোগ হয়েছে`;
+    $('scannerMsg').style.color='var(--success)';
+    si.value='';
+    si.focus();
+    setTimeout(()=>{if($('scannerMsg'))$('scannerMsg').textContent='';},2000);
+  }else{
+    $('scannerMsg').textContent=`❌ "${code}" — পণ্য পাওয়া যায়নি`;
+    $('scannerMsg').style.color='var(--danger)';
+    si.select();
+  }
+}
+function findProductByBarcode(code){
+  const q=code.trim().toLowerCase();
+  // Match by barcode field first, then by name, then by product ID
+  return DB.products.find(p=>p.barcode&&p.barcode.toLowerCase()===q)
+    || DB.products.find(p=>p.id.toLowerCase()===q)
+    || DB.products.find(p=>p.name.toLowerCase()===q)
+    || null;
+}
+// Keyboard: Enter on scanner input
+function posSearchKeydown(e){
+  if(e.key==='Enter'){
+    const q=e.target.value.trim();
+    if(!q) return;
+    // Try exact barcode match first
+    const found=findProductByBarcode(q);
+    if(found){
+      addToPOS(found.id);
+      e.target.value='';
+      e.target.focus();
+      renderPOS();
+    }
+  }
+}
+// Allow hardware barcode scanner (sends keystrokes ending with Enter)
+(()=>{
+  let _scanBuffer='';let _scanTimer=null;
+  document.addEventListener('keypress',e=>{
+    // Only when POS page is active and no modal open
+    if(!$('page-pos').classList.contains('active')) return;
+    if($('modalOverlay').classList.contains('show')) return;
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+    if(e.key==='Enter'){
+      if(_scanBuffer.length>3){
+        const found=findProductByBarcode(_scanBuffer);
+        if(found){addToPOS(found.id);toast(`📷 "${found.name}" স্ক্যান হয়েছে`);}
+        else toast(`বারকোড পাওয়া যায়নি: ${_scanBuffer}`,'warn');
+      }
+      _scanBuffer='';clearTimeout(_scanTimer);
+    }else{
+      _scanBuffer+=e.key;
+      clearTimeout(_scanTimer);
+      _scanTimer=setTimeout(()=>_scanBuffer='',300);
+    }
+  });
+})();
 function realtimeUpdate(){
   // Sync DB from localStorage
   DB.products=load(KEYS.products)||DB.products;
@@ -3216,19 +3368,14 @@ function realtimeUpdate(){
       products:renderProducts,
       categories:renderCats,
       orders:renderOrders,
+      pos:renderPOS,
       sales:renderSales,
       customers:renderCustomers,
       expenses:renderExp
     };
     if(map[pid]) map[pid]();
-    // Also update dashboard stat cards if on any page
-    if(pid!=='dashboard'){
-      // silently refresh dash data for header badge
-      const todayStr=today();
-      const lowStock=DB.products.filter(p=>p.stock<5).length;
-      const ds=$('dashStats');
-      if(ds&&pid==='dashboard') loadDash();
-    }
+    // Update admin quick bar always
+    updateAdminQuickBar();
   }
 }
 // Poll every 3 seconds for cross-tab realtime sync
@@ -3419,12 +3566,19 @@ function updateAdminQuickBar(){
 document.addEventListener('DOMContentLoaded', ()=>{
   // Keyboard shortcuts
   document.addEventListener('keydown',e=>{
-    if(e.key==='F2'){e.preventDefault();if(isAdmin){showPage('pos',null);}}
+    if(e.key==='F2'){
+      e.preventDefault();
+      if(isAdmin){
+        showPage('pos',document.querySelector('.sidebar-item[onclick*="pos"]'));
+        setTimeout(()=>{const ps=$('posSearch');if(ps)ps.focus();},200);
+      }
+    }
     if(e.key==='Escape'){
       closeModal();
       closeCustAuth();
       closeCustDropdown();
       closeSidebar();
+      closeScanner();
     }
   });
 
