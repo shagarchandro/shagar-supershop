@@ -730,7 +730,28 @@ body.light-theme .table-wrap{border-color:#dde6ef}
 .top-product-item[onclick]:hover{border-color:var(--accent);background:var(--card)}
 @media(max-width:768px){#dashBottom{grid-template-columns:1fr!important}}
 @media(max-width:480px){#dashBottom{gap:12px}}
-.page{animation:fadeUp .22s ease}
+/* ── PREMIUM FEATURES CSS ── */
+.day-close-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.day-close-card .dc-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.day-close-card .dc-val{font-size:20px;font-weight:800;color:var(--text)}
+.day-close-card .dc-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.loyalty-badge{background:linear-gradient(135deg,#ffd166,#e6b800);color:#1a1200;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px}
+.activity-log-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid rgba(42,58,80,.4);align-items:flex-start}
+.activity-log-item:last-child{border:none}
+.al-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:var(--card2)}
+.al-body{flex:1;min-width:0}
+.al-title{font-size:13px;font-weight:500;color:var(--text)}
+.al-time{font-size:11px;color:var(--text2);margin-top:2px}
+.shortcut-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;align-items:center;justify-content:center}
+.shortcut-panel.show{display:flex}
+.shortcut-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:480px;width:95%}
+.shortcut-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.shortcut-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card2);border-radius:8px;font-size:13px}
+.shortcut-key{background:var(--primary);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:11px;font-family:monospace;color:var(--accent2);font-weight:700}
+.btn-whatsapp{background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;border:none}
+.btn-whatsapp:hover{box-shadow:0 4px 14px rgba(37,211,102,.4);transform:translateY(-1px)}
+.inv-seq-badge{background:rgba(0,212,168,.1);border:1px solid rgba(0,212,168,.3);color:var(--success);font-size:11px;padding:3px 10px;border-radius:6px;font-weight:600}
+/* ── ANIMATIONS ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .stat-card{transition:transform .2s,box-shadow .2s}
 .stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.25)}
@@ -944,6 +965,8 @@ body.light-theme .table-wrap{border-color:#dde6ef}
       <span class="notif-dot" id="notifDot"></span>
     </div>
     <button id="themeBtn" onclick="toggleTheme()" title="থিম পরিবর্তন">🌙</button>
+    <button id="shortcutBtn" onclick="$('shortcutPanel').classList.add('show')" title="শর্টকাট (Ctrl+/)" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;color:var(--text2)" id="shortcutBtn">⌨️</button>
+    <button id="dayCloseBtn" onclick="showDayClose()" title="দিন বন্ধ রিপোর্ট" style="display:none;background:var(--card2)!important;color:var(--warning)!important;font-size:12px;padding:6px 10px">📊 দিন বন্ধ</button>
     <button id="navAdmin" onclick="showAdminLogin()">⚙️ Admin</button>
     <button id="logoutBtn" onclick="logoutAdmin()">🚪 Logout</button>
   </div>
@@ -1063,6 +1086,29 @@ body.light-theme .table-wrap{border-color:#dde6ef}
   </div>
 </div>
 
+<!-- KEYBOARD SHORTCUTS PANEL -->
+<div class="shortcut-panel" id="shortcutPanel" onclick="if(event.target===this)$('shortcutPanel').classList.remove('show')">
+  <div class="shortcut-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <h3 style="font-size:16px;font-weight:700">⌨️ কীবোর্ড শর্টকাট</h3>
+      <button onclick="$('shortcutPanel').classList.remove('show')" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:4px">দ্রুত কাজ করুন কীবোর্ড দিয়ে</p>
+    <div class="shortcut-grid">
+      <div class="shortcut-item"><span class="shortcut-key">F2</span><span>POS বিলিং খুলুন</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Ctrl+K</span><span>দ্রুত খুঁজুন</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Ctrl+D</span><span>Dashboard</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Ctrl+O</span><span>অর্ডার লিস্ট</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Ctrl+P</span><span>পণ্য যোগ করুন</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Ctrl+B</span><span>বারকোড স্ক্যান</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Ctrl+R</span><span>রিফ্রেশ</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Ctrl+/</span><span>শর্টকাট দেখুন</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Esc</span><span>বন্ধ করুন</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Ctrl+L</span><span>লগআউট</span></div>
+    </div>
+  </div>
+</div>
+
 <!-- GENERIC MODAL -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modalBox">
@@ -1135,6 +1181,7 @@ body.light-theme .table-wrap{border-color:#dde6ef}
       <button class="sidebar-item" onclick="showPage('expenses',this)"><span class="icon">💸</span> খরচের হিসাব</button>
     </div>
     <div class="sidebar-section">
+      <button class="sidebar-item" onclick="showPage('activity',this)"><span class="icon">📜</span> কার্যক্রম লগ</button>
       <button class="sidebar-item" onclick="showPage('settings',this)"><span class="icon">⚙️</span> সেটিংস</button>
     </div>
   </div>
@@ -1492,6 +1539,18 @@ body.light-theme .table-wrap{border-color:#dde6ef}
       </table></div>
     </div>
 
+    <!-- ACTIVITY LOG -->
+    <div class="page" id="page-activity">
+      <div class="page-header"><h2>📜 কার্যক্রম লগ</h2><p>Admin সব কার্যক্রমের রেকর্ড</p></div>
+      <div class="toolbar">
+        <div class="spacer"></div>
+        <button class="btn btn-danger btn-sm" onclick="clearActivityLog()">🗑️ লগ মুছুন</button>
+      </div>
+      <div class="chart-box" style="padding:16px">
+        <div id="actLogBody"></div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="page-header"><h2>⚙️ সেটিংস</h2><p>শপের তথ্য ও কনফিগারেশন</p></div>
@@ -1591,7 +1650,7 @@ body.light-theme .table-wrap{border-color:#dde6ef}
 // ══════════════════════════════════════
 //  DATA STORE
 // ══════════════════════════════════════
-const KEYS = {products:'ss_products',cats:'ss_cats',orders:'ss_orders',sales:'ss_sales',expenses:'ss_expenses',settings:'ss_settings',adminPass:'ss_adminpass',custUsers:'ss_custusers',adminEmail:'ss_admin_email',adminUser:'ss_admin_user'};
+const KEYS = {products:'ss_products',cats:'ss_cats',orders:'ss_orders',sales:'ss_sales',expenses:'ss_expenses',settings:'ss_settings',adminPass:'ss_adminpass',custUsers:'ss_custusers',adminEmail:'ss_admin_email',adminUser:'ss_admin_user',actLog:'ss_activity_log',invSeq:'ss_inv_seq'};
 const load = k => JSON.parse(localStorage.getItem(k)||'null');
 const save = (k,v) => localStorage.setItem(k,JSON.stringify(v));
 
@@ -1605,7 +1664,9 @@ let DB = {
   adminPass: load(KEYS.adminPass)||'admin123',
   custUsers: load(KEYS.custUsers)||[],
   adminEmail: load(KEYS.adminEmail)||'',
-  adminUser: load(KEYS.adminUser)||'admin'
+  adminUser: load(KEYS.adminUser)||'admin',
+  actLog: load(KEYS.actLog)||[],
+  invSeq: load(KEYS.invSeq)||1
 };
 
 // Sample data seed
@@ -1729,12 +1790,13 @@ let isAdmin=false;
 
 function _setAdminUI(on){
   isAdmin=on;
-  const na=$('navAdmin'),lb=$('logoutBtn'),ns=$('navShop'),qb=$('adminQuickBar');
+  const na=$('navAdmin'),lb=$('logoutBtn'),ns=$('navShop'),qb=$('adminQuickBar'),db=$('dayCloseBtn');
   if(na) na.style.display=on?'none':'inline-flex';
   if(lb){
     lb.style.display=on?'inline-flex':'none';
     lb.innerHTML=on?`👤 ${DB.adminUser||'admin'} <span style="opacity:.6;margin-left:4px;font-size:11px">▾</span>`:'🚪 Logout';
   }
+  if(db) db.style.display=on?'inline-flex':'none';
   if(ns) ns.classList.toggle('active',!on);
   if(qb) qb.classList.toggle('show',on);
 }
@@ -1755,6 +1817,7 @@ function doLogin(){
     loadAdminData();
     updateAdminQuickBar();
     addNotif('লগইন সফল','Admin panel-এ প্রবেশ করা হয়েছে','success');
+    logActivity('🔐','Admin লগইন',`ব্যবহারকারী: ${u}`);
     toast('স্বাগতম, Admin! ✅');
   }else{
     $('loginErr').style.display='block';
@@ -1797,7 +1860,7 @@ function showPage(id,btn){
   $(`page-${id}`).classList.add('active');
   document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,expenses:renderExp,settings:loadSettings};
+  const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,expenses:renderExp,activity:renderActivityLog,settings:loadSettings};
   if(renderers[id]) renderers[id]();
   if(window.innerWidth<=768) closeSidebar();
   sessionStorage.setItem('ss_admin_page', id);
@@ -1912,7 +1975,7 @@ function placeOrder(){
   const tax=sub*taxRate()/100;
   const total=sub+tax;
   const order={
-    id:`ORD-${Date.now()}`,custName:name,custPhone:phone,
+    id:`ORD-${nextInvNum()}`,custName:name,custPhone:phone,
     custId:currentCust?.id||null,
     items:cart.map(i=>({productId:i.productId,name:i.name,price:i.price,qty:i.qty})),
     subtotal:sub,tax,total,status:'Pending',time:new Date().toISOString(),type:'online',payment:'Online'
@@ -1926,6 +1989,7 @@ function placeOrder(){
   $('custName').value='';$('custPhone').value='';
   realtimeUpdate();
   addNotif('📋 নতুন অর্ডার',`${name} — ${fmt(total)} — অর্ডার ID: ${order.id}`,'order');
+  logActivity('📋','নতুন অনলাইন অর্ডার',`${name} — ${fmt(total)}`);
   showOrderSuccess(order);
 }
 
@@ -2611,9 +2675,10 @@ function viewOrder(id){
       <div class="order-detail-row" style="font-weight:700;font-size:15px;color:var(--success)"><span>মোট</span><span>${fmt(o.total)}</span></div>
     </div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
-     <button class="btn btn-warn" onclick="closeModal();editOrder('${id}')">✏️ সম্পাদনা</button>
-     <button class="btn btn-success" onclick="closeModal();printOrderById('${id}')">🖨️ প্রিন্ট</button>
-     <button class="btn btn-info" onclick="closeModal();pdfOrderById('${id}')">📄 PDF</button>`);
+     <button class="btn btn-whatsapp btn-sm" onclick="closeModal();shareOrderWhatsApp(DB.orders.find(x=>x.id==='${id}'))">📱 WhatsApp</button>
+     <button class="btn btn-warn" onclick="closeModal();editOrder('${id}')">✏️</button>
+     <button class="btn btn-success" onclick="closeModal();printOrderById('${id}')">🖨️</button>
+     <button class="btn btn-info" onclick="closeModal();pdfOrderById('${id}')">📄</button>`);
 }
 
 function editOrder(id){
@@ -2834,7 +2899,7 @@ function _buildSale(){
   const tax=(sub-disc)*taxRate()/100;
   const total=sub-disc+tax;
   return{
-    id:`BILL-${Date.now()}`,
+    id:`BILL-${nextInvNum()}`,
     custName:($('posCust').value.trim())||'সাধারণ কাস্টমার',
     custPhone:$('posCustPhone').value.trim(),
     note:$('posNote').value.trim(),
@@ -2849,6 +2914,7 @@ function _commitSale(sale){
   save(KEYS.products,DB.products);
   DB.sales.unshift(sale);save(KEYS.sales,DB.sales);
   addNotif('💰 নতুন বিক্রয়',`${sale.custName} — ${fmt(sale.total)} (${sale.payment})`,'sale');
+  logActivity('💰','POS বিক্রয়',`${sale.custName||'সাধারণ'} — ${fmt(sale.total)} — ${sale.payment}`);
   clearPOS();renderPOS();
   toast('বিল তৈরি হয়েছে ✅');realtimeUpdate();
 }
@@ -3650,53 +3716,21 @@ function posSearchKeydown(e){
     }
   });
 })();
-function realtimeUpdate(){
-  // Sync DB from localStorage
-  DB.products=load(KEYS.products)||DB.products;
-  DB.orders=load(KEYS.orders)||DB.orders;
-  DB.sales=load(KEYS.sales)||DB.sales;
-  DB.cats=load(KEYS.cats)||DB.cats;
-  DB.expenses=load(KEYS.expenses)||DB.expenses;
-  // Reset POS cat tabs so they rebuild with fresh data
-  const tabsEl=$('posCatTabs');
-  if(tabsEl) delete tabsEl.dataset.built;
-  // Update shop realtime bar
-  const rtP=$('rtProductCount'),rtC=$('rtCustCount');
-  if(rtP) rtP.textContent=DB.products.filter(p=>p.stock>0).length;
-  if(rtC) rtC.textContent=DB.custUsers.length;
-  // Re-render whichever panel/page is currently active
-  if($('shopPanel').classList.contains('active')) renderShop();
-  if(isAdmin){
-    updateAdminQuickBar();
-    const activeP=document.querySelector('.page.active');
-    if(!activeP) return;
-    const pid=activeP.id.replace('page-','');
-    const map={
-      dashboard:loadDash,
-      products:renderProducts,
-      categories:renderCats,
-      orders:renderOrders,
-      pos:renderPOS,
-      sales:renderSales,
-      customers:renderCustomers,
-      expenses:renderExp
-    };
-    if(map[pid]) map[pid]();
-    // Update admin quick bar always
-    updateAdminQuickBar();
-  }
-}
-// Poll every 3 seconds for cross-tab realtime sync
-setInterval(realtimeUpdate, 3000);
+// realtimeUpdate → realtimeTick alias (backward compat)
+const realtimeUpdate=realtimeTick;
+// Poll every 2 seconds for realtime sync
+setInterval(realtimeTick, 2000);
 
-// StorageEvent for instant cross-tab update
+// Instant cross-tab update
 window.addEventListener('storage', e=>{
   if(e.key&&e.key.startsWith('ss_')){
     if(e.key===KEYS.products) DB.products=JSON.parse(e.newValue||'[]');
-    if(e.key===KEYS.orders) DB.orders=JSON.parse(e.newValue||'[]');
-    if(e.key===KEYS.sales) DB.sales=JSON.parse(e.newValue||'[]');
-    realtimeUpdate();
-    toast('🔄 ডেটা আপডেট হয়েছে','info');
+    if(e.key===KEYS.orders)   DB.orders=JSON.parse(e.newValue||'[]');
+    if(e.key===KEYS.sales)    DB.sales=JSON.parse(e.newValue||'[]');
+    if(e.key===KEYS.cats)     DB.cats=JSON.parse(e.newValue||'[]');
+    if(e.key===KEYS.expenses) DB.expenses=JSON.parse(e.newValue||'[]');
+    realtimeTick();
+    addNotif('🔄 ডেটা সিঙ্ক','অন্য ট্যাব থেকে আপডেট এসেছে','info');
   }
 });
 // ══════════════════════════════════════
@@ -3871,66 +3905,224 @@ function updateAdminQuickBar(){
   }
 }
 
+// ══════════════════════════════════════
+//  ACTIVITY LOG
+// ══════════════════════════════════════
+function logActivity(icon,title,detail=''){
+  DB.actLog.unshift({icon,title,detail,time:new Date().toISOString()});
+  if(DB.actLog.length>50) DB.actLog=DB.actLog.slice(0,50);
+  save(KEYS.actLog,DB.actLog);
+}
+
+// ══════════════════════════════════════
+//  INVOICE AUTO SEQUENCE
+// ══════════════════════════════════════
+function nextInvNum(){
+  const n=DB.invSeq||1;
+  DB.invSeq=n+1;
+  save(KEYS.invSeq,DB.invSeq);
+  return String(n).padStart(5,'0');
+}
+
+// ══════════════════════════════════════
+//  WHATSAPP SHARE
+// ══════════════════════════════════════
+function shareOrderWhatsApp(order){
+  const s=DB.settings;
+  const items=order.items.map(i=>`• ${i.name} ×${i.qty} = ${fmt(i.price*i.qty)}`).join('\n');
+  const msg=`🛒 *${s.name||'SuperShop'}* — অর্ডার কনফার্মেশন\n\n`
+    +`📋 অর্ডার ID: *${order.id}*\n`
+    +`👤 কাস্টমার: ${order.custName}\n`
+    +`📅 তারিখ: ${new Date(order.time).toLocaleDateString('bn-BD')}\n\n`
+    +`*পণ্য:*\n${items}\n\n`
+    +`💰 সর্বমোট: *${fmt(order.total)}*\n`
+    +`💳 পেমেন্ট: ${order.payment||'Online'}\n`
+    +`✅ স্ট্যাটাস: ${order.status}\n\n`
+    +`ধন্যবাদ আমাদের থেকে কেনাকাটা করার জন্য! 🙏`;
+  const phone=(order.custPhone||'').replace(/\D/g,'');
+  const url=`https://wa.me/${phone?'88'+phone:''}?text=${encodeURIComponent(msg)}`;
+  window.open(url,'_blank');
+}
+
+// ══════════════════════════════════════
+//  DAY CLOSE REPORT
+// ══════════════════════════════════════
+function showDayClose(){
+  const todayStr=today();
+  const todaySales=DB.sales.filter(s=>s.time.slice(0,10)===todayStr);
+  const todayOrders=DB.orders.filter(o=>o.time.slice(0,10)===todayStr);
+  const totalRev=todaySales.reduce((s,x)=>s+x.total,0);
+  const cashRev=todaySales.filter(s=>s.payment==='Cash').reduce((s,x)=>s+x.total,0);
+  const cardRev=todaySales.filter(s=>s.payment==='Card').reduce((s,x)=>s+x.total,0);
+  const mobileRev=todaySales.filter(s=>['bKash','Nagad','Rocket','Mobile Banking'].includes(s.payment)).reduce((s,x)=>s+x.total,0);
+  const todayExp=DB.expenses.filter(e=>e.date===todayStr).reduce((s,e)=>s+e.amount,0);
+  const netProfit=totalRev-todayExp;
+  const topItem=Object.entries(todaySales.reduce((m,s)=>{
+    s.items.forEach(i=>{m[i.name]=(m[i.name]||0)+i.qty});return m;
+  },{})).sort((a,b)=>b[1]-a[1])[0];
+
+  openModal('📊 দিন বন্ধ রিপোর্ট — '+new Date().toLocaleDateString('bn-BD'),`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="day-close-card"><div class="dc-label">মোট বিক্রয়</div><div class="dc-val" style="color:var(--success)">${fmt(totalRev)}</div><div class="dc-sub">${todaySales.length}টি লেনদেন</div></div>
+      <div class="day-close-card"><div class="dc-label">মোট অর্ডার</div><div class="dc-val">${todayOrders.length}</div><div class="dc-sub">আজকের সব অর্ডার</div></div>
+      <div class="day-close-card"><div class="dc-label">💵 নগদ</div><div class="dc-val">${fmt(cashRev)}</div></div>
+      <div class="day-close-card"><div class="dc-label">📱 মোবাইল ব্যাংকিং</div><div class="dc-val">${fmt(mobileRev)}</div></div>
+      <div class="day-close-card"><div class="dc-label">💳 কার্ড</div><div class="dc-val">${fmt(cardRev)}</div></div>
+      <div class="day-close-card"><div class="dc-label">💸 আজকের খরচ</div><div class="dc-val" style="color:var(--danger)">${fmt(todayExp)}</div></div>
+    </div>
+    <div class="day-close-card" style="background:rgba(0,212,168,.08);border-color:rgba(0,212,168,.3)">
+      <div class="dc-label">নিট মুনাফা</div>
+      <div class="dc-val" style="color:${netProfit>=0?'var(--success)':'var(--danger)'};font-size:26px">${fmt(netProfit)}</div>
+      ${topItem?`<div class="dc-sub">🏆 সেরা পণ্য: ${topItem[0]} (${topItem[1]} পিস)</div>`:''}
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
+     <button class="btn btn-success" onclick="closeModal();printDayClose()">🖨️ প্রিন্ট</button>
+     <button class="btn btn-info" onclick="closeModal();exportDayCloseCSV()">📥 CSV</button>`);
+  logActivity('📊','দিন বন্ধ রিপোর্ট দেখা হয়েছে',`মোট: ${fmt(totalRev)}`);
+}
+
+function printDayClose(){
+  const todayStr=today();
+  const todaySales=DB.sales.filter(s=>s.time.slice(0,10)===todayStr);
+  const totalRev=todaySales.reduce((s,x)=>s+x.total,0);
+  const pa=$('printArea');
+  const s=DB.settings;
+  pa.innerHTML=`
+    <div class="print-shop-name">${s.name||'SuperShop'} — দিন বন্ধ রিপোর্ট</div>
+    <div class="print-shop-sub">${new Date().toLocaleDateString('bn-BD',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+    <div class="print-divider-solid"></div>
+    <div class="print-row"><span>মোট বিক্রয়</span><span>${fmt(totalRev)}</span></div>
+    <div class="print-row"><span>লেনদেন সংখ্যা</span><span>${todaySales.length}</span></div>
+    <div class="print-row"><span>নগদ</span><span>${fmt(todaySales.filter(s=>s.payment==='Cash').reduce((a,x)=>a+x.total,0))}</span></div>
+    <div class="print-row"><span>কার্ড</span><span>${fmt(todaySales.filter(s=>s.payment==='Card').reduce((a,x)=>a+x.total,0))}</span></div>
+    <div class="print-divider"></div>
+    <div class="print-row bold"><span>প্রস্তুতকারী</span><span>${DB.adminUser||'Admin'}</span></div>
+    <div class="print-thanks">তারিখ: ${new Date().toLocaleString('bn-BD')}</div>`;
+  pa.style.display='block';
+  setTimeout(()=>{window.print();pa.style.display='none';},300);
+}
+
+function exportDayCloseCSV(){
+  const todayStr=today();
+  const todaySales=DB.sales.filter(s=>s.time.slice(0,10)===todayStr);
+  const rows=[['ID','কাস্টমার','পেমেন্ট','মোট','সময়']];
+  todaySales.forEach(s=>rows.push([s.id,s.custName||'সাধারণ',s.payment||'',s.total.toFixed(2),s.time]));
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`DayClose-${todayStr}.csv`;a.click();
+}
+
+// ══════════════════════════════════════
+//  ADMIN ACTIVITY LOG PAGE
+// ══════════════════════════════════════
+function renderActivityLog(){
+  const el=$('actLogBody');if(!el) return;
+  const logs=DB.actLog.slice(0,30);
+  el.innerHTML=logs.length?logs.map(l=>`
+    <div class="activity-log-item">
+      <div class="al-icon">${l.icon||'📝'}</div>
+      <div class="al-body">
+        <div class="al-title">${l.title}</div>
+        ${l.detail?`<div style="font-size:12px;color:var(--text2)">${l.detail}</div>`:''}
+        <div class="al-time">🕐 ${new Date(l.time).toLocaleString('bn-BD')}</div>
+      </div>
+    </div>`).join('')
+  :'<div style="text-align:center;color:var(--text2);padding:24px;font-size:13px">কোনো কার্যক্রম নেই</div>';
+}
+
+function clearActivityLog(){
+  confirm2('সব কার্যক্রম লগ মুছে ফেলবেন?',()=>{
+    DB.actLog=[];save(KEYS.actLog,[]);renderActivityLog();
+    toast('কার্যক্রম লগ মুছে ফেলা হয়েছে','warn');
+  });
+}
+// ══════════════════════════════════════
+function realtimeTick(){
+  // Sync all from localStorage
+  DB.products=load(KEYS.products)||DB.products;
+  DB.orders=load(KEYS.orders)||DB.orders;
+  DB.sales=load(KEYS.sales)||DB.sales;
+  DB.cats=load(KEYS.cats)||DB.cats;
+  DB.expenses=load(KEYS.expenses)||DB.expenses;
+  DB.custUsers=load(KEYS.custUsers)||DB.custUsers;
+  DB.actLog=load(KEYS.actLog)||DB.actLog;
+  // Reset POS cat tabs
+  const tabsEl=$('posCatTabs');
+  if(tabsEl) delete tabsEl.dataset.built;
+  // Update realtime bar
+  const rtP=$('rtProductCount'),rtC=$('rtCustCount');
+  if(rtP) rtP.textContent=DB.products.filter(p=>p.stock>0).length;
+  if(rtC) rtC.textContent=DB.custUsers.length;
+  // Shop visible
+  if($('shopPanel')?.classList.contains('active')) renderShop();
+  // Admin active page
+  if(isAdmin){
+    updateAdminQuickBar();
+    const activeP=document.querySelector('.page.active');
+    if(!activeP) return;
+    const pid=activeP.id.replace('page-','');
+    const map={dashboard:loadDash,products:renderProducts,categories:renderCats,
+      orders:renderOrders,pos:renderPOS,sales:renderSales,
+      customers:renderCustomers,expenses:renderExp,activity:renderActivityLog};
+    if(map[pid]) map[pid]();
+  }
+}
+
 document.addEventListener('DOMContentLoaded', ()=>{
-  // Keyboard shortcuts
+  // Keyboard shortcuts — unified
   document.addEventListener('keydown',e=>{
-    if(e.key==='F2'){
-      e.preventDefault();
-      if(isAdmin){
-        showPage('pos',document.querySelector('.sidebar-item[onclick*="pos"]'));
-        setTimeout(()=>{const ps=$('posSearch');if(ps)ps.focus();},200);
-      }
-    }
+    const mod=e.ctrlKey||e.metaKey;
+    if(e.key==='F2'){e.preventDefault();if(isAdmin){showPage('pos',document.querySelector('.sidebar-item[onclick*="pos"]'));setTimeout(()=>{const ps=$('posSearch');if(ps)ps.focus();},200);}}
+    if(mod&&e.key==='k'){e.preventDefault();toggleQuickSearch();}
+    if(mod&&e.key==='d'&&isAdmin){e.preventDefault();showPage('dashboard',document.querySelector('.sidebar-item[onclick*=dashboard]'));}
+    if(mod&&e.key==='o'&&isAdmin){e.preventDefault();showPage('orders',document.querySelector('.sidebar-item[onclick*=orders]'));}
+    if(mod&&e.key==='p'&&isAdmin){e.preventDefault();if($('page-products').classList.contains('active'))openProductModal();}
+    if(mod&&e.key==='b'&&isAdmin){e.preventDefault();if($('page-pos').classList.contains('active'))openScanner();}
+    if(mod&&e.key==='r'){e.preventDefault();realtimeTick();toast('🔄 রিফ্রেশ হয়েছে');}
+    if(mod&&e.key==='/'&&!e.shiftKey){e.preventDefault();$('shortcutPanel').classList.toggle('show');}
+    if(mod&&e.key==='l'&&isAdmin){e.preventDefault();if(confirm('লগআউট করবেন?'))logoutAdmin();}
     if(e.key==='Escape'){
-      closeModal();
-      closeCustAuth();
-      closeCustDropdown();
-      closeSidebar();
-      closeScanner(); // stops camera too
+      closeModal();closeCustAuth();closeCustDropdown();closeSidebar();
+      closeScanner();closeQuickSearch();
+      $('shortcutPanel').classList.remove('show');
+      $('notifPanel')&&$('notifPanel').classList.remove('show');
     }
   });
 
   // Enter key on password fields
-  const lp=document.getElementById('loginPass');
-  if(lp) lp.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-  const cp=document.getElementById('cLoginPass');
-  if(cp) cp.addEventListener('keydown',e=>{if(e.key==='Enter')doCustLogin();});
+  const lp=$('loginPass');if(lp)lp.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+  const cp=$('cLoginPass');if(cp)cp.addEventListener('keydown',e=>{if(e.key==='Enter')doCustLogin();});
 
   // Close dropdown on outside click
   document.addEventListener('click',e=>{
-    if(!e.target.closest('#custUserBtn')&&!e.target.closest('#custDropdown'))
-      closeCustDropdown();
+    if(!e.target.closest('#custUserBtn')&&!e.target.closest('#custDropdown'))closeCustDropdown();
   });
 
-  // Theme
+  // Theme, notifications
   loadTheme();
-  // Notifications init
   renderNotifDot();renderNotifList();
-  // Ctrl+K for quick search
-  document.addEventListener('keydown',e=>{
-    if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();toggleQuickSearch();}
-    if(e.key==='Escape'){closeQuickSearch();$('notifPanel')&&$('notifPanel').classList.remove('show');}
-  });
+
   // Dashboard date
   const dd=$('dashDate');if(dd) dd.textContent=new Date().toLocaleDateString('bn-BD',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const fy=$('footerYear');if(fy) fy.textContent=new Date().getFullYear();
+
   function updateFooter(){
     const s=DB.settings;
     const fn=$('footerName');const fd=$('footerDesc');
     const fp=$('footerPhone');const fa=$('footerAddr');
     if(fn) fn.textContent=s.name||'SuperShop';
-    if(fd) fd.textContent=`${s.name||'SuperShop'} — সেরা পণ্য, সেরা দামে। আমাদের অনলাইন ও অফলাইন শপ থেকে কেনাকাটা করুন।`;
+    if(fd) fd.textContent=`${s.name||'SuperShop'} — সেরা পণ্য, সেরা দামে।`;
     if(fp) fp.textContent=`📞 ${s.phone||'01700000000'}`;
     if(fa) fa.textContent=`📍 ${s.addr||'ঢাকা, বাংলাদেশ'}`;
   }
   updateFooter();
   window._updateFooter=updateFooter;
 
-  // ── COMMON INIT (সব সময় চলে) ──
+  // ── COMMON INIT ──
   $('shopNameDisplay').textContent=DB.settings.name;
   $('shopSubDisplay').textContent=DB.settings.addr;
   updateCustUI();
-  realtimeUpdate();
 
   // ── SESSION RESTORE ──
   if(sessionStorage.getItem('ss_admin_session')==='1'){
@@ -3946,6 +4138,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     populateCatFilters();
     renderShop();
   }
+
+  // Start realtime after all init done
+  realtimeTick();
 });
 </script>
 </body>
