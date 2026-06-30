@@ -828,6 +828,47 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 .flash-timer{display:inline-flex;gap:6px;align-items:center;background:rgba(255,77,109,.1);border:1px solid var(--accent);border-radius:10px;padding:8px 12px}
 .flash-digit{background:var(--accent);color:#fff;font-size:18px;font-weight:900;padding:4px 8px;border-radius:6px;min-width:36px;text-align:center;font-variant-numeric:tabular-nums}
 .flash-sep{color:var(--accent);font-size:20px;font-weight:900}
+/* ── IMAGE LIGHTBOX ── */
+.img-lightbox{display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.92);align-items:center;justify-content:center;cursor:zoom-out}
+.img-lightbox.show{display:flex}
+.img-lightbox img{max-width:90vw;max-height:90vh;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.5);animation:lightboxIn .25s ease}
+@keyframes lightboxIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.zoomable-img{cursor:zoom-in;transition:.2s}
+.zoomable-img:hover{filter:brightness(1.05)}
+/* ── CALCULATOR WIDGET ── */
+.calc-widget{position:fixed;bottom:70px;right:16px;z-index:500;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);width:230px;overflow:hidden;display:none}
+.calc-widget.show{display:block;animation:fadeUp .2s ease}
+.calc-display{background:var(--card2);padding:14px;text-align:right;font-size:24px;font-weight:700;color:var(--text);word-break:break-all;min-height:36px;font-family:'Courier New',monospace}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)}
+.calc-btn{background:var(--card);border:none;padding:14px 0;font-size:16px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;transition:.1s}
+.calc-btn:active{background:var(--card2)}
+.calc-btn.op{color:var(--accent);font-weight:800}
+.calc-btn.eq{background:var(--accent);color:#fff;grid-row:span 2}
+.calc-fab{position:fixed;bottom:16px;right:16px;z-index:499;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#c0223d);border:none;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 4px 16px rgba(255,77,109,.4);display:none}
+.calc-fab.show{display:flex;align-items:center;justify-content:center}
+/* ── DASHBOARD STICKY NOTES ── */
+.sticky-note{background:linear-gradient(135deg,#fff9c4,#fff3a0);color:#3a3000;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5;position:relative;box-shadow:0 3px 10px rgba(0,0,0,.15);transform:rotate(-1deg);transition:.2s}
+.sticky-note:nth-child(even){transform:rotate(1deg);background:linear-gradient(135deg,#c8f7dc,#a8f0c6);color:#0a3d1f}
+.sticky-note:hover{transform:rotate(0deg) scale(1.02)}
+.sticky-note .sn-del{position:absolute;top:4px;right:6px;cursor:pointer;font-size:11px;opacity:.5}
+.sticky-note .sn-del:hover{opacity:1}
+/* ── EXPENSE CALENDAR ── */
+.exp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.exp-cal-day{aspect-ratio:1;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;cursor:pointer;background:var(--card2);border:1px solid var(--border);transition:.15s}
+.exp-cal-day:hover{border-color:var(--accent)}
+.exp-cal-day .ecd-num{font-weight:700;color:var(--text2)}
+.exp-cal-day.has-exp .ecd-num{color:var(--text)}
+.exp-cal-dow{text-align:center;font-size:10px;color:var(--text2);font-weight:600;padding-bottom:4px}
+/* ── COURIER TRACKING ── */
+.courier-status-track{display:flex;align-items:center;gap:0;margin:14px 0}
+.cst-step{flex:1;text-align:center;position:relative}
+.cst-step .cst-dot{width:26px;height:26px;border-radius:50%;background:var(--card2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:12px;position:relative;z-index:2}
+.cst-step.done .cst-dot{background:var(--success);border-color:var(--success);color:#fff}
+.cst-step.active .cst-dot{background:var(--accent);border-color:var(--accent);color:#fff;animation:pulse 1.5s infinite}
+.cst-step::after{content:'';position:absolute;top:13px;left:50%;width:100%;height:2px;background:var(--border);z-index:1}
+.cst-step:last-child::after{display:none}
+.cst-step.done::after{background:var(--success)}
+.cst-step .cst-label{font-size:9px;color:var(--text2)}
 /* ── ANIMATIONS ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .stat-card{transition:transform .2s,box-shadow .2s}
@@ -1197,6 +1238,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <div class="shortcut-grid">
       <div class="shortcut-item"><span class="shortcut-key">F2</span><span>POS বিলিং খুলুন</span></div>
       <div class="shortcut-item"><span class="shortcut-key">Ctrl+F</span><span>Advanced Search</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Ctrl+M</span><span>ক্যালকুলেটর</span></div>
       <div class="shortcut-item"><span class="shortcut-key">Ctrl+K</span><span>দ্রুত খুঁজুন</span></div>
       <div class="shortcut-item"><span class="shortcut-key">Ctrl+D</span><span>Dashboard</span></div>
       <div class="shortcut-item"><span class="shortcut-key">Ctrl+O</span><span>অর্ডার লিস্ট</span></div>
@@ -1345,6 +1387,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
             <button class="btn btn-ghost btn-sm" onclick="openStaffTargetModal()" title="স্টাফ মাসিক টার্গেট">🎯 টার্গেট</button>
             <button class="btn btn-ghost btn-sm" onclick="showProfitLoss()" title="Profit & Loss Statement">📊 P&L</button>
             <button class="btn btn-ghost btn-sm" onclick="showCategoryMarginChart()" title="ক্যাটাগরি মুনাফা">📊 ক্যাটাগরি</button>
+            <button class="btn btn-ghost btn-sm" onclick="showMonthComparison()" title="মাস তুলনা">📈 মাস তুলনা</button>
           </div>
         </div>
         <canvas id="trendChart" height="140"></canvas>
@@ -1385,10 +1428,16 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
             <span style="margin-left:auto"><button class="btn btn-ghost btn-sm" onclick="showCustLeaderboard()" title="সেরা কাস্টমার">👑 লিডার</button></span>
           </div>
           <div id="topProductsList"></div>
-          <div class="section-title" style="margin-top:16px">💸 মাসিক খরচ</div>
+          <div class="section-title" style="margin-top:16px">💸 মাসিক খরচ
+            <span style="margin-left:auto"><button class="btn btn-ghost btn-sm" onclick="showExpenseCalendar()" title="খরচ ক্যালেন্ডার">📅</button></span>
+          </div>
           <div id="dashExpenses"></div>
         </div>
       </div>
+
+      <!-- Sticky Notes -->
+      <div class="section-title" style="margin-top:16px">🗒️ নোট ও রিমাইন্ডার</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px" id="stickyNotesGrid"></div>
     </div>
 
     <!-- PRODUCTS -->
@@ -1742,6 +1791,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       <div class="page-header"><h2>👥 কাস্টমার লিস্ট</h2><p>সংগ্রহ করা কাস্টমার তথ্য</p></div>
       <div class="toolbar">
         <input type="text" id="custSearch" placeholder="🔍 নাম বা ফোন..." oninput="renderCustomers()">
+        <input type="number" id="custSpendMin" placeholder="ন্যূনতম খরচ ৳" style="width:130px" oninput="applyCustSpendFilter()">
+        <input type="number" id="custSpendMax" placeholder="সর্বোচ্চ খরচ ৳" style="width:130px" oninput="applyCustSpendFilter()">
+        <button class="btn btn-ghost btn-sm" onclick="clearCustSpendFilter()" title="ফিল্টার মুছুন">✕</button>
         <div class="spacer"></div>
         <div id="custStatsBadge" style="font-size:13px;color:var(--text2)"></div>
       </div>
@@ -2210,6 +2262,9 @@ function _setAdminUI(on){
   // Mobile bottom nav
   const pbn=$('posBottomNav');
   if(pbn) pbn.style.display=on?'flex':'none';
+  // Calculator FAB
+  const calcFab=$('calcFab');
+  if(calcFab) calcFab.classList.toggle('show',on);
 }
 
 function showAdminLogin(){$('loginOverlay').classList.add('show')}
@@ -2355,7 +2410,7 @@ function renderShop(){
     const c=DB.cats.find(x=>x.id===p.cat)||{};
     const inStock=p.stock>0;
     const imgHtml=p.img
-      ?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover">`
+      ?`<img src="${p.img}" class="zoomable-img" onclick="event.stopPropagation();openLightbox('${p.img}')" style="width:100%;height:100%;object-fit:cover" title="বড় করে দেখতে ক্লিক করুন">`
       :`<span style="font-size:48px">${p.icon||'📦'}</span>`;
     return`<div class="product-card">
       <div class="product-img" style="${p.img?'padding:0;overflow:hidden':''}">${imgHtml}
@@ -2875,6 +2930,7 @@ function loadDash(){
   // Monthly sales target tracker
   renderMonthlyTarget(monthRev);
   renderRevenueBreakdown();
+  renderStickyNotes();
 }
 
 function renderMonthlyTarget(monthRev){
@@ -3097,6 +3153,7 @@ function renderProducts(){
         <button class="btn btn-ghost btn-sm" onclick="showStockHistory('${p.id}')" title="স্টক ইতিহাস">📋</button>
         <button class="btn btn-ghost btn-sm" onclick="showProductQR('${p.id}')" title="QR Code">🔗</button>
         <button class="btn btn-ghost btn-sm" onclick="openVariantModal('${p.id}')" title="ভ্যারিয়েন্ট (রঙ/সাইজ)"${p.variants?.length?` style="color:var(--accent2)"`:''}>🗃️${p.variants?.length?`<b style="font-size:9px;background:var(--accent);color:#fff;border-radius:99px;padding:0 3px;margin-left:1px">${p.variants.length}</b>`:''}</button>
+        <button class="btn btn-ghost btn-sm" onclick="cloneProduct('${p.id}')" title="পণ্য কপি করুন">📋</button>
         ${p.barcode?`<button class="btn btn-ghost btn-sm" onclick="printBarcodeLabel('${p.id}')" title="বারকোড লেবেল প্রিন্ট">🏷️</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">🗑️</button>
       </td>
@@ -3320,6 +3377,7 @@ function renderOrders(){
     <td class="hide-xs">${new Date(o.time).toLocaleDateString('bn-BD')}</td>
     <td style="display:flex;gap:4px;flex-wrap:wrap">
       <button class="btn btn-info btn-sm" onclick="viewOrder('${o.id}')">👁️</button>
+      <button class="btn btn-ghost btn-sm" title="ডেলিভারি ট্র্যাকিং" onclick="openCourierModal('${o.id}')">${o.courierStatus?COURIER_ICONS[o.courierStatus]:'🚚'}</button>
       <button class="btn btn-ghost btn-sm" title="প্রিন্ট" onclick="printOrderById('${o.id}')">🖨️</button>
       <button class="btn btn-ghost btn-sm" title="A4 ইনভয়েস" onclick="a4OrderById('${o.id}')">📄A4</button>
       <button class="btn btn-warn btn-sm" title="PDF ডাউনলোড" onclick="pdfOrderById('${o.id}')">📥</button>
@@ -3376,6 +3434,7 @@ function viewOrder(id){
       <div class="order-detail-row" style="font-weight:700;font-size:15px;color:var(--success)"><span>মোট</span><span>${fmt(o.total)}</span></div>
     </div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
+     <button class="btn btn-info btn-sm" onclick="closeModal();openCourierModal('${id}')" title="ডেলিভারি ট্র্যাকিং">🚚 ডেলিভারি</button>
      <button class="btn btn-whatsapp btn-sm" onclick="closeModal();shareOrderWhatsApp(DB.orders.find(x=>x.id==='${id}'))">📱 WhatsApp</button>
      <button class="btn btn-warn" onclick="closeModal();editOrder('${id}')">✏️</button>
      <button class="btn btn-success" onclick="closeModal();printOrderById('${id}')" title="রিসিপ্ট প্রিন্ট">🖨️</button>
@@ -3983,9 +4042,14 @@ function renderCustomers(){
     map[k].name=u.name;
     map[k].phone=u.phone||map[k].phone;
   });
-  window._custList=Object.values(map).filter(c=>
-    !q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)
-  );
+  window._custList=Object.values(map).filter(c=>{
+    if(q&&!c.name.toLowerCase().includes(q)&&!(c.phone||'').includes(q)) return false;
+    if(window._custSpendFilter){
+      const{min,max}=window._custSpendFilter;
+      if(c.spent<min||c.spent>max) return false;
+    }
+    return true;
+  });
   window._custList.sort((a,b)=>b.spent-a.spent);
   // Compute segment thresholds dynamically based on data spread
   const spends=window._custList.map(c=>c.spent).filter(s=>s>0).sort((a,b)=>b-a);
@@ -7206,6 +7270,283 @@ function removeVariant(productId,idx){
   toast('ভ্যারিয়েন্ট মুছে ফেলা হয়েছে','warn');
 }
 
+// ══════════════════════════════════════
+//  📋 CLONE / DUPLICATE PRODUCT
+// ══════════════════════════════════════
+function cloneProduct(id){
+  const p=DB.products.find(x=>x.id===id);if(!p)return;
+  confirm2(`"${p.name}" পণ্যের একটি কপি তৈরি করবেন?`,()=>{
+    const clone={...p,id:`p${uid()}`,name:p.name+' (কপি)',barcode:'',stockLog:[]};
+    DB.products.push(clone);
+    save(KEYS.products,DB.products);
+    renderProducts();renderShop();
+    toast(`✅ "${p.name}" কপি হয়েছে`);
+    logActivity('📋','পণ্য কপি',`${p.name} → ${clone.name}`);
+    realtimeUpdate();
+  });
+}
+
+// ══════════════════════════════════════
+//  🚚 DELIVERY / COURIER TRACKING
+// ══════════════════════════════════════
+const COURIER_STAGES=['Pending','Processing','Shipped','Delivered'];
+const COURIER_ICONS={Pending:'📝',Processing:'📦',Shipped:'🚚',Delivered:'✅'};
+function openCourierModal(orderId){
+  const o=DB.orders.find(x=>x.id===orderId);if(!o)return;
+  const currentStage=o.courierStatus||'Pending';
+  const stageIdx=COURIER_STAGES.indexOf(currentStage);
+  openModal(`🚚 ডেলিভারি ট্র্যাকিং — ${o.custName}`,`
+    <div class="courier-status-track">
+      ${COURIER_STAGES.map((s,i)=>`
+        <div class="cst-step ${i<stageIdx?'done':i===stageIdx?'active':''}">
+          <div class="cst-dot">${i<stageIdx?'✓':COURIER_ICONS[s]}</div>
+          <div class="cst-label">${s==='Pending'?'অপেক্ষমান':s==='Processing'?'প্রসেসিং':s==='Shipped'?'পাঠানো হয়েছে':'ডেলিভার্ড'}</div>
+        </div>`).join('')}
+    </div>
+    <div class="form-group"><label>কুরিয়ার সার্ভিস</label><input id="cr_service" value="${o.courierService||''}" placeholder="যেমন: পাঠাও, সুন্দরবন, স্টিডফাস্ট"></div>
+    <div class="form-group"><label>ট্র্যাকিং নম্বর</label><input id="cr_track" value="${o.courierTrackingNo||''}" placeholder="ট্র্যাকিং আইডি"></div>
+    <div class="form-group"><label>স্ট্যাটাস আপডেট করুন</label>
+      <select id="cr_status" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%;font-family:inherit">
+        ${COURIER_STAGES.map(s=>`<option value="${s}" ${s===currentStage?'selected':''}>${COURIER_ICONS[s]} ${s==='Pending'?'অপেক্ষমান':s==='Processing'?'প্রসেসিং':s==='Shipped'?'পাঠানো হয়েছে':'ডেলিভার্ড'}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>নোট</label><input id="cr_note" placeholder="ঐচ্ছিক মন্তব্য"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveCourierStatus('${orderId}')">💾 সেভ করুন</button>`);
+}
+function saveCourierStatus(orderId){
+  const o=DB.orders.find(x=>x.id===orderId);if(!o)return;
+  o.courierService=($('cr_service')||{value:''}).value;
+  o.courierTrackingNo=($('cr_track')||{value:''}).value;
+  o.courierStatus=($('cr_status')||{value:'Pending'}).value;
+  if(!o.courierHistory) o.courierHistory=[];
+  const note=($('cr_note')||{value:''}).value;
+  o.courierHistory.push({status:o.courierStatus,time:new Date().toISOString(),note,by:currentStaff?currentStaff.name:(DB.adminUser||'Owner')});
+  // Auto-sync order status if delivered
+  if(o.courierStatus==='Delivered') o.status='Delivered';
+  save(KEYS.orders,DB.orders);
+  closeModal();renderOrders();
+  toast(`🚚 ডেলিভারি স্ট্যাটাস: ${o.courierStatus}`);
+  logActivity('🚚','ডেলিভারি আপডেট',`${o.id} — ${o.courierStatus}`);
+  addNotif('🚚 ডেলিভারি আপডেট',`${o.custName} — ${o.courierStatus}`,'info');
+  realtimeUpdate();
+}
+
+// ══════════════════════════════════════
+//  🗒️ DASHBOARD STICKY NOTES / REMINDERS
+// ══════════════════════════════════════
+function getStickyNotes(){
+  try{return JSON.parse(localStorage.getItem('ss_sticky_notes')||'[]');}catch(e){return[];}
+}
+function renderStickyNotes(){
+  const el=$('stickyNotesGrid');if(!el)return;
+  const notes=getStickyNotes();
+  el.innerHTML=notes.map((n,i)=>`
+    <div class="sticky-note">
+      <span class="sn-del" onclick="deleteStickyNote(${i})">✕</span>
+      ${n.text}
+      <div style="font-size:9px;opacity:.6;margin-top:6px">${new Date(n.time).toLocaleDateString('bn-BD')}</div>
+    </div>`).join('')+`
+    <div class="sticky-note" style="background:var(--card2);color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;transform:none;border:2px dashed var(--border)" onclick="addStickyNote()">
+      <span style="font-size:24px">➕</span>
+    </div>`;
+}
+function addStickyNote(){
+  openModal('🗒️ নতুন নোট/রিমাইন্ডার',`
+    <div class="form-group"><label>নোট লিখুন</label>
+      <textarea id="sn_text" rows="4" placeholder="যেমন: আগামীকাল সাপ্লায়ারকে কল করতে হবে" autofocus></textarea>
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveStickyNote()">📌 যোগ করুন</button>`);
+  setTimeout(()=>{const ta=$('sn_text');if(ta)ta.focus();},150);
+}
+function saveStickyNote(){
+  const text=($('sn_text')||{value:''}).value.trim();
+  if(!text){toast('নোট লিখুন','warn');return;}
+  const notes=getStickyNotes();
+  notes.unshift({text,time:new Date().toISOString()});
+  if(notes.length>12) notes.pop();
+  localStorage.setItem('ss_sticky_notes',JSON.stringify(notes));
+  closeModal();renderStickyNotes();
+  toast('📌 নোট যোগ হয়েছে');
+}
+function deleteStickyNote(idx){
+  const notes=getStickyNotes();
+  notes.splice(idx,1);
+  localStorage.setItem('ss_sticky_notes',JSON.stringify(notes));
+  renderStickyNotes();
+}
+
+// ══════════════════════════════════════
+//  🔍 CUSTOMER FILTER BY SPEND RANGE
+// ══════════════════════════════════════
+function applyCustSpendFilter(){
+  const min=parseFloat(($('custSpendMin')||{value:0}).value)||0;
+  const max=parseFloat(($('custSpendMax')||{value:Infinity}).value)||Infinity;
+  window._custSpendFilter={min,max};
+  renderCustomers();
+}
+function clearCustSpendFilter(){
+  window._custSpendFilter=null;
+  const a=$('custSpendMin');if(a)a.value='';
+  const b=$('custSpendMax');if(b)b.value='';
+  renderCustomers();
+}
+
+// ══════════════════════════════════════
+//  🖼️ IMAGE LIGHTBOX / ZOOM
+// ══════════════════════════════════════
+function openLightbox(src){
+  if(!src) return;
+  const lb=$('imgLightbox');const img=$('lightboxImg');
+  if(!lb||!img) return;
+  img.src=src;
+  lb.classList.add('show');
+}
+function closeLightbox(){
+  const lb=$('imgLightbox');if(lb)lb.classList.remove('show');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();});
+
+// ══════════════════════════════════════
+//  📈 MONTH vs LAST MONTH COMPARISON
+// ══════════════════════════════════════
+function getMonthComparison(){
+  const now=new Date();
+  const thisMonth=now.toISOString().slice(0,7);
+  const lastMonthDate=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const lastMonth=lastMonthDate.toISOString().slice(0,7);
+  const thisRev=DB.sales.filter(s=>s.time.slice(0,7)===thisMonth).reduce((a,s)=>a+s.total,0);
+  const lastRev=DB.sales.filter(s=>s.time.slice(0,7)===lastMonth).reduce((a,s)=>a+s.total,0);
+  const thisOrders=DB.orders.filter(o=>o.time.slice(0,7)===thisMonth).length+DB.sales.filter(s=>s.time.slice(0,7)===thisMonth).length;
+  const lastOrders=DB.orders.filter(o=>o.time.slice(0,7)===lastMonth).length+DB.sales.filter(s=>s.time.slice(0,7)===lastMonth).length;
+  const thisExp=DB.expenses.filter(e=>e.date.slice(0,7)===thisMonth).reduce((a,e)=>a+e.amount,0);
+  const lastExp=DB.expenses.filter(e=>e.date.slice(0,7)===lastMonth).reduce((a,e)=>a+e.amount,0);
+  const revChange=lastRev>0?(((thisRev-lastRev)/lastRev)*100):thisRev>0?100:0;
+  const orderChange=lastOrders>0?(((thisOrders-lastOrders)/lastOrders)*100):thisOrders>0?100:0;
+  const expChange=lastExp>0?(((thisExp-lastExp)/lastExp)*100):thisExp>0?100:0;
+  return{thisRev,lastRev,revChange,thisOrders,lastOrders,orderChange,thisExp,lastExp,expChange,
+    thisLabel:now.toLocaleDateString('bn-BD',{month:'long'}),lastLabel:lastMonthDate.toLocaleDateString('bn-BD',{month:'long'})};
+}
+function showMonthComparison(){
+  const c=getMonthComparison();
+  const renderRow=(label,thisV,lastV,change,isMoney=true)=>{
+    const up=change>=0;
+    return`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border-radius:9px;padding:12px 14px;margin-bottom:8px">
+      <div>
+        <div style="font-size:12px;color:var(--text2)">${label}</div>
+        <div style="font-size:16px;font-weight:800;color:var(--text)">${isMoney?fmt(thisV):thisV}</div>
+        <div style="font-size:10px;color:var(--text2)">গত মাস: ${isMoney?fmt(lastV):lastV}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:18px;font-weight:900;color:${up?'var(--success)':'var(--danger)'}">${up?'▲':'▼'} ${Math.abs(change).toFixed(1)}%</div>
+      </div>
+    </div>`;
+  };
+  openModal(`📈 ${c.thisLabel} বনাম ${c.lastLabel}`,`
+    ${renderRow('💰 বিক্রয়',c.thisRev,c.lastRev,c.revChange)}
+    ${renderRow('📋 অর্ডার সংখ্যা',c.thisOrders,c.lastOrders,c.orderChange,false)}
+    ${renderRow('💸 খরচ',c.thisExp,c.lastExp,c.expChange)}
+    <div style="background:rgba(0,212,168,.08);border:1px solid rgba(0,212,168,.3);border-radius:9px;padding:12px 14px;margin-top:4px">
+      <div style="font-size:12px;color:var(--text2)">নিট মুনাফা পরিবর্তন</div>
+      <div style="font-size:16px;font-weight:800;color:${(c.thisRev-c.thisExp)>=(c.lastRev-c.lastExp)?'var(--success)':'var(--danger)'}">${fmt((c.thisRev-c.thisExp)-(c.lastRev-c.lastExp))}</div>
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
+  logActivity('📈','মাস তুলনা দেখা হয়েছে');
+}
+
+// ══════════════════════════════════════
+//  🧮 BUILT-IN CALCULATOR WIDGET
+// ══════════════════════════════════════
+let _calcExpr='';
+function toggleCalculator(){
+  const w=$('calcWidget');if(!w)return;
+  w.classList.toggle('show');
+  if(!_calcExpr) calcUpdateDisplay();
+}
+function calcInput(val){
+  const disp=$('calcDisplay');if(!disp)return;
+  if(val==='C'){_calcExpr='';}
+  else if(val==='⌫'){_calcExpr=_calcExpr.slice(0,-1);}
+  else if(val==='='){
+    try{
+      const evalExpr=_calcExpr.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/%/g,'/100');
+      // eslint-disable-next-line no-eval
+      const result=Function('"use strict";return ('+evalExpr+')')();
+      _calcExpr=isFinite(result)?String(Math.round(result*10000)/10000):'Error';
+    }catch(e){_calcExpr='Error';}
+  }else{
+    if(_calcExpr==='Error') _calcExpr='';
+    _calcExpr+=val;
+  }
+  calcUpdateDisplay();
+}
+function calcUpdateDisplay(){
+  const disp=$('calcDisplay');if(disp) disp.textContent=_calcExpr||'0';
+}
+
+// ══════════════════════════════════════
+//  📅 EXPENSE CALENDAR HEATMAP VIEW
+// ══════════════════════════════════════
+let _expCalMonth=new Date();
+function showExpenseCalendar(){
+  openModal('📅 খরচ ক্যালেন্ডার',`<div id="expCalContainer"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
+  renderExpenseCalendar();
+}
+function changeExpCalMonth(delta){
+  _expCalMonth=new Date(_expCalMonth.getFullYear(),_expCalMonth.getMonth()+delta,1);
+  renderExpenseCalendar();
+}
+function renderExpenseCalendar(){
+  const el=$('expCalContainer');if(!el)return;
+  const year=_expCalMonth.getFullYear(),month=_expCalMonth.getMonth();
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const monthKey=`${year}-${String(month+1).padStart(2,'0')}`;
+  const monthExpenses=DB.expenses.filter(e=>e.date.slice(0,7)===monthKey);
+  const dayTotals={};
+  monthExpenses.forEach(e=>{const d=parseInt(e.date.slice(8,10));dayTotals[d]=(dayTotals[d]||0)+e.amount;});
+  const maxDay=Math.max(...Object.values(dayTotals),1);
+  const monthTotal=monthExpenses.reduce((s,e)=>s+e.amount,0);
+  const dows=['রবি','সোম','মঙ্গল','বুধ','বৃহ','শুক্র','শনি'];
+
+  let cells='';
+  for(let i=0;i<firstDay;i++) cells+='<div></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const amt=dayTotals[d]||0;
+    const intensity=amt>0?Math.min(1,amt/maxDay):0;
+    const bg=amt>0?`rgba(255,77,109,${0.15+intensity*0.7})`:'';
+    cells+=`<div class="exp-cal-day${amt>0?' has-exp':''}" style="${bg?'background:'+bg:''}" title="${amt>0?fmt(amt):'কোনো খরচ নেই'}" onclick="${amt>0?`showDayExpenses(${year},${month},${d})`:''}">
+      <span class="ecd-num">${d}</span>
+      ${amt>0?`<span style="font-size:8px">${amt>=1000?(amt/1000).toFixed(1)+'k':Math.round(amt)}</span>`:''}
+    </div>`;
+  }
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <button class="btn btn-ghost btn-sm" onclick="changeExpCalMonth(-1)">◀</button>
+      <div style="text-align:center">
+        <div style="font-size:14px;font-weight:700">${_expCalMonth.toLocaleDateString('bn-BD',{year:'numeric',month:'long'})}</div>
+        <div style="font-size:11px;color:var(--text2)">মোট: ${fmt(monthTotal)}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="changeExpCalMonth(1)">▶</button>
+    </div>
+    <div class="exp-cal-grid" style="margin-bottom:4px">${dows.map(d=>`<div class="exp-cal-dow">${d}</div>`).join('')}</div>
+    <div class="exp-cal-grid">${cells}</div>`;
+}
+function showDayExpenses(year,month,day){
+  const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  const dayExp=DB.expenses.filter(e=>e.date===dateStr);
+  const total=dayExp.reduce((s,e)=>s+e.amount,0);
+  const icons={Rent:'🏠',Salary:'👷',Utilities:'⚡',Other:'📌'};
+  openModal(`📅 ${new Date(dateStr).toLocaleDateString('bn-BD',{day:'numeric',month:'long',year:'numeric'})}`,`
+    <div style="font-size:13px;font-weight:700;color:var(--danger);margin-bottom:10px">মোট: ${fmt(total)}</div>
+    ${dayExp.map(e=>`<div style="background:var(--card2);border-radius:8px;padding:9px 12px;margin-bottom:6px;display:flex;justify-content:space-between">
+      <span>${icons[e.cat]||'📌'} ${e.title}</span><span style="font-weight:700;color:var(--danger)">${fmt(e.amount)}</span>
+    </div>`).join('')}
+  `,`<button class="btn btn-ghost" onclick="closeModal();showExpenseCalendar()">← ক্যালেন্ডারে ফিরুন</button>`);
+}
+
 function clearActivityLog(){
   confirm2('সব কার্যক্রম লগ মুছে ফেলবেন?',()=>{
     DB.actLog=[];save(KEYS.actLog,[]);renderActivityLog();
@@ -7860,6 +8201,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(mod&&e.key==='o'&&isAdmin){e.preventDefault();showPage('orders',document.querySelector('.sidebar-item[onclick*=orders]'));}
     if(mod&&e.key==='p'&&isAdmin){e.preventDefault();if($('page-products').classList.contains('active'))openProductModal();}
     if(mod&&e.key==='f'&&isAdmin){e.preventDefault();openAdvancedSearch();}
+    if(mod&&e.key==='m'&&isAdmin){e.preventDefault();toggleCalculator();}
     if(mod&&e.key==='b'&&isAdmin){e.preventDefault();if($('page-pos').classList.contains('active'))openScanner();}
     if(mod&&e.key==='r'){e.preventDefault();realtimeTick();toast('🔄 রিফ্রেশ হয়েছে');}
     if(mod&&e.key==='/'&&!e.shiftKey){e.preventDefault();$('shortcutPanel').classList.toggle('show');}
@@ -7965,5 +8307,41 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <button class="pbn-item" onclick="toggleSidebar()"><span class="pbn-icon">☰</span>মেনু</button>
   </div>
 </div>
+<!-- IMAGE LIGHTBOX -->
+<div class="img-lightbox" id="imgLightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<!-- CALCULATOR WIDGET -->
+<button class="calc-fab" id="calcFab" onclick="toggleCalculator()" title="ক্যালকুলেটর">🧮</button>
+<div class="calc-widget" id="calcWidget">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card2);border-bottom:1px solid var(--border)">
+    <span style="font-size:11px;font-weight:700;color:var(--text2)">🧮 ক্যালকুলেটর</span>
+    <button onclick="toggleCalculator()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px">✕</button>
+  </div>
+  <div class="calc-display" id="calcDisplay">0</div>
+  <div class="calc-grid">
+    <button class="calc-btn op" onclick="calcInput('C')">C</button>
+    <button class="calc-btn op" onclick="calcInput('⌫')">⌫</button>
+    <button class="calc-btn op" onclick="calcInput('%')">%</button>
+    <button class="calc-btn op" onclick="calcInput('÷')">÷</button>
+    <button class="calc-btn" onclick="calcInput('7')">7</button>
+    <button class="calc-btn" onclick="calcInput('8')">8</button>
+    <button class="calc-btn" onclick="calcInput('9')">9</button>
+    <button class="calc-btn op" onclick="calcInput('×')">×</button>
+    <button class="calc-btn" onclick="calcInput('4')">4</button>
+    <button class="calc-btn" onclick="calcInput('5')">5</button>
+    <button class="calc-btn" onclick="calcInput('6')">6</button>
+    <button class="calc-btn op" onclick="calcInput('−')">−</button>
+    <button class="calc-btn" onclick="calcInput('1')">1</button>
+    <button class="calc-btn" onclick="calcInput('2')">2</button>
+    <button class="calc-btn" onclick="calcInput('3')">3</button>
+    <button class="calc-btn op" onclick="calcInput('+')">+</button>
+    <button class="calc-btn" onclick="calcInput('0')" style="grid-column:span 2">0</button>
+    <button class="calc-btn" onclick="calcInput('.')">.</button>
+    <button class="calc-btn eq" onclick="calcInput('=')">=</button>
+  </div>
+</div>
+
 </body>
 </html>
