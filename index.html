@@ -805,6 +805,29 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 .btn-whatsapp{background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;border:none}
 .btn-whatsapp:hover{box-shadow:0 4px 14px rgba(37,211,102,.4);transform:translateY(-1px)}
 .inv-seq-badge{background:rgba(0,212,168,.1);border:1px solid rgba(0,212,168,.3);color:var(--success);font-size:11px;padding:3px 10px;border-radius:6px;font-weight:600}
+/* ── MOBILE BOTTOM NAV ── */
+.pos-bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--sidebar);border-top:1px solid var(--border);padding:4px 0 max(4px,env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,.3)}
+.pbn-items{display:flex;align-items:stretch}
+.pbn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px;cursor:pointer;color:var(--text2);font-size:9px;font-weight:600;border:none;background:none;font-family:inherit;text-align:center;transition:.15s;position:relative}
+.pbn-item.active,.pbn-item:hover{color:var(--accent)}
+.pbn-item .pbn-icon{font-size:18px;line-height:1}
+.pbn-badge{position:absolute;top:4px;right:calc(50% - 14px);background:var(--accent);color:#fff;font-size:9px;min-width:14px;height:14px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 3px}
+@media(max-width:768px){
+  .pos-bottom-nav{display:flex!important}
+  body{padding-bottom:60px}
+  .pos-bottom-nav .pbn-items{width:100%}
+}
+/* ── PRODUCT VARIANTS ── */
+.variant-chip{display:inline-flex;align-items:center;gap:4px;background:var(--card2);border:1.5px solid var(--border);border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;transition:.15s;user-select:none}
+.variant-chip.selected{border-color:var(--accent);background:rgba(255,77,109,.1);color:var(--accent);font-weight:600}
+.variant-chip:hover{border-color:var(--accent2)}
+.color-dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:1.5px solid rgba(0,0,0,.2);flex-shrink:0}
+/* ── QR CODE ── */
+.qr-container{text-align:center;padding:10px;background:#fff;border-radius:10px;display:inline-block}
+/* ── FLASH SALE TIMER ── */
+.flash-timer{display:inline-flex;gap:6px;align-items:center;background:rgba(255,77,109,.1);border:1px solid var(--accent);border-radius:10px;padding:8px 12px}
+.flash-digit{background:var(--accent);color:#fff;font-size:18px;font-weight:900;padding:4px 8px;border-radius:6px;min-width:36px;text-align:center;font-variant-numeric:tabular-nums}
+.flash-sep{color:var(--accent);font-size:20px;font-weight:900}
 /* ── ANIMATIONS ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .stat-card{transition:transform .2s,box-shadow .2s}
@@ -1201,6 +1224,8 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 
 <!-- ═══════════ SHOP PANEL ═══════════ -->
 <div class="panel active" id="shopPanel">
+  <!-- Flash Sale Bar -->
+  <div id="flashSaleBar" style="display:none"></div>
   <div class="shop-hero">
     <h1>স্বাগতম <span id="shopNameDisplay">SuperShop</span> তে</h1>
     <p id="shopSubDisplay">সেরা পণ্য, সেরা দামে</p>
@@ -1317,6 +1342,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
             <button class="btn btn-ghost btn-sm" onclick="showInventoryValuation()" title="ইনভেন্টরি ভ্যালুয়েশন">📊 স্টক মূল্য</button>
             <button class="btn btn-ghost btn-sm" onclick="showSalesHeatmap()" title="বিক্রয় সময় হিটম্যাপ">⏰ হিটম্যাপ</button>
             <button class="btn btn-ghost btn-sm" onclick="showStaffPerformance()" title="স্টাফ পারফরম্যান্স">📝 স্টাফ</button>
+            <button class="btn btn-ghost btn-sm" onclick="openStaffTargetModal()" title="স্টাফ মাসিক টার্গেট">🎯 টার্গেট</button>
             <button class="btn btn-ghost btn-sm" onclick="showProfitLoss()" title="Profit & Loss Statement">📊 P&L</button>
             <button class="btn btn-ghost btn-sm" onclick="showCategoryMarginChart()" title="ক্যাটাগরি মুনাফা">📊 ক্যাটাগরি</button>
           </div>
@@ -1429,7 +1455,10 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="showPage('products',document.querySelector('.sidebar-item[onclick*=products]'))">📦 পণ্য যোগ</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportProductsCSV()">📤 পণ্য রপ্তানি</button>
+          <button class="btn btn-ghost btn-sm" onclick="openCashFloatModal()" title="ক্যাশ ড্রয়ার শুরুর ব্যালেন্স">💰 Cash Float</button>
+          <button class="btn btn-ghost btn-sm" onclick="undoLastSale()" title="শেষ বিক্রয় বাতিল করুন">🔄 Undo</button>
+          <button class="btn btn-ghost btn-sm" onclick="openFlashSaleModal()" title="Flash Sale Timer">🎊 Flash Sale</button>
+          <button class="btn btn-ghost btn-sm" onclick="openGRNModal()" title="Goods Received Note">📦 GRN</button>
           <button class="btn btn-ghost btn-sm" onclick="showDayClose()">📊 দিন বন্ধ</button>
         </div>
       </div>
@@ -1907,6 +1936,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <div class="section-title" style="margin-top:24px">🏭 সাপ্লায়ার ব্যবস্থাপনা</div>
         <div class="toolbar" style="margin-bottom:10px">
           <div class="spacer"></div>
+          <button class="btn btn-ghost btn-sm" onclick="showGRNHistory()">📦 GRN ইতিহাস</button>
           <button class="btn btn-primary btn-sm" onclick="openSupplierModal()">➕ নতুন সাপ্লায়ার</button>
         </div>
         <div class="table-wrap"><table>
@@ -2177,6 +2207,9 @@ function _setAdminUI(on){
   if(db) db.style.display=(on&&!currentStaff)?'inline-flex':'none';
   if(ns) ns.classList.toggle('active',!on);
   if(qb) qb.classList.toggle('show',on);
+  // Mobile bottom nav
+  const pbn=$('posBottomNav');
+  if(pbn) pbn.style.display=on?'flex':'none';
 }
 
 function showAdminLogin(){$('loginOverlay').classList.add('show')}
@@ -3062,6 +3095,8 @@ function renderProducts(){
         <button class="btn btn-warn btn-sm" onclick="openProductModal('${p.id}')">✏️</button>
         <button class="btn btn-info btn-sm" onclick="quickRestock('${p.id}')" title="স্টক যোগ">📦+</button>
         <button class="btn btn-ghost btn-sm" onclick="showStockHistory('${p.id}')" title="স্টক ইতিহাস">📋</button>
+        <button class="btn btn-ghost btn-sm" onclick="showProductQR('${p.id}')" title="QR Code">🔗</button>
+        <button class="btn btn-ghost btn-sm" onclick="openVariantModal('${p.id}')" title="ভ্যারিয়েন্ট (রঙ/সাইজ)"${p.variants?.length?` style="color:var(--accent2)"`:''}>🗃️${p.variants?.length?`<b style="font-size:9px;background:var(--accent);color:#fff;border-radius:99px;padding:0 3px;margin-left:1px">${p.variants.length}</b>`:''}</button>
         ${p.barcode?`<button class="btn btn-ghost btn-sm" onclick="printBarcodeLabel('${p.id}')" title="বারকোড লেবেল প্রিন্ট">🏷️</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">🗑️</button>
       </td>
@@ -3566,6 +3601,9 @@ function updatePosBill(){
   const cnt=$('posBillCount');
   const total=posBill.reduce((s,i)=>s+i.qty,0);
   if(cnt) cnt.textContent=total;
+  // Mobile bottom nav badge
+  const pbnBc=$('pbnBillCount');
+  if(pbnBc){pbnBc.textContent=total;pbnBc.style.display=total>0?'flex':'none';}
   if(!posBill.length){
     container.innerHTML='<div class="empty-state" style="padding:30px 16px"><div class="ei">🛍️</div><p>পণ্য ক্লিক করুন বা খুঁজুন</p></div>';
     updatePosTotals();return;
@@ -6802,6 +6840,372 @@ function renderActivityLog(){
   :'<div style="text-align:center;color:var(--text2);padding:24px;font-size:13px">কোনো কার্যক্রম নেই</div>';
 }
 
+// ══════════════════════════════════════
+//  💰 CASH FLOAT / OPENING BALANCE
+// ══════════════════════════════════════
+function openCashFloatModal(){
+  const todayKey=today();
+  const existing=JSON.parse(localStorage.getItem('ss_cash_float')||'{}');
+  const todayFloat=existing[todayKey]||{amount:0,note:'',time:null};
+  const todaySales=DB.sales.filter(s=>s.time.slice(0,10)===todayKey&&(s.payment==='Cash'||s.splitCash>0));
+  const cashIn=todaySales.reduce((s,x)=>s+(x.splitCash>0?x.splitCash:x.payment==='Cash'?x.total:0),0);
+  const cashRefunds=DB.expenses.filter(e=>e.date===todayKey&&e.title.includes('রিফান্ড')).reduce((s,e)=>s+e.amount,0);
+  const expectedCash=(todayFloat.amount||0)+cashIn-cashRefunds;
+  openModal('💰 ক্যাশ ড্রয়ার — '+new Date().toLocaleDateString('bn-BD'),`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="day-close-card">
+        <div class="dc-label">শুরুর ব্যালেন্স</div>
+        <div class="dc-val" style="color:var(--accent2)">${fmt(todayFloat.amount||0)}</div>
+        ${todayFloat.time?`<div class="dc-sub">${new Date(todayFloat.time).toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'})}</div>`:'<div class="dc-sub">সেট করা হয়নি</div>'}
+      </div>
+      <div class="day-close-card">
+        <div class="dc-label">নগদ বিক্রয়</div>
+        <div class="dc-val" style="color:var(--success)">${fmt(cashIn)}</div>
+      </div>
+      <div class="day-close-card" style="background:rgba(0,212,168,.08);border-color:rgba(0,212,168,.3)">
+        <div class="dc-label">প্রত্যাশিত ক্যাশ</div>
+        <div class="dc-val" style="color:var(--success)">${fmt(expectedCash)}</div>
+      </div>
+    </div>
+    <div class="form-group"><label>আজকের শুরুর ব্যালেন্স (৳)</label>
+      <input id="cf_amount" type="number" value="${todayFloat.amount||''}" placeholder="যেমন: 5000" style="font-size:18px;font-weight:700;text-align:center">
+    </div>
+    <div class="form-group"><label>নোট</label><input id="cf_note" value="${todayFloat.note||''}" placeholder="যেমন: গতকালের বাকি টাকা"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-success" onclick="saveCashFloat()">💰 সেভ করুন</button>`);
+  setTimeout(()=>{const a=$('cf_amount');if(a){a.focus();a.select();}},200);
+}
+function saveCashFloat(){
+  const amount=parseFloat(($('cf_amount')||{value:0}).value)||0;
+  const note=($('cf_note')||{value:''}).value;
+  const todayKey=today();
+  const floats=JSON.parse(localStorage.getItem('ss_cash_float')||'{}');
+  floats[todayKey]={amount,note,time:new Date().toISOString()};
+  localStorage.setItem('ss_cash_float',JSON.stringify(floats));
+  closeModal();
+  toast(`💰 শুরুর ব্যালেন্স ${fmt(amount)} সেট হয়েছে`);
+  logActivity('💰','Cash Float সেট',`${fmt(amount)}${note?' — '+note:''}`);
+}
+
+// ══════════════════════════════════════
+//  🔄 UNDO LAST SALE
+// ══════════════════════════════════════
+function undoLastSale(){
+  const lastSale=DB.sales.find(s=>s.type==='offline');
+  if(!lastSale){toast('কোনো বিক্রয় নেই','warn');return;}
+  const minsAgo=Math.round((Date.now()-new Date(lastSale.time).getTime())/60000);
+  if(minsAgo>30){toast(`শেষ বিক্রয় ${minsAgo} মিনিট আগে — Undo শুধু ৩০ মিনিটের মধ্যে সম্ভব`,'warn');return;}
+  confirm2(`⚠️ শেষ বিক্রয় Undo করবেন?\n\n${lastSale.custName} — ${fmt(lastSale.total)}\n${minsAgo} মিনিট আগে`,()=>{
+    // Restore stock
+    (lastSale.items||[]).forEach(i=>{
+      const p=DB.products.find(x=>x.id===i.productId);
+      if(p){p.stock+=i.qty;logStockMovement(i.productId,'in',i.qty,`Undo — ${lastSale.id}`);}
+    });
+    save(KEYS.products,DB.products);
+    DB.sales=DB.sales.filter(s=>s.id!==lastSale.id);
+    save(KEYS.sales,DB.sales);
+    logActivity('🔄','Undo বিক্রয়',`${lastSale.id} — ${fmt(lastSale.total)}`);
+    addNotif('🔄 Undo','শেষ বিক্রয় বাতিল করা হয়েছে','warn');
+    renderSales&&renderSales();
+    toast(`🔄 "${lastSale.id}" বিক্রয় Undo হয়েছে`,'warn');
+    realtimeUpdate();
+  });
+}
+
+// ══════════════════════════════════════
+//  🎊 FLASH SALE COUNTDOWN TIMER
+// ══════════════════════════════════════
+let _flashSaleTimer=null;
+function openFlashSaleModal(){
+  openModal('🎊 Flash Sale Countdown Timer',`
+    <div class="form-group"><label>অফারের নাম</label><input id="fs_name" value="${DB.settings.flashSale?.name||''}" placeholder="যেমন: রাতের বিশেষ অফার!"></div>
+    <div class="two-col">
+      <div class="form-group"><label>ছাড় (%)</label><input id="fs_disc" type="number" min="0" max="99" value="${DB.settings.flashSale?.disc||10}"></div>
+      <div class="form-group"><label>সময় (মিনিট)</label><input id="fs_mins" type="number" min="1" max="1440" value="60"></div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);background:var(--card2);padding:8px 10px;border-radius:7px">💡 Timer চালু থাকলে Shop page-এ countdown দেখাবে ও POS-এ discount auto-apply হবে</div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-danger btn-sm" onclick="stopFlashSale()">⏹️ বন্ধ করুন</button>
+     <button class="btn btn-primary" onclick="startFlashSale()">🎊 শুরু করুন</button>`);
+}
+function startFlashSale(){
+  const name=($('fs_name')||{value:'Flash Sale'}).value||'Flash Sale';
+  const disc=parseFloat(($('fs_disc')||{value:10}).value)||10;
+  const mins=parseInt(($('fs_mins')||{value:60}).value)||60;
+  const endTime=Date.now()+mins*60000;
+  DB.settings.flashSale={name,disc,endTime,active:true};
+  save(KEYS.settings,DB.settings);
+  closeModal();
+  renderFlashSaleBar();
+  toast(`🎊 "${name}" — ${disc}% ছাড় ${mins} মিনিটের জন্য শুরু হয়েছে!`);
+  logActivity('🎊','Flash Sale শুরু',`${name} — ${disc}% ছাড় ${mins} মিনিট`);
+  addNotif('🎊 Flash Sale!',`${name} — ${disc}% ছাড়! দ্রুত কিনুন`,'sale');
+}
+function stopFlashSale(){
+  DB.settings.flashSale={active:false};
+  save(KEYS.settings,DB.settings);
+  const bar=$('flashSaleBar');if(bar) bar.style.display='none';
+  closeModal();
+  toast('Flash Sale বন্ধ করা হয়েছে','warn');
+}
+function renderFlashSaleBar(){
+  const fs=DB.settings.flashSale;
+  const bar=$('flashSaleBar');if(!bar)return;
+  if(!fs?.active||!fs.endTime){bar.style.display='none';return;}
+  const remaining=fs.endTime-Date.now();
+  if(remaining<=0){stopFlashSale();return;}
+  bar.style.display='block';
+  const h=Math.floor(remaining/3600000);
+  const m=Math.floor((remaining%3600000)/60000);
+  const s=Math.floor((remaining%60000)/1000);
+  bar.innerHTML=`<div style="background:linear-gradient(135deg,#ff4d6d,#c0223d);color:#fff;text-align:center;padding:10px 16px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:6px">🎊 ${fs.name} — ${fs.disc}% ছাড়!</div>
+    <div class="flash-timer" style="justify-content:center;background:rgba(0,0,0,.2);border-color:rgba(255,255,255,.3)">
+      <div class="flash-digit">${String(h).padStart(2,'0')}</div><span class="flash-sep">:</span>
+      <div class="flash-digit">${String(m).padStart(2,'0')}</div><span class="flash-sep">:</span>
+      <div class="flash-digit">${String(s).padStart(2,'0')}</div>
+    </div>
+    <div style="font-size:11px;opacity:.85;margin-top:4px">ঘন্টা : মিনিট : সেকেন্ড বাকি</div>
+  </div>`;
+}
+// Start flash sale timer interval
+setInterval(()=>{
+  renderFlashSaleBar();
+  // Auto-apply discount in POS if active
+  if(DB.settings.flashSale?.active&&$('page-pos')?.classList.contains('active')){
+    const remaining=DB.settings.flashSale.endTime-Date.now();
+    if(remaining>0){
+      const di=$('discInput');const dt=$('discType');
+      if(di&&dt&&parseFloat(di.value)!==DB.settings.flashSale.disc){
+        di.value=DB.settings.flashSale.disc;dt.value='pct';
+        updatePosTotals&&updatePosTotals();
+      }
+    }
+  }
+},1000);
+
+// ══════════════════════════════════════
+//  📦 GRN — GOODS RECEIVED NOTE
+// ══════════════════════════════════════
+if(!DB.settings.grns) DB.settings.grns=[];
+function openGRNModal(){
+  const supOpts=`<option value="">সাপ্লায়ার নির্বাচন করুন</option>`+(DB.settings.suppliers||[]).map((s,i)=>`<option value="${i}">${s.name}</option>`).join('');
+  const prodOpts=DB.products.map(p=>`<option value="${p.id}">${p.name} (${fmt(p.price)})</option>`).join('');
+  openModal('📦 Goods Received Note (GRN)',`
+    <div class="two-col">
+      <div class="form-group"><label>সাপ্লায়ার</label>
+        <select id="grn_sup" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%;font-family:inherit">${supOpts}</select>
+      </div>
+      <div class="form-group"><label>চালান/Invoice নম্বর</label><input id="grn_inv" placeholder="INV-001"></div>
+    </div>
+    <div class="form-group"><label>পণ্য যোগ করুন</label>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <select id="grn_prod" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:7px;font-family:inherit">${prodOpts}</select>
+        <input id="grn_qty" type="number" min="1" value="1" style="width:70px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:7px;font-family:inherit">
+        <input id="grn_cost" type="number" min="0" placeholder="ক্রয়দাম" style="width:90px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:7px;font-family:inherit">
+        <button class="btn btn-primary btn-sm" onclick="addGRNItem()">যোগ</button>
+      </div>
+      <div id="grn_items" style="max-height:160px;overflow-y:auto"></div>
+    </div>
+    <div class="form-group"><label>নোট</label><input id="grn_note" placeholder="ঐচ্ছিক মন্তব্য"></div>
+    <div id="grn_total" style="text-align:right;font-weight:700;font-size:14px;color:var(--accent2)"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-success" onclick="saveGRN()">📦 GRN সেভ ও স্টক আপডেট</button>`);
+  window._grnItems=[];
+  updateGRNItemsUI();
+}
+function addGRNItem(){
+  const pid=($('grn_prod')||{value:''}).value;
+  const qty=parseInt(($('grn_qty')||{value:1}).value)||1;
+  const cost=parseFloat(($('grn_cost')||{value:0}).value)||0;
+  const p=DB.products.find(x=>x.id===pid);if(!p)return;
+  const ex=window._grnItems.find(i=>i.pid===pid);
+  if(ex){ex.qty+=qty;ex.cost=cost||ex.cost;}
+  else window._grnItems.push({pid,name:p.name,qty,cost,unit:p.unit||'পিস'});
+  updateGRNItemsUI();
+}
+function updateGRNItemsUI(){
+  const el=$('grn_items');if(!el)return;
+  const items=window._grnItems||[];
+  el.innerHTML=items.length?items.map((it,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:7px;padding:7px 10px;margin-bottom:5px">
+      <span style="flex:1;font-size:12px;font-weight:600">${it.name}</span>
+      <span style="font-size:12px;color:var(--text2)">×${it.qty} ${it.unit}</span>
+      <span style="font-size:12px;color:var(--accent2)">${it.cost>0?fmt(it.cost*it.qty):''}</span>
+      <button onclick="window._grnItems.splice(${i},1);updateGRNItemsUI()" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px">✕</button>
+    </div>`).join(''):'<div style="text-align:center;color:var(--text2);font-size:12px;padding:10px">কোনো পণ্য যোগ হয়নি</div>';
+  const total=(window._grnItems||[]).reduce((s,i)=>s+i.cost*i.qty,0);
+  const te=$('grn_total');if(te) te.textContent=total>0?`মোট ক্রয়: ${fmt(total)}`:'';
+}
+function saveGRN(){
+  if(!(window._grnItems||[]).length){toast('অন্তত একটি পণ্য যোগ করুন','warn');return;}
+  const supIdx=($('grn_sup')||{value:''}).value;
+  const supName=supIdx!==''?(DB.settings.suppliers||[])[supIdx]?.name||'অজানা':'অজানা';
+  const invNo=($('grn_inv')||{value:''}).value;
+  const note=($('grn_note')||{value:''}).value;
+  const grnId=`GRN-${Date.now().toString().slice(-8)}`;
+  // Update stock
+  window._grnItems.forEach(it=>{
+    const p=DB.products.find(x=>x.id===it.pid);
+    if(p){
+      p.stock+=it.qty;
+      if(it.cost>0) p.cost=it.cost;
+      logStockMovement(it.pid,'in',it.qty,`GRN ${grnId} — ${supName}`);
+    }
+  });
+  save(KEYS.products,DB.products);
+  // Save GRN record
+  if(!DB.settings.grns) DB.settings.grns=[];
+  DB.settings.grns.unshift({id:grnId,supplier:supName,invoice:invNo,items:[...window._grnItems],note,date:today(),total:(window._grnItems||[]).reduce((s,i)=>s+i.cost*i.qty,0)});
+  if(DB.settings.grns.length>100) DB.settings.grns=DB.settings.grns.slice(0,100);
+  save(KEYS.settings,DB.settings);
+  closeModal();renderProducts();
+  logActivity('📦','GRN রেকর্ড',`${grnId} — ${supName} — ${window._grnItems.length}টি পণ্য`);
+  addNotif('📦 পণ্য গ্রহণ',`${supName} থেকে ${window._grnItems.length}টি পণ্যের স্টক আপডেট হয়েছে`,'info');
+  toast(`✅ ${grnId} — স্টক আপডেট হয়েছে`);
+  realtimeUpdate();
+}
+function showGRNHistory(){
+  const list=DB.settings.grns||[];
+  openModal('📦 GRN ইতিহাস',`
+    ${list.length?list.slice(0,15).map(g=>`
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:7px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:700;color:var(--text)">${g.id}</span>
+          <span style="font-size:11px;color:var(--text2)">${new Date(g.date).toLocaleDateString('bn-BD')}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2)">${g.supplier} ${g.invoice?'| '+g.invoice:''}</div>
+        <div style="font-size:11px;color:var(--text2)">${g.items.map(i=>`${i.name}(${i.qty})`).join(', ')}</div>
+        ${g.total>0?`<div style="font-size:12px;font-weight:600;color:var(--accent2);margin-top:4px">মোট: ${fmt(g.total)}</div>`:''}
+      </div>`).join('')
+    :'<div style="text-align:center;color:var(--text2);padding:20px">কোনো GRN নেই</div>'}
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
+     <button class="btn btn-primary" onclick="closeModal();openGRNModal()">➕ নতুন GRN</button>`);
+}
+
+// ══════════════════════════════════════
+//  🔗 PRODUCT QR CODE
+// ══════════════════════════════════════
+function generateQRCode(text,size=150){
+  // Use QR Server API (free, no auth needed)
+  const url=`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}&format=svg&color=1a2639&bgcolor=ffffff`;
+  return url;
+}
+function showProductQR(productId){
+  const p=DB.products.find(x=>x.id===productId);if(!p)return;
+  const shopName=DB.settings.name||'SuperShop';
+  const qrData=JSON.stringify({id:p.id,name:p.name,price:p.price,barcode:p.barcode||'',shop:shopName});
+  const qrUrl=generateQRCode(qrData,200);
+  openModal(`🔗 QR Code — ${p.name}`,`
+    <div style="text-align:center;padding:10px 0">
+      <div class="qr-container" style="margin:0 auto;display:inline-block">
+        <img src="${qrUrl}" alt="QR Code" style="width:200px;height:200px;display:block" onerror="this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'200\\'><rect fill=\\'%23f0f0f0\\' width=\\'200\\' height=\\'200\\'/><text x=\\'100\\' y=\\'100\\' text-anchor=\\'middle\\' fill=\\'%23999\\' font-size=\\'14\\'>QR (offline)</text></svg>'">
+        <div style="font-size:11px;color:#666;margin-top:6px;font-family:Arial">${p.name}</div>
+        <div style="font-size:13px;font-weight:700;color:#e94560">${fmt(p.price)}</div>
+        <div style="font-size:10px;color:#999">${shopName}</div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text2)">স্ক্যান করলে পণ্যের তথ্য দেখাবে</div>
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
+     <button class="btn btn-primary" onclick="downloadQR('${productId}')">⬇️ ডাউনলোড</button>`);
+}
+function downloadQR(productId){
+  const p=DB.products.find(x=>x.id===productId);if(!p)return;
+  const shopName=DB.settings.name||'SuperShop';
+  const qrData=JSON.stringify({id:p.id,name:p.name,price:p.price,barcode:p.barcode||'',shop:shopName});
+  const url=generateQRCode(qrData,300);
+  const a=document.createElement('a');a.href=url;a.download=`QR-${p.name}.png`;a.target='_blank';a.click();
+  toast('⬇️ QR Code ডাউনলোড হচ্ছে');
+}
+
+// ══════════════════════════════════════
+//  🎯 PER-STAFF SALES TARGET
+// ══════════════════════════════════════
+function openStaffTargetModal(){
+  const list=DB.staff||[];
+  if(!list.length){toast('কোনো স্টাফ নেই — Settings-এ যোগ করুন','warn');return;}
+  const thisMonth=today().slice(0,7);
+  const targets=JSON.parse(localStorage.getItem('ss_staff_targets')||'{}');
+  openModal('🎯 স্টাফ মাসিক বিক্রয় লক্ষ্য',`
+    <div style="margin-bottom:12px;font-size:12px;color:var(--text2)">প্রতিটি স্টাফের মাসিক বিক্রয় লক্ষ্য নির্ধারণ করুন</div>
+    ${list.map(s=>{
+      const staffSales=DB.sales.filter(x=>x.staffId===s.id&&x.time.slice(0,7)===thisMonth).reduce((a,x)=>a+x.total,0);
+      const target=targets[s.id]||0;
+      const pct=target>0?Math.min(100,(staffSales/target)*100).toFixed(0):0;
+      return`<div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0">${s.name.charAt(0)}</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600">${s.name}</div><div style="font-size:11px;color:var(--text2)">${staffRoleLabel(s.role)} • বিক্রয়: ${fmt(staffSales)}</div></div>
+          <input type="number" value="${target||''}" placeholder="লক্ষ্য" data-sid="${s.id}" class="staff-target-input" style="width:100px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:7px;font-family:inherit;text-align:center">
+        </div>
+        ${target>0?`<div style="background:var(--border);border-radius:99px;height:7px;overflow:hidden"><div style="background:${pct>=100?'var(--success)':pct>=50?'var(--accent2)':'var(--accent)'};height:100%;width:${pct}%;border-radius:99px;transition:width .4s"></div></div>
+        <div style="font-size:10px;color:var(--text2);margin-top:3px;text-align:right">${pct}% অর্জিত</div>`:''}
+      </div>`;
+    }).join('')}
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveStaffTargets()">💾 সেভ করুন</button>`);
+}
+function saveStaffTargets(){
+  const targets=JSON.parse(localStorage.getItem('ss_staff_targets')||'{}');
+  document.querySelectorAll('.staff-target-input').forEach(inp=>{
+    const sid=inp.dataset.sid;
+    const val=parseFloat(inp.value)||0;
+    if(sid) targets[sid]=val;
+  });
+  localStorage.setItem('ss_staff_targets',JSON.stringify(targets));
+  closeModal();
+  toast('🎯 স্টাফ টার্গেট সেভ হয়েছে ✅');
+  logActivity('🎯','স্টাফ টার্গেট আপডেট');
+}
+
+// ══════════════════════════════════════
+//  🗃️ PRODUCT COLOR/SIZE VARIANTS
+// ══════════════════════════════════════
+function openVariantModal(productId){
+  const p=DB.products.find(x=>x.id===productId);if(!p)return;
+  const variants=p.variants||[];
+  openModal(`🗃️ ভ্যারিয়েন্ট — ${p.name}`,`
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">রঙ, সাইজ বা অন্য ভ্যারিয়েন্ট যোগ করুন</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <input id="var_type" placeholder="ধরন (রঙ/সাইজ)" style="flex:1;min-width:80px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:7px;font-family:inherit">
+      <input id="var_value" placeholder="মান (লাল/XL)" style="flex:1;min-width:80px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:7px;font-family:inherit">
+      <input id="var_stock" type="number" min="0" value="0" placeholder="স্টক" style="width:70px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:7px;font-family:inherit">
+      <input id="var_extra" type="number" value="0" placeholder="±দাম" style="width:70px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:7px;font-family:inherit">
+      <button class="btn btn-primary btn-sm" onclick="addVariantItem('${productId}')">যোগ</button>
+    </div>
+    <div id="variantList">
+      ${variants.length?variants.map((v,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:5px">
+          <span class="variant-chip selected" style="pointer-events:none">${v.type}: ${v.value}</span>
+          <span style="font-size:12px;color:var(--text2)">স্টক: ${v.stock}</span>
+          ${v.extra!==0?`<span style="font-size:11px;color:var(--accent2)">${v.extra>0?'+':''} ৳${v.extra}</span>`:''}
+          <button onclick="removeVariant('${productId}',${i})" style="margin-left:auto;background:none;border:none;color:var(--danger);cursor:pointer">✕</button>
+        </div>`).join('')
+      :'<div style="text-align:center;color:var(--text2);font-size:12px;padding:12px">কোনো ভ্যারিয়েন্ট নেই</div>'}
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
+}
+function addVariantItem(productId){
+  const p=DB.products.find(x=>x.id===productId);if(!p)return;
+  const type=($('var_type')||{value:''}).value.trim();
+  const value=($('var_value')||{value:''}).value.trim();
+  const stock=parseInt(($('var_stock')||{value:0}).value)||0;
+  const extra=parseFloat(($('var_extra')||{value:0}).value)||0;
+  if(!type||!value){toast('ধরন ও মান দিন','warn');return;}
+  if(!p.variants) p.variants=[];
+  p.variants.push({type,value,stock,extra});
+  save(KEYS.products,DB.products);
+  closeModal();openVariantModal(productId);
+  toast(`✅ "${type}: ${value}" যোগ হয়েছে`);
+}
+function removeVariant(productId,idx){
+  const p=DB.products.find(x=>x.id===productId);if(!p)return;
+  p.variants.splice(idx,1);
+  save(KEYS.products,DB.products);
+  closeModal();openVariantModal(productId);
+  toast('ভ্যারিয়েন্ট মুছে ফেলা হয়েছে','warn');
+}
+
 function clearActivityLog(){
   confirm2('সব কার্যক্রম লগ মুছে ফেলবেন?',()=>{
     DB.actLog=[];save(KEYS.actLog,[]);renderActivityLog();
@@ -6832,7 +7236,7 @@ function realtimeTick(){
   // Due sidebar badge (always update when admin logged in)
   if(isAdmin) updateDueSidebarBadge();
   // Shop visible
-  if($('shopPanel')?.classList.contains('active')) renderShop();
+  if($('shopPanel')?.classList.contains('active')){renderShop();renderFlashSaleBar();}
   // Admin active page
   if(isAdmin){
     updateAdminQuickBar();
@@ -7533,6 +7937,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     populateCatFilters();
     renderShop();
   }
+  // Render flash sale bar if active (visible on shop page)
+  renderFlashSaleBar();
 
   // Start realtime after all init done
   realtimeTick();
@@ -7548,5 +7954,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
   setTimeout(()=>splashScreen.hide(), 500);
 });
 </script>
+<!-- MOBILE POS BOTTOM NAV -->
+<div class="pos-bottom-nav" id="posBottomNav" style="display:none">
+  <div class="pbn-items">
+    <button class="pbn-item" onclick="showPage('dashboard',document.querySelector('.sidebar-item[onclick*=dashboard]'))"><span class="pbn-icon">📊</span>ড্যাশ</button>
+    <button class="pbn-item" onclick="showPage('pos',document.querySelector('.sidebar-item[onclick*=pos]'))"><span class="pbn-icon">🖥️</span>POS<span class="pbn-badge" id="pbnBillCount" style="display:none">0</span></button>
+    <button class="pbn-item" onclick="showPage('sales',document.querySelector('.sidebar-item[onclick*=sales]'))"><span class="pbn-icon">💰</span>বিক্রয়</button>
+    <button class="pbn-item" onclick="showPage('products',document.querySelector('.sidebar-item[onclick*=products]'))"><span class="pbn-icon">📦</span>পণ্য</button>
+    <button class="pbn-item" onclick="openAdvancedSearch()"><span class="pbn-icon">🔍</span>খুঁজুন</button>
+    <button class="pbn-item" onclick="toggleSidebar()"><span class="pbn-icon">☰</span>মেনু</button>
+  </div>
+</div>
 </body>
 </html>
