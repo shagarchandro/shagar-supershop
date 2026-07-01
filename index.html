@@ -2341,39 +2341,130 @@ function staffRoleLabel(role){
   return {owner:'মালিক',manager:'ম্যানেজার',cashier:'ক্যাশিয়ার',pos:'POS অপারেটর'}[role]||role;
 }
 
-// Hide pages staff shouldn't see based on role
+// ══════════════════════════════════════
+//  STAFF PERMISSION SYSTEM
+//  Owner > Manager > Cashier > POS Operator
+// ══════════════════════════════════════
+const ROLE_PERMISSIONS={
+  // Manager: সব কিছু দেখতে ও করতে পারবে, শুধু মালিকানা-পর্যায়ের settings পরিবর্তন করতে পারবে না
+  manager:{
+    pages:['dashboard','products','categories','orders','pos','sales','customers','due','expenses','activity'],
+    hideSidebarPages:['settings'],
+    posAdvanced:'all',       // Cash Float, Undo, Flash Sale, GRN, Day Close সব পারবে
+    mobileNav:['dashboard','sales','products','search'],
+    canDelete:true,          // PIN থাকলে PIN দিয়ে
+    canRefund:true,
+    canEditProduct:true,
+    canBatchPrice:true,
+    canGRN:true,
+    canCashFloat:true,
+    canFlashSale:true,
+    canDayClose:true,
+    canUndo:true,
+    canViewReports:true,
+  },
+  // Cashier: দৈনিক বিক্রয় কাজ — POS, অর্ডার, বিক্রয়, বাকি আদায়। স্টক/মূল্য/ব্যবসায়িক তথ্য পরিবর্তন করতে পারবে না
+  cashier:{
+    pages:['pos','orders','sales','due'],
+    hideSidebarPages:['products','categories','customers','expenses','activity','settings'],
+    posAdvanced:'limited',   // শুধু Day Close + Undo
+    mobileNav:['sales','search'],
+    canDelete:false,         // ডিলিট করতে পারবে না
+    canRefund:false,         // রিফান্ড করতে পারবে না
+    canEditProduct:false,
+    canBatchPrice:false,
+    canGRN:false,
+    canCashFloat:false,
+    canFlashSale:false,
+    canDayClose:true,        // নিজের দিনের হিসাব মিলাতে পারবে
+    canUndo:true,            // ভুল বিল বাতিল করতে পারবে (30 মিনিটের মধ্যে)
+    canViewReports:false,
+  },
+  // POS Operator: শুধুমাত্র বিল বানানো — আর কিছুই না
+  pos:{
+    pages:['pos'],
+    hideSidebarPages:['dashboard','products','categories','orders','sales','customers','due','expenses','activity','settings'],
+    posAdvanced:'none',      // কোনো advanced বাটন নেই
+    mobileNav:[],            // শুধু POS নিজেই
+    canDelete:false,
+    canRefund:false,
+    canEditProduct:false,
+    canBatchPrice:false,
+    canGRN:false,
+    canCashFloat:false,
+    canFlashSale:false,
+    canDayClose:false,
+    canUndo:false,
+    canViewReports:false,
+  }
+};
+
 function applyStaffPermissions(){
-  const restricted={
-    cashier:['products','categories','customers','due','expenses','activity','settings'],
-    pos:['products','categories','orders','customers','due','expenses','activity','settings','dashboard'],
-    manager:['settings']
-  };
+  // ── Step 1: সব কিছু reset করো (owner/no-staff দেখছে assumed) ──
   document.querySelectorAll('.sidebar-item').forEach(btn=>btn.style.display='');
-  // POS topbar advanced action buttons & mobile bottom nav — reset to visible first
-  const posAdv=$('posAdvancedBtns');if(posAdv) posAdv.style.display='flex';
-  ['pbnDashboard','pbnSales','pbnProducts','pbnSearch'].forEach(id=>{const el=$(id);if(el)el.style.display='';});
-  if(!currentStaff) return; // owner sees everything
-  const hide=restricted[currentStaff.role]||[];
+  const posAdv=$('posAdvancedBtns');
+  if(posAdv){
+    posAdv.style.display='flex';
+    posAdv.querySelectorAll('button').forEach(b=>b.style.display='');
+  }
+  ['pbnDashboard','pbnSales','pbnProducts','pbnSearch'].forEach(id=>{
+    const el=$(id);if(el) el.style.display='';
+  });
+
+  if(!currentStaff) return; // Owner — সব কিছু দেখে, কোনো সীমা নেই
+
+  const role=currentStaff.role;
+  const perms=ROLE_PERMISSIONS[role]||ROLE_PERMISSIONS.pos;
+
+  // ── Step 2: Sidebar pages hide করো ──
   document.querySelectorAll('.sidebar-item').forEach(btn=>{
     const m=btn.getAttribute('onclick')?.match(/showPage\('(\w+)'/);
-    if(m&&hide.includes(m[1])) btn.style.display='none';
+    if(m&&perms.hideSidebarPages.includes(m[1])) btn.style.display='none';
   });
-  // POS-operator: hide all advanced POS actions (Cash Float, Undo, Flash Sale, GRN, Day Close, Add Product) — শুধু বিল বানাতে পারবে
-  if(currentStaff.role==='pos'){
-    if(posAdv) posAdv.style.display='none';
-    // Mobile bottom nav: only POS + Search remain relevant
-    ['pbnDashboard','pbnSales','pbnProducts'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+
+  // ── Step 3: POS Topbar advanced buttons ──
+  if(posAdv){
+    if(perms.posAdvanced==='none'){
+      // POS Operator — সব লুকাও
+      posAdv.style.display='none';
+    }else if(perms.posAdvanced==='limited'){
+      // Cashier — শুধু Day Close + Undo রাখো
+      posAdv.querySelectorAll('button').forEach(btn=>{
+        const oc=btn.getAttribute('onclick')||'';
+        const allowed=oc.includes('showDayClose')||oc.includes('undoLastSale');
+        btn.style.display=allowed?'':'none';
+      });
+    }
+    // 'all' → সব দেখাও (already reset above)
   }
-  // Cashier: keep POS billing actions but hide Add Product / GRN / Cash Float / Flash Sale (owner/manager-only stock & cash control), keep Day Close + Undo for reconciliation
-  if(currentStaff.role==='cashier'){
-    document.querySelectorAll('#posAdvancedBtns button').forEach(btn=>{
-      const oc=btn.getAttribute('onclick')||'';
-      if(oc.includes('showPage(\'products\'')||oc.includes('openGRNModal')||oc.includes('openCashFloatModal')||oc.includes('openFlashSaleModal')) btn.style.display='none';
-      else btn.style.display='';
-    });
-    const pbnP=$('pbnProducts');if(pbnP) pbnP.style.display='none';
-  }
+
+  // ── Step 4: Mobile Bottom Nav ──
+  const allMobileIds=['pbnDashboard','pbnSales','pbnProducts','pbnSearch'];
+  allMobileIds.forEach(id=>{
+    if(!perms.mobileNav.includes(id.replace('pbn','').toLowerCase())){
+      const el=$(id);if(el) el.style.display='none';
+    }
+  });
+
+  // ── Step 5: Sales/Products table-এ sensitive বাটন hide ──
+  // Delete বাটন (Sales, Products, Orders table-এ)
+  // এগুলো dynamically render হয় তাই renderXXX functions-এ গিয়ে check করে
+
+  // ── Step 6: POS-এ split payment, custom item, barcode scan allow (সবার জন্য) ──
+  // এগুলো সব roles-এর জন্য allow — POS-এর core functionality
+
+  // ── Step 7: Toast — কে লগইন করেছে জানাও ──
+  const roleLabel={'manager':'ম্যানেজার','cashier':'ক্যাশিয়ার','pos':'POS অপারেটর'}[role]||role;
+  toast(`👤 ${currentStaff.name} (${roleLabel}) লগইন — সীমিত অ্যাক্সেসে কাজ করছেন`,'info');
 }
+
+// Permission check helper — যেকোনো জায়গা থেকে call করা যাবে
+function canDo(action){
+  if(!currentStaff) return true; // Owner — সব পারে
+  const perms=ROLE_PERMISSIONS[currentStaff.role]||ROLE_PERMISSIONS.pos;
+  return perms[action]===true;
+}
+
 
 function logoutAdmin(){
   isAdmin=false;
@@ -2410,13 +2501,10 @@ function showPage(id,btn){
   if(!isAdmin){showAdminLogin();return;}
   // Staff permission guard
   if(currentStaff){
-    const restricted={
-      cashier:['products','categories','customers','due','expenses','activity','settings'],
-      pos:['products','categories','orders','customers','due','expenses','activity','settings','dashboard'],
-      manager:['settings']
-    };
-    const hide=restricted[currentStaff.role]||[];
-    if(hide.includes(id)){toast('এই পেজে আপনার অ্যাক্সেস নেই','warn');return;}
+    const perms=ROLE_PERMISSIONS[currentStaff.role]||ROLE_PERMISSIONS.pos;
+    if(perms.hideSidebarPages.includes(id)){
+      toast('⛔ আপনার এই পেজে অ্যাক্সেস নেই','warn');return;
+    }
   }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   $(`page-${id}`).classList.add('active');
@@ -3187,14 +3275,14 @@ function renderProducts(){
         </span>
       </td>
       <td style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-warn btn-sm" onclick="openProductModal('${p.id}')">✏️</button>
-        <button class="btn btn-info btn-sm" onclick="quickRestock('${p.id}')" title="স্টক যোগ">📦+</button>
+        ${canDo('canEditProduct')?`<button class="btn btn-warn btn-sm" onclick="openProductModal('${p.id}')">✏️</button>`:''}
+        ${canDo('canGRN')?`<button class="btn btn-info btn-sm" onclick="quickRestock('${p.id}')" title="স্টক যোগ">📦+</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick="showStockHistory('${p.id}')" title="স্টক ইতিহাস">📋</button>
         <button class="btn btn-ghost btn-sm" onclick="showProductQR('${p.id}')" title="QR Code">🔗</button>
-        <button class="btn btn-ghost btn-sm" onclick="openVariantModal('${p.id}')" title="ভ্যারিয়েন্ট (রঙ/সাইজ)"${p.variants?.length?` style="color:var(--accent2)"`:''}>🗃️${p.variants?.length?`<b style="font-size:9px;background:var(--accent);color:#fff;border-radius:99px;padding:0 3px;margin-left:1px">${p.variants.length}</b>`:''}</button>
-        <button class="btn btn-ghost btn-sm" onclick="cloneProduct('${p.id}')" title="পণ্য কপি করুন">📋</button>
+        ${canDo('canEditProduct')?`<button class="btn btn-ghost btn-sm" onclick="openVariantModal('${p.id}')" title="ভ্যারিয়েন্ট (রঙ/সাইজ)"${p.variants?.length?` style="color:var(--accent2)"`:''}>🗃️${p.variants?.length?`<b style="font-size:9px;background:var(--accent);color:#fff;border-radius:99px;padding:0 3px;margin-left:1px">${p.variants.length}</b>`:''}</button>`:''  }
+        ${canDo('canEditProduct')?`<button class="btn btn-ghost btn-sm" onclick="cloneProduct('${p.id}')" title="পণ্য কপি করুন">📋</button>`:''}
         ${p.barcode?`<button class="btn btn-ghost btn-sm" onclick="printBarcodeLabel('${p.id}')" title="বারকোড লেবেল প্রিন্ট">🏷️</button>`:''}
-        <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">🗑️</button>
+        ${canDo('canDelete')?`<button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">🗑️</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -3203,6 +3291,7 @@ function renderProducts(){
 }
 
 function openProductModal(id){
+  if(id&&!canDo('canEditProduct')){toast('⛔ আপনার পণ্য সম্পাদনার অনুমতি নেই','warn');return;}
   const p=id?DB.products.find(x=>x.id===id):{};
   const catOpts=DB.cats.map(c=>`<option value="${c.id}" ${p?.cat===c.id?'selected':''}>${c.name}</option>`).join('');
   openModal(id?'পণ্য সম্পাদনা':'নতুন পণ্য যোগ',`
@@ -3330,6 +3419,7 @@ function saveRestock(id){
 }
 
 function deleteProduct(id){
+  if(!canDo('canDelete')){toast('⛔ আপনার পণ্য মুছার অনুমতি নেই','warn');return;}
   confirmWithPin('এই পণ্যটি মুছে ফেলবেন?',()=>{
     DB.products=DB.products.filter(x=>x.id!==id);
     save(KEYS.products,DB.products);renderProducts();renderShop();
@@ -3420,7 +3510,7 @@ function renderOrders(){
       <button class="btn btn-ghost btn-sm" title="প্রিন্ট" onclick="printOrderById('${o.id}')">🖨️</button>
       <button class="btn btn-ghost btn-sm" title="A4 ইনভয়েস" onclick="a4OrderById('${o.id}')">📄A4</button>
       <button class="btn btn-warn btn-sm" title="PDF ডাউনলোড" onclick="pdfOrderById('${o.id}')">📥</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteOrder('${o.id}')">🗑️</button>
+      ${canDo('canDelete')?`<button class="btn btn-danger btn-sm" onclick="deleteOrder('${o.id}')">🗑️</button>`:''}
     </td>
   </tr>`).join('');
   if(!slice.length) $('ordersBody').innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text2)">কোনো অর্ডার নেই</td></tr>';
@@ -3428,6 +3518,7 @@ function renderOrders(){
 }
 
 function deleteOrder(id){
+  if(!canDo('canDelete')){toast('⛔ আপনার অর্ডার মুছার অনুমতি নেই','warn');return;}
   confirmWithPin('এই অর্ডারটি মুছে ফেলবেন?',()=>{
     DB.orders=DB.orders.filter(x=>x.id!==id);
     save(KEYS.orders,DB.orders);
@@ -3924,8 +4015,8 @@ function renderSales(){
       <button class="btn btn-ghost btn-sm" onclick="printA4Invoice(DB.sales.find(x=>x.id==='${s.id}'))" title="A4 ইনভয়েস">📄A4</button>
       <button class="btn btn-info btn-sm" onclick="downloadInvoicePDF(DB.sales.find(x=>x.id==='${s.id}'))" title="ডাউনলোড">📥</button>
       ${s.dueAmount>0?`<button class="btn btn-success btn-sm" onclick="openCollectDueModal('${s.id}')" title="বাকি আদায়">💰</button>`:''}
-      ${s.refunded?`<span class="badge badge-danger" style="font-size:10px">↩️ রিটার্ন</span>`:`<button class="btn btn-warn btn-sm" onclick="openRefundModal('${s.id}')">↩️</button>`}
-      <button class="btn btn-danger btn-sm" onclick="deleteSale('${s.id}')">🗑️</button>
+      ${canDo('canRefund')?(s.refunded?`<span class="badge badge-danger" style="font-size:10px">↩️ রিটার্ন</span>`:`<button class="btn btn-warn btn-sm" onclick="openRefundModal('${s.id}')">↩️</button>`):''}
+      ${canDo('canDelete')?`<button class="btn btn-danger btn-sm" onclick="deleteSale('${s.id}')">🗑️</button>`:''}
     </td>
   </tr>`).join('');
   if(!slice.length) $('salesBody').innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text2)">কোনো বিক্রয় নেই</td></tr>';
@@ -3933,6 +4024,7 @@ function renderSales(){
 }
 
 function deleteSale(id){
+  if(!canDo('canDelete')){toast('⛔ আপনার বিক্রয় মুছার অনুমতি নেই','warn');return;}
   confirmWithPin('এই বিক্রয় রেকর্ডটি মুছে ফেলবেন? (Void)',()=>{
     DB.sales=DB.sales.filter(x=>x.id!==id);
     save(KEYS.sales,DB.sales);
@@ -5455,6 +5547,7 @@ function exportProductsCSV(){
 //  RETURN / REFUND
 // ══════════════════════════════════════
 function openRefundModal(saleId){
+  if(!canDo('canRefund')){toast('⛔ আপনার রিফান্ড করার অনুমতি নেই','warn');return;}
   const s=DB.sales.find(x=>x.id===saleId);if(!s)return;
   openModal('↩️ রিটার্ন / রিফান্ড',`
     <div style="background:var(--card2);border-radius:9px;padding:10px;margin-bottom:12px">
@@ -6964,6 +7057,7 @@ function renderActivityLog(){
 //  💰 CASH FLOAT / OPENING BALANCE
 // ══════════════════════════════════════
 function openCashFloatModal(){
+  if(!canDo('canCashFloat')){toast('⛔ আপনার Cash Float-এর অনুমতি নেই','warn');return;}
   const todayKey=today();
   const existing=JSON.parse(localStorage.getItem('ss_cash_float')||'{}');
   const todayFloat=existing[todayKey]||{amount:0,note:'',time:null};
@@ -7011,6 +7105,7 @@ function saveCashFloat(){
 //  🔄 UNDO LAST SALE
 // ══════════════════════════════════════
 function undoLastSale(){
+  if(!canDo('canUndo')){toast('⛔ আপনার Undo-এর অনুমতি নেই','warn');return;}
   const lastSale=DB.sales.find(s=>s.type==='offline');
   if(!lastSale){toast('কোনো বিক্রয় নেই','warn');return;}
   const minsAgo=Math.round((Date.now()-new Date(lastSale.time).getTime())/60000);
@@ -7037,6 +7132,7 @@ function undoLastSale(){
 // ══════════════════════════════════════
 let _flashSaleTimer=null;
 function openFlashSaleModal(){
+  if(!canDo('canFlashSale')){toast('⛔ আপনার Flash Sale-এর অনুমতি নেই','warn');return;}
   openModal('🎊 Flash Sale Countdown Timer',`
     <div class="form-group"><label>অফারের নাম</label><input id="fs_name" value="${DB.settings.flashSale?.name||''}" placeholder="যেমন: রাতের বিশেষ অফার!"></div>
     <div class="two-col">
@@ -7109,6 +7205,7 @@ setInterval(()=>{
 // ══════════════════════════════════════
 if(!DB.settings.grns) DB.settings.grns=[];
 function openGRNModal(){
+  if(!canDo('canGRN')){toast('⛔ আপনার GRN-এর অনুমতি নেই','warn');return;}
   const supOpts=`<option value="">সাপ্লায়ার নির্বাচন করুন</option>`+(DB.settings.suppliers||[]).map((s,i)=>`<option value="${i}">${s.name}</option>`).join('');
   const prodOpts=DB.products.map(p=>`<option value="${p.id}">${p.name} (${fmt(p.price)})</option>`).join('');
   openModal('📦 Goods Received Note (GRN)',`
@@ -8202,6 +8299,7 @@ function animateMoney(el,target,duration=700){
 //  📦 BATCH PRICE UPDATE
 // ══════════════════════════════════════
 function openBatchPriceModal(){
+  if(!canDo('canBatchPrice')){toast('⛔ আপনার এই কাজের অনুমতি নেই','warn');return;}
   const catOpts=`<option value="">সব ক্যাটাগরি</option>`+DB.cats.map(c=>`<option value="${c.id}">${c.icon||''} ${c.name}</option>`).join('');
   openModal('📦 পণ্যের দাম একসাথে আপডেট',`
     <div style="background:var(--card2);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text2)">
