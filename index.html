@@ -7894,20 +7894,20 @@ window.addEventListener('offline', updateNetStatus);
 // ══════════════════════════════════════
 let _pushGranted=false;
 async function requestPushPermission(){
-  if(!('Notification' in window)){toast('এই ব্রাউজার Push Notification সাপোর্ট করে না','warn');return;}
+  if(typeof Notification==='undefined'){toast('এই browser Push Notification সাপোর্ট করে না','warn');return;}
   if(Notification.permission==='granted'){_pushGranted=true;toast('🔔 Push Notification ইতিমধ্যে চালু আছে');return;}
   const perm=await Notification.requestPermission();
   _pushGranted=perm==='granted';
   if(_pushGranted){
     toast('🔔 Push Notification চালু হয়েছে ✅');
-    new Notification('SuperShop 🛒',{body:'নতুন অর্ডার ও বিক্রয়ে আলাদা নোটিফিকেশন পাবেন',icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23ff4d6d"/><text y=".9em" font-size="80" x="10">🛒</text></svg>'});
+    try{new Notification('SuperShop 🛒',{body:'নতুন অর্ডার ও বিক্রয়ে আলাদা নোটিফিকেশন পাবেন',icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23ff4d6d"/><text y=".9em" font-size="80" x="10">🛒</text></svg>'});}catch(e){}
     logActivity('🔔','Push Notification চালু করা হয়েছে');
   }else{
     toast('Push Notification অনুমতি দেওয়া হয়নি','warn');
   }
 }
 function sendPushNotif(title,body,icon='🛒'){
-  if(!_pushGranted||Notification.permission!=='granted') return;
+  if(!_pushGranted||typeof Notification==='undefined'||Notification.permission!=='granted') return;
   try{
     new Notification(`${icon} ${title}`,{body,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23ff4d6d"/><text y=".9em" font-size="80" x="10">🛒</text></svg>',tag:'supershop-notif',renotify:true});
   }catch(e){}
@@ -8516,7 +8516,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(!DB.settings.branches) DB.settings.branches=[];
   updateBranchSelector();
   // Push notification permission check (restore state)
-  if(Notification.permission==='granted') _pushGranted=true;
+  if(typeof Notification!=='undefined'&&Notification.permission==='granted') _pushGranted=true;
 
   // Dashboard date
   const dd=$('dashDate');if(dd) dd.textContent=new Date().toLocaleDateString('bn-BD',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
