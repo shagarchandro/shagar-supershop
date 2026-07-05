@@ -895,6 +895,17 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 .cst-step .cst-label{font-size:9px;color:var(--text2)}
 /* ── ANIMATIONS ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* Page transition */
+@keyframes pageIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+@keyframes pageOut{from{opacity:1}to{opacity:0;transform:translateX(8px)}}
+.page.active{animation:pageIn .22s cubic-bezier(.4,0,.2,1)}
+/* Skeleton loading */
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.skeleton{background:linear-gradient(90deg,var(--card2) 25%,rgba(255,255,255,.06) 50%,var(--card2) 75%);background-size:800px 100%;animation:shimmer 1.4s infinite linear;border-radius:8px;color:transparent!important;user-select:none}
+.skeleton *{visibility:hidden}
+.skel-block{height:16px;border-radius:6px;margin-bottom:8px}
+.skel-card{height:90px;border-radius:var(--radius);margin-bottom:12px}
+
 .stat-card{transition:transform .2s,box-shadow .2s}
 .stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.25)}
 .product-card{transition:transform .22s,border-color .22s,box-shadow .22s}
@@ -1152,7 +1163,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
   <div class="qs-box">
     <div class="qs-input">
       <span>🔍</span>
-      <input id="qsInput" placeholder="পণ্য, অর্ডার বা কাস্টমার খুঁজুন..." oninput="doQuickSearch(this.value)" autocomplete="off">
+      <input id="qsInput" placeholder="🔍 পণ্য, অর্ডার, কাস্টমার, বিক্রয় খুঁজুন..." oninput="doQuickSearch(this.value)" autocomplete="off">
       <button onclick="closeQuickSearch()" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>
     </div>
     <div id="qsResults" class="qs-results"><div class="qs-empty">টাইপ করুন...</div></div>
@@ -2893,6 +2904,11 @@ function populateCatFilters(){
 //  DASHBOARD
 // ══════════════════════════════════════
 function loadDash(){
+  // Show skeleton placeholders while computing
+  const ds=$('dashStats');
+  if(ds&&!ds.dataset.loaded){
+    ds.innerHTML=`<div class="stat-card skeleton skel-card"></div><div class="stat-card skeleton skel-card"></div><div class="stat-card skeleton skel-card"></div><div class="stat-card skeleton skel-card"></div>`;
+  }
   const todayStr=today();
   const yesterStr=new Date(Date.now()-86400000).toISOString().slice(0,10);
   const thisMonth=todayStr.slice(0,7);
@@ -2920,6 +2936,8 @@ function loadDash(){
   const revClass=revChange>=0?'dm-up':'dm-down';
 
   // Main stat cards (4) — clickable
+  const dsEl=$('dashStats');
+  if(dsEl) dsEl.dataset.loaded='1';
   $('dashStats').innerHTML=`
     <div class="stat-card s1" onclick="showPage('sales',document.querySelector('.sidebar-item[onclick*=sales]'))" style="cursor:pointer" title="বিক্রয় ইতিহাস দেখুন">
       <div class="icon">💰</div>
@@ -3531,6 +3549,7 @@ function renderOrders(){
     <td style="display:flex;gap:4px;flex-wrap:wrap">
       <button class="btn btn-info btn-sm" onclick="viewOrder('${o.id}')">👁️</button>
       <button class="btn btn-ghost btn-sm" title="ডেলিভারি ট্র্যাকিং" onclick="openCourierModal('${o.id}')">${o.courierStatus?COURIER_ICONS[o.courierStatus]:'🚚'}</button>
+      <button class="btn btn-ghost btn-sm" title="স্টাফ নোট${o.staffNotes?.length?' ('+o.staffNotes.length+'টি)':''}" onclick="openOrderNoteModal('${o.id}')" style="${o.staffNotes?.length?'color:var(--accent3)':''}">💬${o.staffNotes?.length?`<span style="font-size:9px;background:var(--accent3);color:#000;border-radius:99px;padding:0 4px;margin-left:2px">${o.staffNotes.length}</span>`:''}</button>
       <button class="btn btn-ghost btn-sm" title="প্রিন্ট" onclick="printOrderById('${o.id}')">🖨️</button>
       <button class="btn btn-ghost btn-sm" title="A4 ইনভয়েস" onclick="a4OrderById('${o.id}')">📄A4</button>
       <button class="btn btn-warn btn-sm" title="PDF ডাউনলোড" onclick="pdfOrderById('${o.id}')">📥</button>
@@ -3964,6 +3983,7 @@ function _commitSale(sale){
     sendPushNotif('নতুন বিক্রয়',`${sale.custName||'সাধারণ'} — ${fmt(sale.total)}`,'💰');
   }
   clearPOS();renderPOS();
+  clearDraft(); // Remove saved draft after successful commit
   // Reorder check after stock deduction
   setTimeout(()=>checkReorderAlerts(),500);
   toast(sale.dueAmount>0?`বিল তৈরি হয়েছে — বাকি ${fmt(sale.dueAmount)} ✅`:'বিল তৈরি হয়েছে ✅');
@@ -5281,27 +5301,10 @@ function toggleQuickSearch(){
 function closeQuickSearch(){$('quickSearch').classList.remove('show');}
 function doQuickSearch(q){
   const res=$('qsResults');if(!res)return;
-  q=q.trim().toLowerCase();
-  if(!q){res.innerHTML='<div class="qs-empty">টাইপ করুন...</div>';return;}
-  const results=[];
-  // Products
-  DB.products.filter(p=>p.name.toLowerCase().includes(q)).slice(0,5).forEach(p=>{
-    results.push(`<div class="qs-result" onclick="closeQuickSearch();switchPanel('shop')">
-      <span class="qr-icon">${p.img?`<img src="${p.img}" style="width:36px;height:36px;object-fit:cover;border-radius:6px">`:p.icon||'📦'}</span>
-      <div class="qr-info"><h4>${p.name}</h4><p>স্টক: ${p.stock} | ${DB.cats.find(c=>c.id===p.cat)?.name||''}</p></div>
-      <span class="qr-badge">${fmt(p.price)}</span>
-    </div>`);
-  });
-  // Orders
-  DB.orders.filter(o=>o.id.toLowerCase().includes(q)||o.custName.toLowerCase().includes(q)||(o.custPhone||'').includes(q)).slice(0,4).forEach(o=>{
-    results.push(`<div class="qs-result" onclick="closeQuickSearch();if(isAdmin){showPage('orders',null);}">
-      <span class="qr-icon">📋</span>
-      <div class="qr-info"><h4>${o.id}</h4><p>${o.custName} • ${statusBadge(o.status).replace(/<[^>]+>/g,'')}</p></div>
-      <span class="qr-badge">${fmt(o.total)}</span>
-    </div>`);
-  });
-  if(!results.length){res.innerHTML='<div class="qs-empty">কোনো ফলাফল পাওয়া যায়নি</div>';return;}
-  res.innerHTML=results.join('');
+  q=q.trim();
+  if(!q||q.length<1){res.innerHTML='<div class="qs-empty">পণ্য, অর্ডার, কাস্টমার, বিক্রয় খুঁজুন...</div>';return;}
+  // Use the enhanced runQuickSearch that covers products + orders + sales + customers
+  runQuickSearch(q);
 }
 
 // ══════════════════════════════════════
@@ -7849,6 +7852,256 @@ function exportAllVCards(){
   logActivity('📇','সব vCard এক্সপোর্ট',`${list.length}টি কন্টাক্ট`);
 }
 
+// ══════════════════════════════════════
+//  💾 AUTO-SAVE DRAFT BILL
+// ══════════════════════════════════════
+const DRAFT_KEY='ss_pos_draft';
+let _autoDraftTimer=null;
+
+function saveDraftBill(){
+  if(!posBill.length) return;
+  const draft={
+    items:posBill,
+    cust:($('posCust')||{value:''}).value,
+    phone:($('posCustPhone')||{value:''}).value,
+    note:($('posNote')||{value:''}).value,
+    disc:($('discInput')||{value:'0'}).value,
+    discType:($('discType')||{value:'pct'}).value,
+    time:new Date().toISOString()
+  };
+  localStorage.setItem(DRAFT_KEY,JSON.stringify(draft));
+}
+function loadDraftBill(){
+  try{
+    const raw=localStorage.getItem(DRAFT_KEY);
+    if(!raw) return;
+    const draft=JSON.parse(raw);
+    if(!draft?.items?.length) return;
+    const mins=Math.round((Date.now()-new Date(draft.time).getTime())/60000);
+    if(mins>240){localStorage.removeItem(DRAFT_KEY);return;} // ignore drafts older than 4 hours
+    // Ask user if they want to restore
+    openModal('💾 অসম্পূর্ণ বিল পাওয়া গেছে',`
+      <div style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);border-radius:9px;padding:12px 14px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">📋 ${draft.items.length}টি পণ্য সহ একটি অসম্পূর্ণ বিল আছে</div>
+        <div style="font-size:11px;color:var(--text2)">${mins} মিনিট আগে সেভ হয়েছিল${draft.cust?' | কাস্টমার: '+draft.cust:''}</div>
+      </div>
+      <div style="font-size:12px;color:var(--text2)">আগের বিলটি কি পুনরুদ্ধার করবেন?</div>
+    `,`<button class="btn btn-ghost" onclick="localStorage.removeItem('${DRAFT_KEY}');closeModal()">🗑️ না, বাদ দিন</button>
+       <button class="btn btn-primary" onclick="restoreDraftBill()">✅ হ্যাঁ, পুনরুদ্ধার করুন</button>`);
+  }catch(e){localStorage.removeItem(DRAFT_KEY);}
+}
+function restoreDraftBill(){
+  try{
+    const draft=JSON.parse(localStorage.getItem(DRAFT_KEY));
+    if(!draft) return;
+    posBill=[...draft.items];
+    if($('posCust')&&draft.cust) $('posCust').value=draft.cust;
+    if($('posCustPhone')&&draft.phone) $('posCustPhone').value=draft.phone;
+    if($('posNote')&&draft.note) $('posNote').value=draft.note;
+    if($('discInput')&&draft.disc) $('discInput').value=draft.disc;
+    if($('discType')&&draft.discType) $('discType').value=draft.discType;
+    localStorage.removeItem(DRAFT_KEY);
+    closeModal();updatePosBill();renderPOS();
+    toast('✅ অসম্পূর্ণ বিল পুনরুদ্ধার হয়েছে');
+  }catch(e){closeModal();}
+}
+function startAutoDraft(){
+  if(_autoDraftTimer) clearInterval(_autoDraftTimer);
+  _autoDraftTimer=setInterval(()=>{if(posBill.length) saveDraftBill();},10000); // every 10s
+}
+function clearDraft(){localStorage.removeItem(DRAFT_KEY);}
+
+// ══════════════════════════════════════
+//  🔄 CROSS-TAB SYNC via Storage Event
+// ══════════════════════════════════════
+window.addEventListener('storage',e=>{
+  if(!isAdmin) return;
+  // Only react to our own DB keys changing in another tab
+  const watchedKeys=Object.values(KEYS);
+  if(!watchedKeys.includes(e.key)) return;
+  // Force-refresh the DB and re-render current page
+  try{
+    if(e.newValue){
+      const keyName=Object.entries(KEYS).find(([,v])=>v===e.key)?.[0];
+      if(keyName) DB[keyName]=JSON.parse(e.newValue);
+    }
+  }catch(err){}
+  // Clear hash cache for the changed key so realtimeTick sees it
+  delete _dbHash[e.key];
+  // Show brief indicator
+  const chip=$('netStatusChip');
+  if(chip){
+    const prev=chip.textContent;
+    chip.textContent='🔄 সিঙ্ক';chip.style.color='var(--accent3)';
+    setTimeout(()=>{chip.textContent=prev;chip.style.color='';},1500);
+  }
+  // Re-render current active page
+  const activeP=document.querySelector('.page.active');
+  if(!activeP) return;
+  const pid=activeP.id.replace('page-','');
+  const map={dashboard:loadDash,products:renderProducts,orders:renderOrders,
+    pos:renderPOS,sales:renderSales,customers:renderCustomers,
+    due:renderDuePage,expenses:renderExp,activity:renderActivityLog};
+  if(map[pid]) map[pid]();
+  updateAdminQuickBar();updateDueSidebarBadge();
+});
+
+// ══════════════════════════════════════
+//  🔒 PIN LOCKOUT (3 wrong attempts → 5 min block)
+// ══════════════════════════════════════
+let _pinAttempts=0;
+let _pinLockedUntil=0;
+function isPinLocked(){return Date.now()<_pinLockedUntil;}
+function getPinLockRemaining(){return Math.ceil((_pinLockedUntil-Date.now())/1000);}
+function recordPinFailure(){
+  _pinAttempts++;
+  if(_pinAttempts>=3){
+    _pinLockedUntil=Date.now()+5*60*1000; // 5 minutes
+    _pinAttempts=0;
+    logActivity('🔒','PIN Lockout','৩বার ভুল PIN — ৫ মিনিটের জন্য lock');
+    addNotif('🔒 PIN Lockout','৩বার ভুল PIN দেওয়া হয়েছে — ৫ মিনিটের জন্য block','danger');
+    return true;
+  }
+  return false;
+}
+function resetPinAttempts(){_pinAttempts=0;}
+
+// Patch runPinConfirm to use lockout
+const _origRunPinConfirm=runPinConfirm;
+window.runPinConfirm=function(){
+  if(isPinLocked()){
+    const secs=getPinLockRemaining();
+    const err=$('pinConfirmErr');
+    if(err){err.textContent=`🔒 ${Math.ceil(secs/60)} মিনিট ${secs%60} সেকেন্ড পরে আবার চেষ্টা করুন`;err.style.display='block';}
+    return;
+  }
+  const entered=($('pinConfirmInput')||{value:''}).value.trim();
+  if(entered!==DB.voidPin){
+    const locked=recordPinFailure();
+    const err=$('pinConfirmErr');
+    if(err){
+      err.textContent=locked
+        ?`🔒 ৩বার ভুল! ৫ মিনিটের জন্য block হয়েছে`
+        :`❌ ভুল PIN — আরও ${3-_pinAttempts} বার চেষ্টার সুযোগ আছে`;
+      err.style.display='block';
+    }
+    const pi=$('pinConfirmInput');if(pi){pi.value='';pi.focus();}
+    return;
+  }
+  resetPinAttempts();
+  closeModal();
+  if(typeof window._pinConfirmCb==='function'){window._pinConfirmCb();window._pinConfirmCb=null;}
+  logActivity('🔐','PIN নিশ্চিতকরণ সফল');
+};
+
+// ══════════════════════════════════════
+//  🔍 CTRL+K SEARCH — Customers + Sales
+// ══════════════════════════════════════
+function runQuickSearch(q){
+  if(!q||q.length<2) return;
+  const lower=q.toLowerCase();
+  const results=[];
+  // Products
+  DB.products.filter(p=>p.name.toLowerCase().includes(lower)||(p.barcode||'').includes(lower)).slice(0,4).forEach(p=>{
+    results.push({icon:p.icon||'📦',label:p.name,sub:`${fmt(p.price)} | স্টক: ${p.stock}`,action:()=>{closeModal();showPage('pos',null);setTimeout(()=>{const si=$('posSearch');if(si){si.value=p.name;si.dispatchEvent(new Event('input'));}},300);}});
+  });
+  // Orders
+  DB.orders.filter(o=>o.id.toLowerCase().includes(lower)||(o.custName||'').toLowerCase().includes(lower)).slice(0,3).forEach(o=>{
+    results.push({icon:'📋',label:o.id,sub:`${o.custName||''} — ${fmt(o.total)}`,action:()=>{closeModal();showPage('orders',null);setTimeout(()=>viewOrder(o.id),300);}});
+  });
+  // Sales
+  DB.sales.filter(s=>s.id.toLowerCase().includes(lower)||(s.custName||'').toLowerCase().includes(lower)||(s.custPhone||'').includes(lower)).slice(0,3).forEach(s=>{
+    results.push({icon:'💰',label:s.id,sub:`${s.custName||'সাধারণ'} — ${fmt(s.total)} — ${s.time.slice(0,10)}`,action:()=>{closeModal();showPage('sales',null);}});
+  });
+  // Customers
+  const custMap={};
+  [...DB.orders,...DB.sales].forEach(o=>{
+    const key=o.custPhone||o.custName;
+    if(!key) return;
+    if(!custMap[key]) custMap[key]={name:o.custName||'',phone:o.custPhone||'',total:0,count:0};
+    custMap[key].total+=o.total;custMap[key].count++;
+  });
+  Object.values(custMap).filter(c=>(c.name||'').toLowerCase().includes(lower)||(c.phone||'').includes(lower)).slice(0,3).forEach(c=>{
+    results.push({icon:'👤',label:c.name||c.phone,sub:`📞 ${c.phone} | ${c.count}টি অর্ডার | ${fmt(c.total)}`,action:()=>{closeModal();showPage('customers',null);}});
+  });
+  const rb=$('qsResults');
+  if(!rb) return;
+  if(!results.length){rb.innerHTML='<div style="text-align:center;color:var(--text2);padding:20px;font-size:13px">কোনো ফলাফল নেই</div>';return;}
+  rb.innerHTML=results.map((r,i)=>`
+    <div class="qs-result" onclick="window._qsActions[${i}]()" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(31,51,72,.5)">
+      <span style="font-size:20px;flex-shrink:0">${r.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.label}</div>
+        <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.sub}</div>
+      </div>
+      <span style="font-size:10px;color:var(--text3)">↵</span>
+    </div>`).join('');
+  window._qsActions=results.map(r=>()=>{closeQuickSearch();r.action();});
+}
+
+// ══════════════════════════════════════
+//  📦 RESTOCK REMINDER POPUP
+// ══════════════════════════════════════
+let _restockNotified=new Set();
+function checkRestockReminders(){
+  if(!isAdmin) return;
+  const alerts=DB.products.filter(p=>p.reorderLevel>0&&p.stock<=p.reorderLevel&&p.stock>0&&!_restockNotified.has(p.id));
+  if(!alerts.length) return;
+  alerts.forEach(p=>_restockNotified.add(p.id));
+  // Show popup toast for each (max 3)
+  alerts.slice(0,3).forEach((p,i)=>{
+    setTimeout(()=>{
+      const t=document.createElement('div');
+      t.style.cssText='position:fixed;bottom:'+(80+i*60)+'px;right:16px;z-index:800;background:linear-gradient(135deg,#e94560,#c0223d);color:#fff;padding:12px 16px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(233,69,96,.4);cursor:pointer;max-width:280px;animation:toastIn .3s ease;display:flex;align-items:center;gap:8px';
+      t.innerHTML=`<span style="font-size:18px">${p.icon||'📦'}</span><div><div>${p.name}</div><div style="font-size:11px;opacity:.85">স্টক মাত্র ${p.stock} বাকি — রিঅর্ডার দরকার</div></div>`;
+      t.onclick=()=>{document.body.removeChild(t);showPage('products',null);};
+      document.body.appendChild(t);
+      setTimeout(()=>{try{document.body.removeChild(t);}catch(e){}},6000);
+    },i*800);
+  });
+  if(alerts.length>3) toast(`📦 ${alerts.length}টি পণ্যের রিঅর্ডার দরকার — পণ্য পেজ দেখুন`,'warn');
+}
+// Reset notified set daily so alerts re-appear next day
+setInterval(()=>{
+  const h=new Date().getHours();
+  if(h===0) _restockNotified=new Set();
+  if(isAdmin) checkRestockReminders();
+},5*60*1000); // check every 5 mins
+
+// ══════════════════════════════════════
+//  💬 STAFF NOTES ON ORDERS
+// ══════════════════════════════════════
+function openOrderNoteModal(orderId){
+  const o=DB.orders.find(x=>x.id===orderId);if(!o)return;
+  const notes=o.staffNotes||[];
+  openModal(`💬 স্টাফ নোট — ${o.id}`,`
+    <div style="max-height:180px;overflow-y:auto;margin-bottom:12px">
+      ${notes.length?notes.map(n=>`
+        <div style="background:var(--card2);border-radius:8px;padding:9px 12px;margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600">${n.by||'Unknown'} <span style="color:var(--text2);font-weight:400;font-size:10px">${new Date(n.time).toLocaleString('bn-BD')}</span></div>
+          <div style="font-size:12px;color:var(--text2);margin-top:3px">${n.text}</div>
+        </div>`).join('')
+      :'<div style="text-align:center;color:var(--text2);font-size:12px;padding:12px">কোনো নোট নেই</div>'}
+    </div>
+    <div class="form-group"><label>নতুন নোট যোগ করুন</label>
+      <textarea id="orderNoteInput" rows="3" placeholder="অর্ডার সম্পর্কে আন্তরিক তথ্য লিখুন..."></textarea>
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
+     <button class="btn btn-primary" onclick="addOrderNote('${orderId}')">💬 নোট যোগ করুন</button>`);
+  setTimeout(()=>{const ni=$('orderNoteInput');if(ni)ni.focus();},200);
+}
+function addOrderNote(orderId){
+  const o=DB.orders.find(x=>x.id===orderId);if(!o)return;
+  const text=($('orderNoteInput')||{value:''}).value.trim();
+  if(!text){toast('নোট লিখুন','warn');return;}
+  if(!o.staffNotes) o.staffNotes=[];
+  o.staffNotes.push({text,time:new Date().toISOString(),by:currentStaff?currentStaff.name:(DB.adminUser||'Owner')});
+  save(KEYS.orders,DB.orders);
+  closeModal();renderOrders();
+  toast('💬 নোট যোগ হয়েছে ✅');
+  logActivity('💬','অর্ডার নোট',`${orderId} — ${text.slice(0,30)}`);
+}
+
 function clearActivityLog(){
   confirm2('সব কার্যক্রম লগ মুছে ফেলবেন?',()=>{
     DB.actLog=[];save(KEYS.actLog,[]);renderActivityLog();
@@ -8618,11 +8871,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Auto-check recurring expenses on load
   if(isAdmin) checkAutoRecurringExpenses();
   // Reorder level check
-  if(isAdmin) setTimeout(()=>reorderCheckIfNeeded(), 3000);
+  if(isAdmin) setTimeout(()=>{reorderCheckIfNeeded();checkRestockReminders();}, 4000);
   // Scheduled discount check every minute
   if(isAdmin){checkScheduledDiscounts();setInterval(checkScheduledDiscounts,60000);}
   // Auto-logout timer
   if(isAdmin) startAutoLogoutTimer();
+  // Auto-save draft bill
+  startAutoDraft();
+  // Restore draft bill if POS was open
+  if(isAdmin) setTimeout(()=>{
+    if(localStorage.getItem(DRAFT_KEY)) loadDraftBill();
+  },1500);
   // Hide splash screen
   setTimeout(()=>splashScreen.hide(), 500);
 });
