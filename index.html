@@ -822,6 +822,16 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 .btn-whatsapp{background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;border:none}
 .btn-whatsapp:hover{box-shadow:0 4px 14px rgba(37,211,102,.4);transform:translateY(-1px)}
 .inv-seq-badge{background:rgba(0,212,168,.1);border:1px solid rgba(0,212,168,.3);color:var(--success);font-size:11px;padding:3px 10px;border-radius:6px;font-weight:600}
+/* ── SWIPE TO DELETE (bill items) ── */
+.pos-bill-item{position:relative;overflow:hidden;transition:transform .2s}
+.pos-bill-item .swipe-delete-reveal{
+  position:absolute;right:0;top:0;bottom:0;width:72px;
+  background:var(--danger);display:flex;align-items:center;justify-content:center;
+  font-size:20px;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+  border-radius:0 10px 10px 0;cursor:pointer;color:#fff;font-weight:700
+}
+.pos-bill-item.swipe-open .swipe-delete-reveal{transform:translateX(0)}
+.pos-bill-item.swipe-open{transform:translateX(-72px)}
 /* ── MOBILE BOTTOM NAV ── */
 .pos-bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--sidebar);border-top:1px solid var(--border);padding:4px 0 max(4px,env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,.3)}
 .pbn-items{display:flex;align-items:stretch}
@@ -1483,6 +1493,8 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <select id="prodCatFilter" onchange="renderProducts()"><option value="">সব ক্যাটাগরি</option></select>
         <div class="spacer"></div>
         <button class="btn btn-ghost btn-sm" onclick="openAdvancedSearch()" title="Advanced Search (Ctrl+F)">🔍 Advanced</button>
+        <button class="btn btn-ghost btn-sm" onclick="bulkBarcodeGenerate()" title="সব পণ্যে একসাথে বারকোড তৈরি">🔢 Bulk বারকোড</button>
+        <button class="btn btn-ghost btn-sm" onclick="printProductCatalog()" title="সব পণ্যের printable তালিকা">📋 ক্যাটালগ</button>
         <button class="btn btn-ghost btn-sm" onclick="openBatchPriceModal()" title="সব পণ্যের দাম একসাথে আপডেট">📦 Batch দাম</button>
         <button class="btn btn-ghost btn-sm" onclick="bulkImportCSV()" title="CSV থেকে পণ্য আমদানি">📥 CSV আমদানি</button>
         <button class="btn btn-ghost btn-sm" onclick="exportProductsCSV()" title="CSV রপ্তানি">📤 রপ্তানি</button>
@@ -1530,12 +1542,18 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <div class="page" id="page-pos">
       <!-- POS Top Bar -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-        <div>
-          <h2 style="font-size:18px;font-weight:700;margin:0">🖥️ POS — অফলাইন বিলিং</h2>
-          <p style="font-size:11px;color:var(--text2);margin:2px 0 0">
-            <kbd style="background:var(--card2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:10px">F2</kbd> শর্টকাট &nbsp;|&nbsp;
-            <span class="rt-live">Realtime</span>
-          </p>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div id="posLogoDisplay" style="display:none;width:42px;height:42px;border-radius:10px;overflow:hidden;flex-shrink:0;border:1px solid var(--border)">
+            <img id="posLogoImg" src="" style="width:100%;height:100%;object-fit:cover">
+          </div>
+          <div>
+            <h2 style="font-size:18px;font-weight:700;margin:0" id="posShopNameDisplay">🖥️ POS — অফলাইন বিলিং</h2>
+            <p style="font-size:11px;color:var(--text2);margin:2px 0 0;display:flex;align-items:center;gap:8px">
+              <kbd style="background:var(--card2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:10px">F2</kbd>
+              <span class="rt-live">Live</span>
+              <span id="posTodayTotal" style="color:var(--success);font-weight:600"></span>
+            </p>
+          </div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap" id="posAdvancedBtns">
           <button class="btn btn-ghost btn-sm" onclick="showPage('products',document.querySelector('.sidebar-item[onclick*=products]'))">📦 পণ্য যোগ</button>
@@ -2541,12 +2559,17 @@ function showPage(id,btn){
       toast('⛔ আপনার এই পেজে অ্যাক্সেস নেই','warn');return;
     }
   }
+  // Save scroll position of current page before switching
+  const curActive=document.querySelector('.page.active');
+  if(curActive) saveScrollPosition(curActive.id.replace('page-',''));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   $(`page-${id}`).classList.add('active');
   document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,due:renderDuePage,expenses:renderExp,activity:renderActivityLog,settings:loadSettings};
   if(renderers[id]) renderers[id]();
+  // Restore scroll position for this page
+  restoreScrollPosition(id);
   if(window.innerWidth<=768) closeSidebar();
   sessionStorage.setItem('ss_admin_page', id);
 }
@@ -3657,6 +3680,8 @@ let _posPayment='Cash';
 let _posCatFilter='';
 
 function renderPOS(){
+  // Update POS header (logo, shop name, live counter)
+  updatePOSHeader();
   const q=($('posSearch')||{value:''}).value.toLowerCase();
   // Init cashTenderRow visibility
   const cr=$('cashTenderRow');
@@ -3841,7 +3866,8 @@ function updatePosBill(){
     updatePosTotals();return;
   }
   container.innerHTML=posBill.map(item=>`
-    <div class="pos-bill-item">
+    <div class="pos-bill-item" ontouchstart="swipeStart(event,'${item.productId}')" ontouchmove="swipeMove(event,'${item.productId}')" ontouchend="swipeEnd(event,'${item.productId}')">
+      <div class="swipe-delete-reveal" onclick="removePOS('${item.productId}');this.parentElement.classList.remove('swipe-open')">🗑️</div>
       <div class="pi-img">${item.img?`<img src="${item.img}" alt="">`:`${item.icon}`}</div>
       <div class="pi-info">
         <div class="pi-name" title="${item.name}">${item.name}</div>
@@ -3906,6 +3932,8 @@ function updatePosTotals(){
   if($('posTax')) $('posTax').textContent=fmt(tax);
   if($('posTotal')) $('posTotal').textContent=fmt(total);
   calcChange();
+  // Smart discount suggestion
+  renderSmartDiscountHint();
 }
 
 function _buildSale(){
@@ -8102,6 +8130,220 @@ function addOrderNote(orderId){
   logActivity('💬','অর্ডার নোট',`${orderId} — ${text.slice(0,30)}`);
 }
 
+// ══════════════════════════════════════
+//  🖌️ LOGO + LIVE COUNTER ON POS
+// ══════════════════════════════════════
+function updatePOSHeader(){
+  // Logo
+  const logoDiv=$('posLogoDisplay'),logoImg=$('posLogoImg');
+  if(logoDiv&&logoImg){
+    if(DB.settings.logo){logoDiv.style.display='block';logoImg.src=DB.settings.logo;}
+    else logoDiv.style.display='none';
+  }
+  // Shop name
+  const nameEl=$('posShopNameDisplay');
+  if(nameEl) nameEl.textContent=`🖥️ ${DB.settings.name||'SuperShop'} — POS`;
+  // Live today sales counter
+  const todayStr=today();
+  const todayRev=DB.sales.filter(s=>s.time.slice(0,10)===todayStr).reduce((a,s)=>a+s.total,0);
+  const todayCount=DB.sales.filter(s=>s.time.slice(0,10)===todayStr).length;
+  const el=$('posTodayTotal');
+  if(el) el.textContent=todayCount>0?`আজ ${todayCount}টি বিল — ${fmt(todayRev)}`:'আজ কোনো বিক্রয় নেই';
+}
+
+// ══════════════════════════════════════
+//  📱 SWIPE TO DELETE (bill items)
+// ══════════════════════════════════════
+let _swipeStartX={};let _swipeStartY={};
+function swipeStart(e,pid){
+  const t=e.touches[0];
+  _swipeStartX[pid]=t.clientX;_swipeStartY[pid]=t.clientY;
+}
+function swipeMove(e,pid){
+  if(!_swipeStartX[pid]) return;
+  const t=e.touches[0];
+  const dx=_swipeStartX[pid]-t.clientX;
+  const dy=Math.abs(_swipeStartY[pid]-t.clientY);
+  if(dy>20) return; // vertical scroll — ignore
+  if(dx>30) e.currentTarget.classList.add('swipe-open');
+  else if(dx<-10) e.currentTarget.classList.remove('swipe-open');
+}
+function swipeEnd(e,pid){delete _swipeStartX[pid];delete _swipeStartY[pid];}
+// Close swipe on tap outside
+document.addEventListener('touchstart',e=>{
+  if(!e.target.closest('.pos-bill-item')){
+    document.querySelectorAll('.pos-bill-item.swipe-open').forEach(el=>el.classList.remove('swipe-open'));
+  }},{passive:true});
+
+// ══════════════════════════════════════
+//  💡 SMART DISCOUNT SUGGESTION
+// ══════════════════════════════════════
+function getSmartDiscountSuggestion(total){
+  if(total<=0) return null;
+  const roundTargets=[10,20,25,50,100,150,200,250,500,1000];
+  for(const step of roundTargets){
+    const remainder=total%step;
+    if(remainder>0&&remainder<=step*0.12){ // within 12% of step
+      const roundedDown=total-remainder;
+      if(roundedDown>0&&remainder>=1) return{target:roundedDown,save:remainder};
+    }
+    const toNext=step-(total%step);
+    if(toNext>0&&toNext<=step*0.08){ // within 8% above
+      return{target:total+toNext,add:toNext};
+    }
+  }
+  return null;
+}
+function renderSmartDiscountHint(){
+  const totalEl=$('posTotal');if(!totalEl)return;
+  const total=parseFloat(totalEl.textContent.replace(/[^\d.]/g,''))||0;
+  let hintEl=$('smartDiscHint');
+  const sug=getSmartDiscountSuggestion(total);
+  if(!sug){if(hintEl)hintEl.style.display='none';return;}
+  if(!hintEl){
+    hintEl=document.createElement('div');
+    hintEl.id='smartDiscHint';
+    hintEl.style.cssText='margin-top:4px;padding:5px 10px;background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);border-radius:8px;font-size:11px;color:var(--accent3);cursor:pointer;display:flex;align-items:center;gap:6px';
+    totalEl.parentElement?.appendChild(hintEl);
+  }
+  hintEl.style.display='flex';
+  if(sug.save){
+    hintEl.innerHTML=`💡 ${fmt(sug.save)} ছাড় দিলে গোলমাল ৳${sug.target}`;
+    hintEl.onclick=()=>{
+      const di=$('discInput');const dt=$('discType');
+      if(di&&dt){di.value=sug.save.toFixed(0);dt.value='flat';updatePosTotals&&updatePosTotals();}
+      toast(`💡 ৳${sug.save} ছাড় প্রয়োগ করা হয়েছে`);
+    };
+  }else if(sug.add){
+    hintEl.innerHTML=`💡 ৳${sug.add} বেশি নিলে গোলমাল ৳${sug.target}`;
+    hintEl.onclick=null;
+  }
+}
+
+// ══════════════════════════════════════
+//  📋 PRINTABLE PRODUCT CATALOG
+// ══════════════════════════════════════
+function printProductCatalog(){
+  const s=DB.settings;
+  const cats=DB.cats;
+  const byCat={};
+  DB.products.filter(p=>p.stock>0).forEach(p=>{
+    const catName=cats.find(c=>c.id===p.cat)?.name||'অন্যান্য';
+    if(!byCat[catName]) byCat[catName]=[];
+    byCat[catName].push(p);
+  });
+  const rows=Object.entries(byCat).map(([cat,prods])=>`
+    <tr><td colspan="4" style="background:#f8f8f8;font-weight:700;padding:8px 10px;font-size:13px">${cat}</td></tr>
+    ${prods.map(p=>`<tr>
+      <td style="padding:7px 10px">${p.icon||'📦'} ${p.name}</td>
+      <td style="padding:7px 10px;text-align:center">${p.unit||'পিস'}</td>
+      <td style="padding:7px 10px;text-align:right;font-weight:600">${fmt(p.price)}</td>
+      <td style="padding:7px 10px;text-align:center;color:${p.stock<5?'#e94560':'#155724'}">${p.stock}</td>
+    </tr>`).join('')}`).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>পণ্য তালিকা — ${s.name||'SuperShop'}</title>
+<style>
+@page{size:A4;margin:14mm}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:12px;color:#1a2639}
+.header{text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e94560}
+.header h1{font-size:20px;font-weight:800;color:#e94560}
+.header p{font-size:11px;color:#666;margin-top:3px}
+table{width:100%;border-collapse:collapse}
+th{background:#1a2639;color:#fff;padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+th:nth-child(2),th:nth-child(3),th:nth-child(4){text-align:center}
+td{border-bottom:1px solid #eee}
+.footer{text-align:center;margin-top:16px;font-size:10px;color:#999;border-top:1px solid #eee;padding-top:8px}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head>
+<body>
+<div class="header">
+  ${s.logo?`<img src="${s.logo}" style="height:50px;margin-bottom:8px"><br>`:''}
+  <h1>${s.name||'SuperShop'}</h1>
+  <p>${s.addr||''} ${s.phone?'| 📞 '+s.phone:''} | তৈরি: ${new Date().toLocaleDateString('bn-BD')}</p>
+</div>
+<table>
+  <thead><tr><th>পণ্যের নাম</th><th>একক</th><th>মূল্য</th><th>স্টক</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer">মোট ${DB.products.filter(p=>p.stock>0).length}টি পণ্য | ${s.name||'SuperShop'} পণ্য তালিকা</div>
+<script>window.addEventListener('load',()=>window.print())<\/script>
+</body></html>`;
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  window.open(url,'_blank');
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  toast('📋 পণ্য তালিকা প্রস্তুত — প্রিন্ট ডায়ালগ খুলবে');
+  logActivity('📋','পণ্য তালিকা প্রিন্ট',`${DB.products.filter(p=>p.stock>0).length}টি পণ্য`);
+}
+
+// ══════════════════════════════════════
+//  🔢 BULK BARCODE GENERATE
+// ══════════════════════════════════════
+function bulkBarcodeGenerate(){
+  const noBarcode=DB.products.filter(p=>!p.barcode);
+  if(!noBarcode.length){toast('সব পণ্যে ইতিমধ্যে বারকোড আছে ✅');return;}
+  confirm2(`${noBarcode.length}টি পণ্যে বারকোড নেই। সবগুলোতে স্বয়ংক্রিয়ভাবে বারকোড তৈরি করবেন?`,()=>{
+    let count=0;
+    noBarcode.forEach(p=>{
+      p.barcode='BC'+Date.now().toString().slice(-8)+(count++).toString().padStart(3,'0');
+    });
+    save(KEYS.products,DB.products);
+    renderProducts();
+    toast(`✅ ${count}টি পণ্যে বারকোড তৈরি হয়েছে`);
+    logActivity('🔢','Bulk বারকোড তৈরি',`${count}টি পণ্য`);
+    realtimeUpdate();
+  });
+}
+
+// ══════════════════════════════════════
+//  ⏳ SESSION IDLE TIMER INDICATOR
+// ══════════════════════════════════════
+function getIdleMinutes(){
+  return Math.floor((Date.now()-_lastActivity)/60000);
+}
+function renderIdleIndicator(){
+  let el=$('idleIndicator');
+  if(!el){
+    el=document.createElement('span');
+    el.id='idleIndicator';
+    el.style.cssText='font-size:10px;color:var(--text3);margin-left:8px';
+    const nb=$('netStatusChip');
+    if(nb&&nb.parentElement) nb.parentElement.insertBefore(el,nb.nextSibling);
+  }
+  if(!isAdmin){el.textContent='';return;}
+  const mins=getIdleMinutes();
+  const autoMins=DB.settings.autoLogoutMinutes||0;
+  if(mins<1){el.textContent='';return;}
+  const remaining=autoMins>0?autoMins-mins:null;
+  if(remaining!==null&&remaining<=5&&remaining>0){
+    el.textContent=`⚠️ ${remaining}মিনিটে logout`;
+    el.style.color='var(--warning)';
+  }else if(mins>=5){
+    el.textContent=`💤 ${mins}মিনিট নিষ্ক্রিয়`;
+    el.style.color='var(--text3)';
+  }else{
+    el.textContent='';
+  }
+}
+setInterval(()=>{if(isAdmin) renderIdleIndicator();},30000);
+
+// ══════════════════════════════════════
+//  📗 PAGE SCROLL POSITION PERSIST
+// ══════════════════════════════════════
+const _scrollPositions={};
+function saveScrollPosition(pageId){
+  const content=$('adminContent');
+  if(content) _scrollPositions[pageId]=content.scrollTop;
+}
+function restoreScrollPosition(pageId){
+  const content=$('adminContent');
+  if(content&&_scrollPositions[pageId]!==undefined){
+    setTimeout(()=>{content.scrollTop=_scrollPositions[pageId]||0;},80);
+  }else if(content){
+    content.scrollTop=0;
+  }
+}
+
 function clearActivityLog(){
   confirm2('সব কার্যক্রম লগ মুছে ফেলবেন?',()=>{
     DB.actLog=[];save(KEYS.actLog,[]);renderActivityLog();
@@ -8814,6 +9056,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   loadBrandColor();
   // Online/offline status
   updateNetStatus();
+  // Idle timer indicator
+  renderIdleIndicator();
   // Branch selector (multi-branch)
   if(!DB.settings.branches) DB.settings.branches=[];
   updateBranchSelector();
