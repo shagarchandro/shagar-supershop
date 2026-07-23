@@ -1977,6 +1977,23 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <div class="form-group"><label>🎨 রিসিপ্টের কাস্টম বার্তা (Footer)</label><input id="setReceiptFooter" placeholder="যেমন: আবার আসবেন! | ফোন: 01700000000" maxlength="120"></div>
         <div class="form-group"><label>🔒 Auto-Logout সময় (মিনিট, 0 = বন্ধ)</label><input id="setAutoLogout" type="number" min="0" max="480" placeholder="যেমন: 30 মিনিট"></div>
 
+        <div class="section-title" style="margin-top:20px">📞 যোগাযোগ ও সামাজিক মাধ্যম</div>
+        <div class="two-col">
+          <div class="form-group"><label>📧 ইমেইল</label><input id="setEmail" placeholder="shop@example.com"></div>
+          <div class="form-group"><label>🌐 ওয়েবসাইট</label><input id="setWebsite" placeholder="https://example.com"></div>
+        </div>
+        <div class="two-col">
+          <div class="form-group"><label>📘 Facebook Page URL</label><input id="setFacebook" placeholder="https://facebook.com/yourpage"></div>
+          <div class="form-group"><label>📸 Instagram URL</label><input id="setInstagram" placeholder="https://instagram.com/yourpage"></div>
+        </div>
+        <div class="two-col">
+          <div class="form-group"><label>📱 WhatsApp নম্বর</label><input id="setWhatsapp" placeholder="01700000000"></div>
+          <div class="form-group"><label>🕐 ব্যবসার সময়</label><input id="setHours" placeholder="সকাল ৯টা — রাত ১০টা"></div>
+        </div>
+        <div class="form-group"><label>📝 Footer বিবরণ</label><input id="setFooterDesc" placeholder="দোকান সম্পর্কে সংক্ষিপ্ত বিবরণ..."></div>
+        <div class="form-group"><label>🔗 দ্রুত লিংক ১ (নাম | URL)</label><input id="setQuickLink1" placeholder="যেমন: আমাদের সম্পর্কে | /about"></div>
+        <div class="form-group"><label>🔗 দ্রুত লিংক ২ (নাম | URL)</label><input id="setQuickLink2" placeholder="যেমন: রিটার্ন পলিসি | /returns"></div>
+
         <div class="section-title" style="margin-top:16px">🏪 শাখা ব্যবস্থাপনা (Multi-Branch)</div>
         <div class="toolbar" style="margin-bottom:10px">
           <div class="spacer"></div>
@@ -2161,17 +2178,18 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 <footer class="site-footer" id="siteFooter">
   <div class="footer-grid">
     <div>
-      <div class="footer-brand">🛒 Super<span>Shop</span></div>
-      <p class="footer-desc" id="footerDesc">সেরা পণ্য, সেরা দামে। আমাদের অনলাইন ও অফলাইন শপ থেকে কেনাকাটা করুন এবং সেরা অভিজ্ঞতা নিন।</p>
+      <div class="footer-brand" id="footerBrand">🛒 Super<span>Shop</span></div>
+      <p class="footer-desc" id="footerDesc">সেরা পণ্য, সেরা দামে। আমাদের অনলাইন ও অফলাইন শপ থেকে কেনাকাটা করুন।</p>
       <div class="footer-pay-icons" style="margin-top:12px">
         <span class="pay-chip cash">💵 Cash</span>
         <span class="pay-chip card">💳 Card</span>
         <span class="pay-chip mobile">📱 Mobile Banking</span>
       </div>
+      <div id="footerSocial" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"></div>
     </div>
     <div>
       <div class="footer-heading">দ্রুত লিংক</div>
-      <ul class="footer-links">
+      <ul class="footer-links" id="footerQuickLinks">
         <li onclick="switchPanel('shop')">🏪 Shop</li>
         <li onclick="toggleCart()">🛒 Cart</li>
         <li onclick="showCustAuth('login')">👤 Login</li>
@@ -2180,11 +2198,12 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     </div>
     <div>
       <div class="footer-heading">যোগাযোগ</div>
-      <ul class="footer-links">
+      <ul class="footer-links" id="footerContactList">
         <li id="footerPhone">📞 01700000000</li>
         <li id="footerAddr">📍 ঢাকা, বাংলাদেশ</li>
-        <li>🕐 সকাল ৯টা — রাত ১০টা</li>
-        <li>✉️ support@supershop.com</li>
+        <li id="footerHours">🕐 সকাল ৯টা — রাত ১০টা</li>
+        <li id="footerEmail" style="display:none">✉️ </li>
+        <li id="footerWebsite" style="display:none">🌐 </li>
       </ul>
     </div>
   </div>
@@ -4517,6 +4536,9 @@ function loadSettings(){
   const mt=$('setMonthlyTarget');if(mt) mt.value=s.monthlyTarget||'';
   const rf=$('setReceiptFooter');if(rf) rf.value=s.receiptFooter||'';
   const al=$('setAutoLogout');if(al) al.value=s.autoLogoutMinutes||0;
+  // Contact & social
+  const fields=['Email','Website','Facebook','Instagram','Whatsapp','Hours','FooterDesc','QuickLink1','QuickLink2'];
+  fields.forEach(f=>{const el=$('set'+f);if(el) el.value=s[f.toLowerCase()]||'';});
   // Apply saved brand color to picker UI
   if(s.brandColor){
     const cl=$('currentColorLabel');if(cl){cl.textContent=s.brandColor;cl.style.color=s.brandColor;}
@@ -4604,6 +4626,15 @@ function saveSettings(){
     currency:$('setCurrency').value||'৳',
     monthlyTarget:parseFloat(($('setMonthlyTarget')||{value:0}).value)||0,
     taxMode:($('setTaxMode')||{value:'exclusive'}).value,
+    email:($('setEmail')||{value:''}).value,
+    website:($('setWebsite')||{value:''}).value,
+    facebook:($('setFacebook')||{value:''}).value,
+    instagram:($('setInstagram')||{value:''}).value,
+    whatsapp:($('setWhatsapp')||{value:''}).value,
+    hours:($('setHours')||{value:''}).value,
+    footerdesc:($('setFooterDesc')||{value:''}).value,
+    quicklink1:($('setQuickLink1')||{value:''}).value,
+    quicklink2:($('setQuickLink2')||{value:''}).value,
     receiptFooter:($('setReceiptFooter')||{value:''}).value,
     autoLogoutMinutes:parseInt(($('setAutoLogout')||{value:0}).value)||0
   };
@@ -9452,12 +9483,39 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   function updateFooter(){
     const s=DB.settings;
-    const fn=$('footerName');const fd=$('footerDesc');
-    const fp=$('footerPhone');const fa=$('footerAddr');
-    if(fn) fn.textContent=s.name||'SuperShop';
-    if(fd) fd.textContent=`${s.name||'SuperShop'} — সেরা পণ্য, সেরা দামে।`;
-    if(fp) fp.textContent=`📞 ${s.phone||'01700000000'}`;
-    if(fa) fa.textContent=`📍 ${s.addr||'ঢাকা, বাংলাদেশ'}`;
+    // Basic info
+    const fn=$('footerName');if(fn) fn.textContent=s.name||'SuperShop';
+    const fd=$('footerDesc');if(fd) fd.textContent=s.footerdesc||`${s.name||'SuperShop'} — সেরা পণ্য, সেরা দামে। আমাদের দোকান থেকে কেনাকাটা করুন।`;
+    const fp=$('footerPhone');if(fp) fp.textContent=`📞 ${s.phone||'01700000000'}`;
+    const fa=$('footerAddr');if(fa) fa.textContent=`📍 ${s.addr||'ঢাকা, বাংলাদেশ'}`;
+    // Hours
+    const fh=$('footerHours');if(fh) fh.textContent=s.hours?`🕐 ${s.hours}`:'🕐 সকাল ৯টা — রাত ১০টা';
+    // Email
+    const fe=$('footerEmail');
+    if(fe){if(s.email){fe.style.display='';fe.innerHTML=`<a href="mailto:${s.email}" style="color:inherit;text-decoration:none">✉️ ${s.email}</a>`;}else fe.style.display='none';}
+    // Website
+    const fw=$('footerWebsite');
+    if(fw){if(s.website){fw.style.display='';fw.innerHTML=`<a href="${s.website}" target="_blank" style="color:inherit;text-decoration:none">🌐 ${s.website.replace(/^https?:\/\//,'')}</a>`;}else fw.style.display='none';}
+    // Social icons
+    const fs=$('footerSocial');
+    if(fs){
+      const socials=[];
+      if(s.facebook) socials.push(`<a href="${s.facebook}" target="_blank" style="background:#1877f2;color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">📘 Facebook</a>`);
+      if(s.instagram) socials.push(`<a href="${s.instagram}" target="_blank" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">📸 Instagram</a>`);
+      if(s.whatsapp) socials.push(`<a href="https://wa.me/88${s.whatsapp.replace(/^0/,'')}" target="_blank" style="background:#25d366;color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">📱 WhatsApp</a>`);
+      fs.innerHTML=socials.join('');
+    }
+    // Footer brand name
+    const fb=$('footerBrand');
+    if(fb) fb.innerHTML=`🛒 ${(s.name||'SuperShop').replace(/(\S+)$/,'<span>$1</span>')}`;
+    // Quick links
+    const fq=$('footerQuickLinks');
+    if(fq){
+      const extras=[];
+      if(s.quicklink1){const [label,url]=s.quicklink1.split('|').map(x=>x.trim());if(label) extras.push(`<li onclick="${url?`window.open('${url}','_blank')`:''}">🔗 ${label}</li>`);}
+      if(s.quicklink2){const [label,url]=s.quicklink2.split('|').map(x=>x.trim());if(label) extras.push(`<li onclick="${url?`window.open('${url}','_blank')`:''}">🔗 ${label}</li>`);}
+      fq.innerHTML=`<li onclick="switchPanel('shop')">🏪 Shop</li><li onclick="toggleCart()">🛒 Cart</li><li onclick="showCustAuth('login')">👤 Login</li><li onclick="showCustAuth('reg')">📝 Register</li>${extras.join('')}`;
+    }
   }
   updateFooter();
   window._updateFooter=updateFooter;
