@@ -1359,6 +1359,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     </div>
     <div class="sidebar-section">
       <button class="sidebar-item" onclick="showPage('activity',this)"><span class="icon">📜</span> কার্যক্রম লগ</button>
+      <button class="sidebar-item" onclick="showPage('cashbook',this)"><span class="icon">💸</span> ক্যাশবুক</button>
+      <button class="sidebar-item" onclick="showPage('appointments',this)"><span class="icon">📆</span> অ্যাপয়েন্টমেন্ট</button>
+      <button class="sidebar-item" onclick="showPage('ai',this)"><span class="icon">🤖</span> AI সহকারী</button>
       <button class="sidebar-item" onclick="showPage('settings',this)"><span class="icon">⚙️</span> সেটিংস</button>
     </div>
   </div>
@@ -1730,6 +1733,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
               <button id="splitPayBtn" onclick="toggleSplitPayment()" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text2);padding:6px 8px;border-radius:7px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:600">💳 Split Payment</button>
               <button onclick="repeatLastSale()" title="আগের বিল রিপিট করুন" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text2);padding:6px 8px;border-radius:7px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:600">⚡ রিপিট</button>
               <button onclick="openPriceTagModal()" title="শেলফ মূল্য ট্যাগ" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text2);padding:6px 8px;border-radius:7px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:600">🏷️ ট্যাগ</button>
+              <button onclick="generateBillWhatsApp()" title="WhatsApp-এ বিল পাঠান" style="flex:1;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.3);color:#25d366;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:600">📱 WhatsApp</button>
             </div>
           </div><!-- end pos-footer -->
         </div><!-- end pos-right -->
@@ -1876,6 +1880,69 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <thead><tr><th>শিরোনাম</th><th>ক্যাটাগরি</th><th>পরিমাণ</th><th>তারিখ</th><th>নোট</th><th>একশন</th></tr></thead>
         <tbody id="expBody"></tbody>
       </table></div>
+    </div>
+
+    <!-- CASHBOOK -->
+    <div class="page" id="page-cashbook">
+      <div class="page-header"><h2>💸 ক্যাশবুক</h2><p>দৈনিক নগদ আয়-ব্যয়ের হিসাব</p></div>
+      <div class="stat-grid" id="cashbookStats"></div>
+      <div class="toolbar">
+        <input type="date" id="cbDate" onchange="renderCashbook()">
+        <select id="cbFilter" onchange="renderCashbook()" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:inherit">
+          <option value="all">সব</option>
+          <option value="in">আয় (Income)</option>
+          <option value="out">ব্যয় (Expense)</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn btn-primary" onclick="openCashbookEntryModal()">➕ এন্ট্রি যোগ করুন</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCashbookCSV()">📥 CSV</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>সময়</th><th>বিবরণ</th><th>ধরন</th><th>পরিমাণ</th><th>ব্যালেন্স</th><th>একশন</th></tr></thead>
+        <tbody id="cashbookBody"></tbody>
+      </table></div>
+    </div>
+
+    <!-- APPOINTMENTS -->
+    <div class="page" id="page-appointments">
+      <div class="page-header"><h2>📆 অ্যাপয়েন্টমেন্ট ও সিরিয়াল</h2><p>বুকিং ও রিমাইন্ডার ব্যবস্থাপনা</p></div>
+      <div class="toolbar">
+        <input type="date" id="apptDate" onchange="renderAppointments()">
+        <select id="apptStatus" onchange="renderAppointments()" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:inherit">
+          <option value="all">সব</option>
+          <option value="pending">⏳ অপেক্ষমান</option>
+          <option value="confirmed">✅ নিশ্চিত</option>
+          <option value="done">✔️ সম্পন্ন</option>
+          <option value="cancelled">❌ বাতিল</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn btn-primary" onclick="openApptModal()">➕ নতুন বুকিং</button>
+      </div>
+      <div id="apptCalendarStrip" style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none"></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>সময়</th><th>কাস্টমার</th><th>সেবা</th><th>স্ট্যাটাস</th><th>নোট</th><th>একশন</th></tr></thead>
+        <tbody id="appointmentsBody"></tbody>
+      </table></div>
+    </div>
+
+    <!-- AI ASSISTANT -->
+    <div class="page" id="page-ai">
+      <div class="page-header"><h2>🤖 AI সহকারী</h2><p>Claude AI দিয়ে বিক্রয় বিশ্লেষণ ও পরামর্শ</p></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px" id="aiQuickBtns">
+        <button class="btn btn-ghost" onclick="askAI('আজকের বিক্রয় বিশ্লেষণ করো এবং কোন পণ্য সবচেয়ে বেশি বিক্রি হয়েছে বলো')">📊 আজকের বিশ্লেষণ</button>
+        <button class="btn btn-ghost" onclick="askAI('গত সপ্তাহের তুলনায় এই সপ্তাহের বিক্রয় কেমন? উন্নতি বা অবনতির কারণ বিশ্লেষণ করো')">📈 সাপ্তাহিক তুলনা</button>
+        <button class="btn btn-ghost" onclick="askAI('কোন পণ্যগুলো slow-moving এবং কী করলে বিক্রয় বাড়বে? পরামর্শ দাও')">💡 Slow মুভিং পণ্য</button>
+        <button class="btn btn-ghost" onclick="askAI('আমার দোকানের top customers কারা এবং তাদের ধরে রাখার জন্য কী করা উচিত?')">👑 Top Customer পরামর্শ</button>
+        <button class="btn btn-ghost" onclick="askAI('এই মাসের লাভ-ক্ষতির হিসাব করো এবং খরচ কমানোর উপায় বলো')">💰 লাভ-ক্ষতি বিশ্লেষণ</button>
+        <button class="btn btn-ghost" onclick="askAI('স্টক কম আছে এমন পণ্যের তালিকা দাও এবং কতটা রিঅর্ডার করা উচিত বলো')">📦 স্টক পরামর্শ</button>
+      </div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+        <div style="display:flex;gap:8px">
+          <input id="aiInput" placeholder="AI-কে যেকোনো প্রশ্ন করুন বাংলায়..." style="flex:1;background:var(--primary);border:1.5px solid var(--border);color:var(--text);padding:10px 14px;border-radius:9px;font-family:inherit;font-size:13px;outline:none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askAI($('aiInput').value)}">
+          <button class="btn btn-primary" onclick="askAI($('aiInput').value)">🤖 জিজ্ঞেস করুন</button>
+        </div>
+      </div>
+      <div id="aiConversation" style="display:flex;flex-direction:column;gap:10px;max-height:500px;overflow-y:auto"></div>
     </div>
 
     <!-- ACTIVITY LOG -->
@@ -2405,7 +2472,7 @@ const ROLE_PERMISSIONS={
   // Cashier: দৈনিক বিক্রয় কাজ — POS, অর্ডার, বিক্রয়, বাকি আদায়। স্টক/মূল্য/ব্যবসায়িক তথ্য পরিবর্তন করতে পারবে না
   cashier:{
     pages:['pos','orders','sales','due'],
-    hideSidebarPages:['products','categories','customers','expenses','activity','settings'],
+    hideSidebarPages:['products','categories','customers','expenses','activity','settings','cashbook','ai'],
     posAdvanced:'limited',   // শুধু Day Close + Undo
     mobileNav:['sales','search'],
     canDelete:false,         // ডিলিট করতে পারবে না
@@ -2422,7 +2489,7 @@ const ROLE_PERMISSIONS={
   // POS Operator: শুধুমাত্র বিল বানানো — আর কিছুই না
   pos:{
     pages:['pos'],
-    hideSidebarPages:['dashboard','products','categories','orders','sales','customers','due','expenses','activity','settings'],
+    hideSidebarPages:['dashboard','products','categories','orders','sales','customers','due','expenses','activity','settings','cashbook','appointments','ai'],
     posAdvanced:'none',      // কোনো advanced বাটন নেই
     mobileNav:[],            // শুধু POS নিজেই
     canDelete:false,
@@ -2552,7 +2619,7 @@ function showPage(id,btn){
   $(`page-${id}`).classList.add('active');
   document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,due:renderDuePage,expenses:renderExp,activity:renderActivityLog,settings:loadSettings};
+  const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,due:renderDuePage,expenses:renderExp,activity:renderActivityLog,settings:loadSettings,cashbook:renderCashbook,appointments:renderAppointments,ai:()=>{}};
   if(renderers[id]) renderers[id]();
   // Restore scroll position for this page
   restoreScrollPosition(id);
@@ -8330,6 +8397,335 @@ function restoreScrollPosition(pageId){
   }
 }
 
+// ══════════════════════════════════════
+//  📱 WHATSAPP BILL SHARE FROM POS
+// ══════════════════════════════════════
+function generateBillWhatsApp(){
+  if(!posBill.length){toast('বিলে কোনো পণ্য নেই','warn');return;}
+  const sale=_buildSale();if(!sale)return;
+  _commitSale(sale);
+  const phone=($('posCustPhone')||{value:''}).value.trim();
+  const s=DB.settings;
+  const items=sale.items.map(i=>`  • ${i.name} × ${i.qty} = ${fmt(i.price*i.qty)}`).join('\n');
+  const msg=`🧾 *${s.name||'SuperShop'} — বিল রসিদ*\n`+
+    `━━━━━━━━━━━━━━━━\n`+
+    `📋 বিল নং: *${sale.id}*\n`+
+    `📅 তারিখ: ${new Date(sale.time).toLocaleDateString('bn-BD')}\n`+
+    `👤 কাস্টমার: ${sale.custName}\n`+
+    `━━━━━━━━━━━━━━━━\n`+
+    `${items}\n`+
+    `━━━━━━━━━━━━━━━━\n`+
+    `💰 সাবটোটাল: ${fmt(sale.subtotal)}\n`+
+    (sale.discount>0?`🎁 ছাড়: -${fmt(sale.discount)}\n`:'')+
+    (sale.tax>0?`📊 ট্যাক্স: ${fmt(sale.tax)}\n`:'')+
+    `✅ *মোট: ${fmt(sale.total)}*\n`+
+    (sale.dueAmount>0?`⚠️ বাকি: ${fmt(sale.dueAmount)}\n`:'')+
+    `💳 পেমেন্ট: ${sale.payment}\n`+
+    `━━━━━━━━━━━━━━━━\n`+
+    `🙏 ধন্যবাদ! আবার আসবেন\n`+
+    (s.phone?`📞 ${s.phone}`:'');
+  const cleanPhone=phone?phone.replace(/\D/g,'').replace(/^0/,'88'):'';
+  const url=`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+  window.open(url,'_blank');
+  toast('📱 WhatsApp খুলছে — বিল পাঠানো হচ্ছে');
+  logActivity('📱','WhatsApp বিল শেয়ার',sale.id);
+}
+
+// ══════════════════════════════════════
+//  💸 CASHBOOK
+// ══════════════════════════════════════
+const CB_KEY='ss_cashbook';
+function getCashbookEntries(){
+  try{return JSON.parse(localStorage.getItem(CB_KEY)||'[]');}catch(e){return[];}
+}
+function saveCashbookEntries(entries){
+  localStorage.setItem(CB_KEY,JSON.stringify(entries));
+}
+function renderCashbook(){
+  const dateFilter=($('cbDate')||{value:''}).value||today();
+  const typeFilter=($('cbFilter')||{value:'all'}).value;
+  const all=getCashbookEntries();
+  let entries=all.filter(e=>e.date===dateFilter);
+  if(typeFilter!=='all') entries=entries.filter(e=>e.type===typeFilter);
+
+  // Stats
+  const dayEntries=all.filter(e=>e.date===dateFilter);
+  const totalIn=dayEntries.filter(e=>e.type==='in').reduce((s,e)=>s+e.amount,0);
+  const totalOut=dayEntries.filter(e=>e.type==='out').reduce((s,e)=>s+e.amount,0);
+  // Add today's POS sales as income
+  const posIncome=DB.sales.filter(s=>s.time.slice(0,10)===dateFilter).reduce((s,x)=>s+x.paidAmount||x.total,0);
+  const netBalance=totalIn+posIncome-totalOut;
+
+  $('cashbookStats').innerHTML=`
+    <div class="stat-card s1"><div class="icon">💰</div><div class="value">${fmt(totalIn+posIncome)}</div><div class="label">মোট আয়</div><div class="sub">POS: ${fmt(posIncome)} | অন্যান্য: ${fmt(totalIn)}</div></div>
+    <div class="stat-card s4"><div class="icon">💸</div><div class="value">${fmt(totalOut)}</div><div class="label">মোট ব্যয়</div></div>
+    <div class="stat-card s1" style="border-color:${netBalance>=0?'var(--success)':'var(--danger)'}"><div class="icon">${netBalance>=0?'📈':'📉'}</div><div class="value" style="color:${netBalance>=0?'var(--success)':'var(--danger)'}">${fmt(Math.abs(netBalance))}</div><div class="label">নিট ${netBalance>=0?'উদ্বৃত্ত':'ঘাটতি'}</div></div>
+  `;
+
+  // Running balance
+  let balance=0;
+  const rows=[
+    // POS auto entries
+    ...DB.sales.filter(s=>s.time.slice(0,10)===dateFilter).map(s=>({
+      id:'pos_'+s.id,type:'in',amount:s.paidAmount||s.total,
+      desc:`POS বিক্রয় — ${s.id} (${s.custName})`,
+      time:s.time,auto:true
+    })),
+    ...entries
+  ].sort((a,b)=>new Date(a.time)-new Date(b.time));
+
+  $('cashbookBody').innerHTML=rows.length?rows.map(e=>{
+    if(e.type==='in') balance+=e.amount;
+    else balance-=e.amount;
+    return`<tr>
+      <td style="font-size:11px;color:var(--text2)">${new Date(e.time).toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td>${e.desc}${e.auto?`<span class="badge badge-info" style="margin-left:6px;font-size:9px">POS Auto</span>`:''}</td>
+      <td><span class="badge badge-${e.type==='in'?'success':'danger'}">${e.type==='in'?'💰 আয়':'💸 ব্যয়'}</span></td>
+      <td style="color:${e.type==='in'?'var(--success)':'var(--danger)'};font-weight:700">${e.type==='in'?'+':'-'}${fmt(e.amount)}</td>
+      <td style="font-weight:600">${fmt(balance)}</td>
+      <td>${e.auto?'—':`<button class="btn btn-danger btn-sm" onclick="deleteCashbookEntry('${e.id}')">🗑️</button>`}</td>
+    </tr>`;
+  }).join('')
+  :'<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:24px">এই তারিখে কোনো এন্ট্রি নেই</td></tr>';
+}
+function openCashbookEntryModal(){
+  openModal('💸 নতুন ক্যাশ এন্ট্রি',`
+    <div class="two-col">
+      <div class="form-group"><label>ধরন</label>
+        <select id="cb_type" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%;font-family:inherit">
+          <option value="in">💰 আয় (Income)</option>
+          <option value="out">💸 ব্যয় (Expense)</option>
+        </select>
+      </div>
+      <div class="form-group"><label>পরিমাণ (৳)</label><input id="cb_amount" type="number" min="0" placeholder="0.00"></div>
+    </div>
+    <div class="form-group"><label>বিবরণ</label><input id="cb_desc" placeholder="যেমন: ভাড়া, বেতন, বিবিধ আয়..."></div>
+    <div class="form-group"><label>তারিখ ও সময়</label><input id="cb_time" type="datetime-local" value="${new Date().toISOString().slice(0,16)}"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveCashbookEntry()">💾 সেভ করুন</button>`);
+}
+function saveCashbookEntry(){
+  const type=($('cb_type')||{value:'in'}).value;
+  const amount=parseFloat(($('cb_amount')||{value:0}).value)||0;
+  const desc=($('cb_desc')||{value:''}).value.trim();
+  const time=($('cb_time')||{value:''}).value;
+  if(!amount||!desc){toast('পরিমাণ ও বিবরণ দিন','warn');return;}
+  const entries=getCashbookEntries();
+  const t=time?new Date(time).toISOString():new Date().toISOString();
+  entries.push({id:`cb${uid()}`,type,amount,desc,time:t,date:t.slice(0,10)});
+  saveCashbookEntries(entries);
+  closeModal();renderCashbook();
+  toast(`✅ ${type==='in'?'আয়':'ব্যয়'} এন্ট্রি যোগ হয়েছে`);
+  logActivity('💸',`ক্যাশবুক ${type==='in'?'আয়':'ব্যয়'}`,`${desc} — ${fmt(amount)}`);
+}
+function deleteCashbookEntry(id){
+  confirm2('এই এন্ট্রি মুছে ফেলবেন?',()=>{
+    const entries=getCashbookEntries().filter(e=>e.id!==id);
+    saveCashbookEntries(entries);renderCashbook();
+    toast('মুছে ফেলা হয়েছে','warn');
+  });
+}
+function exportCashbookCSV(){
+  const dateFilter=($('cbDate')||{value:''}).value||today();
+  const entries=getCashbookEntries().filter(e=>e.date===dateFilter);
+  const posEntries=DB.sales.filter(s=>s.time.slice(0,10)===dateFilter).map(s=>({
+    type:'in',amount:s.paidAmount||s.total,desc:`POS — ${s.id}`,time:s.time
+  }));
+  const all=[...posEntries,...entries].sort((a,b)=>new Date(a.time)-new Date(b.time));
+  const rows=[['সময়','বিবরণ','ধরন','পরিমাণ'],...all.map(e=>[
+    new Date(e.time).toLocaleTimeString('bn-BD'),e.desc,e.type==='in'?'আয়':'ব্যয়',e.amount
+  ])];
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`Cashbook-${dateFilter}.csv`;a.click();
+  toast('📥 ক্যাশবুক CSV ডাউনলোড হচ্ছে');
+}
+
+// ══════════════════════════════════════
+//  📆 APPOINTMENT SCHEDULER
+// ══════════════════════════════════════
+const APPT_KEY='ss_appointments';
+function getAppointments(){
+  try{return JSON.parse(localStorage.getItem(APPT_KEY)||'[]');}catch(e){return[];}
+}
+function saveAppointments(list){localStorage.setItem(APPT_KEY,JSON.stringify(list));}
+function renderAppointments(){
+  const dateFilter=($('apptDate')||{value:''}).value||today();
+  const statusFilter=($('apptStatus')||{value:'all'}).value;
+  const all=getAppointments();
+  // Calendar strip — 7 days
+  const strip=$('apptCalendarStrip');
+  if(strip){
+    strip.innerHTML=Array.from({length:7},(_,i)=>{
+      const d=new Date();d.setDate(d.getDate()+i-1);
+      const ds=d.toISOString().slice(0,10);
+      const cnt=all.filter(a=>a.date===ds).length;
+      const isSelected=ds===dateFilter;
+      return`<div onclick="$('apptDate').value='${ds}';renderAppointments()" style="flex-shrink:0;width:54px;background:${isSelected?'var(--accent)':'var(--card2)'};border:1.5px solid ${isSelected?'var(--accent)':'var(--border)'};border-radius:12px;padding:8px 4px;text-align:center;cursor:pointer;transition:var(--transition)">
+        <div style="font-size:10px;color:${isSelected?'rgba(255,255,255,.8)':'var(--text2)'}">${['রবি','সোম','মঙ্গল','বুধ','বৃহ','শুক্র','শনি'][d.getDay()]}</div>
+        <div style="font-size:16px;font-weight:700;color:${isSelected?'#fff':'var(--text)'}">${d.getDate()}</div>
+        ${cnt>0?`<div style="background:${isSelected?'rgba(255,255,255,.3)':'var(--accent)'};color:#fff;border-radius:99px;font-size:9px;padding:1px 5px;margin-top:2px">${cnt}</div>`:''}
+      </div>`;
+    }).join('');
+  }
+  let list=all.filter(a=>a.date===dateFilter);
+  if(statusFilter!=='all') list=list.filter(a=>a.status===statusFilter);
+  list.sort((a,b)=>a.time.localeCompare(b.time));
+  const statusIcons={pending:'⏳',confirmed:'✅',done:'✔️',cancelled:'❌'};
+  const statusBadges={pending:'badge-warn',confirmed:'badge-success',done:'badge-info',cancelled:'badge-danger'};
+  $('appointmentsBody').innerHTML=list.length?list.map(a=>`<tr>
+    <td style="font-weight:600;color:var(--accent2)">${a.time}</td>
+    <td><b>${a.custName}</b>${a.phone?`<br><span style="font-size:11px;color:var(--text2)">📞 ${a.phone}</span>`:''}</td>
+    <td>${a.service||'—'}</td>
+    <td><span class="badge ${statusBadges[a.status]||'badge-gray'}">${statusIcons[a.status]||''} ${a.status==='pending'?'অপেক্ষমান':a.status==='confirmed'?'নিশ্চিত':a.status==='done'?'সম্পন্ন':'বাতিল'}</span></td>
+    <td style="font-size:12px;color:var(--text2)">${a.note||'—'}</td>
+    <td style="display:flex;gap:4px">
+      <button class="btn btn-ghost btn-sm" onclick="updateApptStatus('${a.id}','confirmed')" title="নিশ্চিত করুন">✅</button>
+      <button class="btn btn-ghost btn-sm" onclick="updateApptStatus('${a.id}','done')" title="সম্পন্ন">✔️</button>
+      <button class="btn btn-whatsapp btn-sm" onclick="apptWhatsApp('${a.id}')" title="WhatsApp রিমাইন্ডার">📱</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteAppt('${a.id}')">🗑️</button>
+    </td>
+  </tr>`).join('')
+  :'<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:24px">এই তারিখে কোনো অ্যাপয়েন্টমেন্ট নেই</td></tr>';
+}
+function openApptModal(id){
+  const a=id?getAppointments().find(x=>x.id===id):{};
+  openModal(id?'অ্যাপয়েন্টমেন্ট সম্পাদনা':'📆 নতুন অ্যাপয়েন্টমেন্ট',`
+    <div class="two-col">
+      <div class="form-group"><label>কাস্টমার নাম *</label><input id="ap_name" value="${a?.custName||''}"></div>
+      <div class="form-group"><label>ফোন</label><input id="ap_phone" value="${a?.phone||''}"></div>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label>তারিখ *</label><input id="ap_date" type="date" value="${a?.date||today()}"></div>
+      <div class="form-group"><label>সময় *</label><input id="ap_time" type="time" value="${a?.time||'10:00'}"></div>
+    </div>
+    <div class="form-group"><label>সেবার ধরন</label><input id="ap_service" value="${a?.service||''}" placeholder="যেমন: হেয়ারকাট, ম্যাসাজ, ডাক্তার"></div>
+    <div class="form-group"><label>নোট</label><input id="ap_note" value="${a?.note||''}" placeholder="ঐচ্ছিক তথ্য"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveAppt('${id||''}')">💾 সেভ করুন</button>`);
+}
+function saveAppt(id){
+  const name=($('ap_name')||{value:''}).value.trim();
+  const date=($('ap_date')||{value:''}).value;
+  const time=($('ap_time')||{value:''}).value;
+  if(!name||!date||!time){toast('নাম, তারিখ ও সময় দিন','warn');return;}
+  const list=getAppointments();
+  const entry={id:id||`ap${uid()}`,custName:name,phone:($('ap_phone')||{value:''}).value,date,time,service:($('ap_service')||{value:''}).value,note:($('ap_note')||{value:''}).value,status:'pending',createdAt:new Date().toISOString()};
+  if(id){const idx=list.findIndex(x=>x.id===id);if(idx>=0)list[idx]={...list[idx],...entry};}
+  else list.push(entry);
+  saveAppointments(list);closeModal();renderAppointments();
+  toast('📆 অ্যাপয়েন্টমেন্ট সেভ হয়েছে ✅');
+  logActivity('📆','নতুন অ্যাপয়েন্টমেন্ট',`${name} — ${date} ${time}`);
+}
+function updateApptStatus(id,status){
+  const list=getAppointments();
+  const a=list.find(x=>x.id===id);
+  if(a){a.status=status;saveAppointments(list);renderAppointments();
+    toast(`✅ স্ট্যাটাস: ${status==='confirmed'?'নিশ্চিত':status==='done'?'সম্পন্ন':'আপডেট'}`);}
+}
+function deleteAppt(id){
+  confirm2('এই অ্যাপয়েন্টমেন্ট মুছে ফেলবেন?',()=>{
+    saveAppointments(getAppointments().filter(x=>x.id!==id));
+    renderAppointments();toast('মুছে ফেলা হয়েছে','warn');
+  });
+}
+function apptWhatsApp(id){
+  const a=getAppointments().find(x=>x.id===id);if(!a||!a.phone)return;
+  const shop=DB.settings.name||'SuperShop';
+  const msg=`📆 *${shop} — অ্যাপয়েন্টমেন্ট রিমাইন্ডার*\n\nপ্রিয় ${a.custName},\n\nআপনার অ্যাপয়েন্টমেন্ট:\n📅 তারিখ: ${new Date(a.date).toLocaleDateString('bn-BD')}\n⏰ সময়: ${a.time}\n${a.service?'💼 সেবা: '+a.service+'\n':''}\nঅনুগ্রহ করে সময়মতো আসুন।\n\n${DB.settings.phone?'📞 '+DB.settings.phone:''}`;
+  window.open(`https://wa.me/88${a.phone.replace(/^0/,'')}?text=${encodeURIComponent(msg)}`,'_blank');
+}
+// Check upcoming appointments and show reminder
+function checkApptReminders(){
+  if(!isAdmin) return;
+  const now=new Date();
+  const todayStr=today();
+  const upcoming=getAppointments().filter(a=>a.date===todayStr&&a.status==='confirmed');
+  upcoming.forEach(a=>{
+    const [h,m]=a.time.split(':').map(Number);
+    const apptTime=new Date();apptTime.setHours(h,m,0,0);
+    const minsUntil=Math.round((apptTime-now)/60000);
+    if(minsUntil>0&&minsUntil<=30&&!sessionStorage.getItem('appt_notif_'+a.id)){
+      sessionStorage.setItem('appt_notif_'+a.id,'1');
+      addNotif('📆 অ্যাপয়েন্টমেন্ট',`${a.custName} — ${a.time} (${minsUntil} মিনিটে)${a.service?' | '+a.service:''}`, 'info');
+      toast(`📆 ${a.custName}-এর অ্যাপয়েন্টমেন্ট ${minsUntil} মিনিটে`);
+    }
+  });
+}
+setInterval(()=>{if(isAdmin)checkApptReminders();},2*60*1000);
+
+// ══════════════════════════════════════
+//  🤖 AI ASSISTANT (Claude API)
+// ══════════════════════════════════════
+const _aiHistory=[];
+async function askAI(q){
+  q=(q||'').trim();
+  if(!q){const inp=$('aiInput');if(inp)q=inp.value.trim();}
+  if(!q){toast('প্রশ্ন লিখুন','warn');return;}
+  const inp=$('aiInput');if(inp)inp.value='';
+  // Build context from DB
+  const todayStr=today();
+  const todaySales=DB.sales.filter(s=>s.time.slice(0,10)===todayStr);
+  const thisMonth=todayStr.slice(0,7);
+  const monthSales=DB.sales.filter(s=>s.time.slice(0,7)===thisMonth);
+  const lowStock=DB.products.filter(p=>p.stock<5);
+  const topProds=Object.entries(DB.sales.reduce((m,s)=>{s.items?.forEach(i=>{m[i.name]=(m[i.name]||0)+i.qty});return m},{} )).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,q])=>`${n}(${q}টি)`).join(', ');
+  const context=`আমি ${DB.settings.name||'SuperShop'}-এর মালিক। আমার দোকানের তথ্য:
+আজ (${todayStr}): ${todaySales.length}টি বিক্রয়, আয়: ৳${todaySales.reduce((s,x)=>s+x.total,0).toFixed(0)}
+এই মাস: ${monthSales.length}টি বিক্রয়, আয়: ৳${monthSales.reduce((s,x)=>s+x.total,0).toFixed(0)}
+মোট পণ্য: ${DB.products.length}টি | কম স্টক: ${lowStock.length}টি (${lowStock.slice(0,3).map(p=>p.name).join(', ')})
+সেরা পণ্য: ${topProds}
+মোট কাস্টমার: ${DB.custUsers.length}জন নিবন্ধিত
+বকেয়া/বাকি: ${DB.sales.filter(s=>s.dueAmount>0).length}টি বিল`;
+  // Add message to conversation
+  const conv=$('aiConversation');
+  if(conv){
+    const userDiv=document.createElement('div');
+    userDiv.style.cssText='display:flex;justify-content:flex-end;margin-bottom:8px';
+    userDiv.innerHTML=`<div style="background:var(--accent);color:#fff;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;max-width:80%">${q}</div>`;
+    conv.appendChild(userDiv);
+    const loadDiv=document.createElement('div');
+    loadDiv.id='aiLoading';
+    loadDiv.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-bottom:8px';
+    loadDiv.innerHTML=`<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🤖</div><div style="background:var(--card2);border:1px solid var(--border);padding:10px 14px;border-radius:4px 14px 14px 14px;font-size:13px"><span style="animation:pulse 1s infinite">বিশ্লেষণ করছি...</span></div>`;
+    conv.appendChild(loadDiv);
+    conv.scrollTop=conv.scrollHeight;
+  }
+  try{
+    _aiHistory.push({role:'user',content:`${context}\n\nপ্রশ্ন: ${q}`});
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',max_tokens:1000,
+        system:'তুমি একজন বাংলাদেশি দোকানদারের AI সহকারী। সংক্ষিপ্ত, practical পরামর্শ দাও বাংলায়। emoji ব্যবহার করো।',
+        messages:_aiHistory.slice(-6)
+      })
+    });
+    const data=await resp.json();
+    const reply=data.content?.[0]?.text||'উত্তর পাওয়া যায়নি।';
+    _aiHistory.push({role:'assistant',content:reply});
+    // Remove loading, add response
+    const loadEl=$('aiLoading');if(loadEl)loadEl.remove();
+    if(conv){
+      const aiDiv=document.createElement('div');
+      aiDiv.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-bottom:8px';
+      aiDiv.innerHTML=`<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🤖</div><div style="background:var(--card2);border:1px solid var(--border);padding:12px 14px;border-radius:4px 14px 14px 14px;font-size:13px;line-height:1.7;max-width:85%;white-space:pre-wrap">${reply}</div>`;
+      conv.appendChild(aiDiv);
+      conv.scrollTop=conv.scrollHeight;
+    }
+  }catch(err){
+    const loadEl=$('aiLoading');if(loadEl)loadEl.remove();
+    if(conv){
+      const errDiv=document.createElement('div');
+      errDiv.style.cssText='display:flex;gap:8px;margin-bottom:8px';
+      errDiv.innerHTML=`<div style="width:32px;height:32px;border-radius:50%;background:var(--danger);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚠️</div><div style="background:rgba(233,69,96,.1);border:1px solid var(--danger);padding:10px 14px;border-radius:4px 14px 14px 14px;font-size:12px;color:var(--danger)">সংযোগ ব্যর্থ হয়েছে। ইন্টারনেট সংযোগ পরীক্ষা করুন।</div>`;
+      conv.appendChild(errDiv);
+      conv.scrollTop=conv.scrollHeight;
+    }
+  }
+}
+
 function clearActivityLog(){
   confirm2('সব কার্যক্রম লগ মুছে ফেলবেন?',()=>{
     DB.actLog=[];save(KEYS.actLog,[]);renderActivityLog();
@@ -9096,6 +9492,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Render flash sale bar if active (visible on shop page)
   renderFlashSaleBar();
 
+  // Set default dates for cashbook and appointments
+  const cbD=$('cbDate');if(cbD) cbD.value=today();
+  const apD=$('apptDate');if(apD) apD.value=today();
+  // Start appointment reminder check
+  if(isAdmin) checkApptReminders();
   // Start realtime after all init done
   realtimeTick();
   // Auto-check recurring expenses on load
