@@ -889,6 +889,163 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 .cst-step:last-child::after{display:none}
 .cst-step.done::after{background:var(--success)}
 .cst-step .cst-label{font-size:9px;color:var(--text2)}
+/* ══════════════════════════════════════════
+   RESPONSIVE — ALL DEVICES
+   Desktop (>1024) | Tablet (768-1024) | Mobile (480-768) | Small (360-480) | XS (<360)
+══════════════════════════════════════════ */
+
+/* ── TABLET (768px – 1024px) ── */
+@media(max-width:1024px){
+  #sidebar{width:200px}
+  #adminContent{margin-left:200px;padding:18px}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .pos-right{width:300px}
+  .pos-products{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+  .modal{max-width:92vw}
+  .two-col{grid-template-columns:1fr}
+  .page-header h2{font-size:19px}
+  #dashBottom{grid-template-columns:1fr!important}
+}
+
+/* ── MOBILE LANDSCAPE + SMALL TABLET (601px – 768px) ── */
+@media(max-width:768px){
+  /* Layout */
+  #topbar{padding:0 12px;gap:8px;height:52px}
+  #topbar .logo{font-size:16px}
+  #adminPanel{flex-direction:column}
+  #sidebar{
+    position:fixed;left:-260px;width:260px;top:0;bottom:0;z-index:400;
+    transition:left .28s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 24px rgba(0,0,0,.5)
+  }
+  #sidebar.open{left:0}
+  #adminContent{margin-left:0!important;padding:14px;padding-bottom:70px}
+  /* Stats */
+  .stat-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat-card{padding:14px}
+  .stat-card .value{font-size:22px}
+  /* POS */
+  .pos-wrap{flex-direction:column}
+  .pos-left{flex:none;height:auto;overflow:visible}
+  .pos-right{
+    width:100%!important;position:fixed;bottom:0;left:0;right:0;
+    max-height:55vh;border-top:2px solid var(--accent);border-left:none;
+    border-radius:16px 16px 0 0;z-index:200;box-shadow:0 -8px 32px rgba(0,0,0,.4);
+    overflow-y:auto
+  }
+  .pos-right.collapsed{max-height:52px;overflow:hidden}
+  .pos-products{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;padding:8px}
+  .pos-card h4{font-size:11px}
+  .pos-card .pos-img{height:56px}
+  .pos-search-bar{padding:6px 8px}
+  /* Tables */
+  .table-wrap{border-radius:10px}
+  th,td{padding:8px 10px;font-size:12px}
+  .hide-xs{display:none!important}
+  /* Modal */
+  .modal{max-width:100%;border-radius:16px 16px 0 0;max-height:93vh}
+  .modal-overlay{align-items:flex-end;padding:0}
+  .modal-body{padding:16px}
+  .modal-header{padding:14px 16px}
+  .modal-footer{padding:12px 16px}
+  /* Forms */
+  .two-col{grid-template-columns:1fr}
+  .three-col{grid-template-columns:1fr 1fr}
+  .form-group input,.form-group select,.form-group textarea{font-size:16px!important;min-height:44px}
+  /* Toolbar */
+  .toolbar{padding:8px 10px;gap:6px}
+  .toolbar input,.toolbar select{flex:1;min-width:120px;font-size:14px!important}
+  /* Dashboard */
+  #dashBottom{grid-template-columns:1fr!important}
+  .welcome-banner{padding:16px 18px}
+  .welcome-banner h3{font-size:16px}
+  /* Charts */
+  canvas{max-width:100%}
+  /* Page header */
+  .page-header{margin-bottom:14px;padding-bottom:10px}
+  .page-header h2{font-size:18px}
+  /* Section title */
+  .section-title{font-size:10px}
+  /* Quick search */
+  .qs-box{max-width:100%;border-radius:14px 14px 0 0}
+  /* Admin quick bar */
+  .admin-quick-bar{padding:5px 12px;gap:8px;font-size:11px;flex-wrap:wrap}
+  /* Shop */
+  .shop-hero{padding:32px 16px 28px}
+  .shop-hero h1{font-size:22px}
+  .shop-controls{padding:10px 12px;gap:8px;position:sticky;top:52px}
+  .product-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}
+  /* Footer */
+  .footer-grid{grid-template-columns:1fr}
+  .site-footer{padding:20px 16px}
+  /* Buttons */
+  .btn{font-size:12px;padding:7px 12px}
+  .btn-sm{font-size:11px;padding:5px 8px;min-height:30px}
+}
+
+/* ── MOBILE PORTRAIT (361px – 600px) ── */
+@media(max-width:600px){
+  /* Stat grid single col */
+  .stat-grid{grid-template-columns:1fr 1fr}
+  /* POS products smaller */
+  .pos-products{grid-template-columns:repeat(3,1fr);gap:5px}
+  .pos-card{padding:8px 6px 6px;border-radius:10px}
+  .pos-card .pos-img{height:48px}
+  .pos-card h4{font-size:10px}
+  .pos-card .pos-price{font-size:11px}
+  .pos-cat-tab{padding:5px 11px;font-size:11px}
+  /* Tables action buttons stack */
+  td[style*="display:flex"]{flex-wrap:wrap;gap:3px!important}
+  /* Page padding */
+  #adminContent{padding:10px;padding-bottom:70px}
+  /* Dashboard mini cards */
+  .dash-mini-grid{grid-template-columns:1fr 1fr}
+  /* Topbar */
+  .topnav button{padding:5px 8px;font-size:12px}
+  /* Product grid */
+  .product-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;padding:10px}
+  /* Bills detail card in POS */
+  .pos-cust-row{flex-direction:column}
+  .pos-cust-row input{width:100%}
+  /* Action buttons */
+  .pos-action-btns{grid-template-columns:1fr}
+  /* Pay methods */
+  .pay-methods{grid-template-columns:repeat(3,1fr)}
+}
+
+/* ── SMALL MOBILE (<360px) ── */
+@media(max-width:360px){
+  #topbar .logo{font-size:14px}
+  .stat-grid{grid-template-columns:1fr}
+  .pos-products{grid-template-columns:repeat(2,1fr);gap:4px}
+  .pos-card .pos-img{height:40px}
+  .pos-card h4{font-size:9px}
+  .product-grid{grid-template-columns:repeat(2,1fr);gap:6px;padding:8px}
+  .page-header h2{font-size:16px}
+  .topnav .hide-sm{display:none}
+  .modal-body{padding:12px}
+  th,td{padding:6px 8px;font-size:11px}
+  .btn{padding:6px 10px;font-size:11px}
+  .pos-total-price{font-size:22px}
+}
+
+/* ── SIDEBAR OVERLAY (mobile) ── */
+.sidebar-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);
+  z-index:399;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)
+}
+.sidebar-overlay.show{display:block}
+
+/* ── POS RIGHT PANEL TOGGLE (mobile) ── */
+.pos-right-toggle{
+  display:none;
+  position:sticky;top:0;z-index:10;
+  background:var(--card2);border-bottom:1px solid var(--border);
+  padding:8px 14px;cursor:pointer;
+  font-size:12px;font-weight:600;color:var(--text2);
+  align-items:center;gap:8px;justify-content:space-between
+}
+@media(max-width:768px){.pos-right-toggle{display:flex}}
+
 /* ── ANIMATIONS ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 /* Page transition */
@@ -1144,7 +1301,6 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 </div>
 
 <!-- SIDEBAR OVERLAY (mobile) -->
-<div id="sidebarOverlay" onclick="closeSidebar()"></div>
 
 <!-- NOTIFICATION PANEL -->
 <div id="notifPanel">
@@ -1615,7 +1771,12 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         </div>
 
         <!-- RIGHT: Bill Panel -->
-        <div class="pos-right">
+        <div class="pos-right" id="posRight">
+          <!-- Mobile toggle for bill panel -->
+          <div class="pos-right-toggle" onclick="togglePosRight()" id="posRightToggle">
+            <span>🧾 বিল (<span id="posBillCountToggle">0</span> আইটেম)</span>
+            <span id="posRightArrow">▲</span>
+          </div>
           <!-- Header -->
           <div class="pos-bill-header">
             <h3 style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">
@@ -3954,6 +4115,11 @@ function updatePosBill(){
   // Mobile bottom nav badge
   const pbnBc=$('pbnBillCount');
   if(pbnBc){pbnBc.textContent=total;pbnBc.style.display=total>0?'flex':'none';}
+  // Mobile POS right toggle counter
+  const ptc=$('posBillCountToggle');
+  if(ptc) ptc.textContent=total;
+  // Auto-expand POS right panel when first item added
+  if(total>0) expandPosRight();
   if(!posBill.length){
     container.innerHTML='<div class="empty-state" style="padding:30px 16px"><div class="ei">🛍️</div><p>পণ্য ক্লিক করুন বা খুঁজুন</p></div>';
     updatePosTotals();return;
@@ -5313,14 +5479,35 @@ window.addEventListener('storage', e=>{
 // ══════════════════════════════════════
 function toggleSidebar(){
   const sb=$('sidebar'),ov=$('sidebarOverlay');
+  if(!sb||!ov) return;
   const isOpen=sb.classList.contains('open');
   if(isOpen){closeSidebar();}
   else{sb.classList.add('open');ov.classList.add('show');document.body.style.overflow='hidden';}
 }
 function closeSidebar(){
-  $('sidebar').classList.remove('open');
-  $('sidebarOverlay').classList.remove('show');
+  const sb=$('sidebar'),ov=$('sidebarOverlay');
+  if(sb) sb.classList.remove('open');
+  if(ov) ov.classList.remove('show');
   document.body.style.overflow='';
+}
+
+// POS right panel collapse/expand on mobile
+let _posRightCollapsed=false;
+function togglePosRight(){
+  const pr=$('posRight'),arrow=$('posRightArrow');
+  if(!pr) return;
+  _posRightCollapsed=!_posRightCollapsed;
+  pr.classList.toggle('collapsed',_posRightCollapsed);
+  if(arrow) arrow.textContent=_posRightCollapsed?'▼':'▲';
+}
+// Auto-expand POS right when item added
+function expandPosRight(){
+  if(_posRightCollapsed&&window.innerWidth<=768){
+    _posRightCollapsed=false;
+    const pr=$('posRight'),arrow=$('posRightArrow');
+    if(pr) pr.classList.remove('collapsed');
+    if(arrow) arrow.textContent='▲';
+  }
 }
 
 // Auto-close sidebar when a page is selected on mobile is handled inside showPage()
@@ -9686,6 +9873,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   setTimeout(()=>splashScreen.hide(), 500);
 });
 </script>
+<!-- SIDEBAR OVERLAY (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
 <!-- MOBILE POS BOTTOM NAV -->
 <div class="pos-bottom-nav" id="posBottomNav" style="display:none">
   <div class="pbn-items">
