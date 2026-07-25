@@ -1299,10 +1299,32 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 <div class="panel active" id="shopPanel">
   <!-- Flash Sale Bar -->
   <div id="flashSaleBar" style="display:none"></div>
-  <div class="shop-hero">
-    <h1>স্বাগতম <span id="shopNameDisplay">SuperShop</span> তে</h1>
-    <p id="shopSubDisplay">সেরা পণ্য, সেরা দামে</p>
+
+  <!-- Contact Info Bar (top of shop) -->
+  <div id="shopContactBar" style="background:rgba(13,27,42,.95);border-bottom:1px solid rgba(31,51,72,.6);padding:6px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:12px;color:var(--text2)">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <span id="shopBarPhone" style="display:none">📞 <a id="shopBarPhoneLink" href="#" style="color:inherit;text-decoration:none"></a></span>
+      <span id="shopBarEmail" style="display:none">✉️ <a id="shopBarEmailLink" href="#" style="color:inherit;text-decoration:none"></a></span>
+      <span id="shopBarHours" style="display:none">🕐 <span id="shopBarHoursText"></span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px" id="shopBarSocial"></div>
   </div>
+
+  <!-- Hero -->
+  <div class="shop-hero">
+    <div style="position:relative;z-index:2">
+      <div id="shopHeroLogo" style="display:none;margin-bottom:12px"><img id="shopHeroLogoImg" src="" style="height:60px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.4)"></div>
+      <h1>স্বাগতম <span id="shopNameDisplay">SuperShop</span> তে</h1>
+      <p id="shopSubDisplay" style="margin-top:6px;font-size:15px;opacity:.85">সেরা পণ্য, সেরা দামে</p>
+      <div id="shopHeroDesc" style="display:none;margin-top:8px;font-size:13px;opacity:.7;max-width:500px;margin-left:auto;margin-right:auto"></div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap">
+        <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.4);backdrop-filter:blur(8px)" onclick="document.getElementById('shopSearch').focus();document.getElementById('shopSearch').scrollIntoView({behavior:'smooth'})">🔍 পণ্য খুঁজুন</button>
+        <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.4);backdrop-filter:blur(8px)" onclick="toggleCart()">🛒 Cart দেখুন</button>
+        <button id="shopWhatsappBtn" style="display:none" class="btn" style="background:#25d366;color:#fff;border:none">📱 WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
   <div class="realtime-bar"><span class="rt-dot"></span> রিয়েল-টাইম আপডেট চালু — পণ্য ও স্টক লাইভ দেখানো হচ্ছে | মোট পণ্য: <span id="rtProductCount">0</span> | অনলাইন কাস্টমার: <span id="rtCustCount">0</span></div>
   <div class="shop-controls">
     <input type="text" id="shopSearch" placeholder="🔍 পণ্য খুঁজুন..." oninput="renderShop()">
@@ -1685,11 +1707,15 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
             </div>
 
             <!-- Customer -->
-            <div class="pos-cust-row">
-              <input type="text" id="posCust" placeholder="👤 কাস্টমার নাম" list="custSuggest">
-              <input type="text" id="posCustPhone" placeholder="📞 মোবাইল" oninput="renderSmartSuggestions()" onchange="renderSmartSuggestions()">
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(31,51,72,.6);border-radius:12px;padding:10px;margin-bottom:6px">
+              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">🧾 বিলের বিবরণ</div>
+              <div class="pos-cust-row">
+                <input type="text" id="posCust" placeholder="👤 কাস্টমার নাম" list="custSuggest">
+                <input type="text" id="posCustPhone" placeholder="📞 মোবাইল" oninput="renderSmartSuggestions()" onchange="renderSmartSuggestions()">
+              </div>
+              <datalist id="custSuggest"></datalist>
+              <input type="text" id="posNote" class="pos-note-input" placeholder="📝 অর্ডার নোট (ঐচ্ছিক)" style="margin-bottom:0">
             </div>
-            <datalist id="custSuggest"></datalist>
 
             <!-- Coupon -->
             <div style="display:flex;gap:6px;margin-bottom:4px">
@@ -1711,9 +1737,6 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
                 <span style="font-size:11px;white-space:nowrap">বাকি: <b id="splitRemaining" style="color:var(--info)">৳0</b></span>
               </div>
             </div>
-
-            <!-- Note -->
-            <input type="text" id="posNote" class="pos-note-input" placeholder="📝 অর্ডার নোট (ঐচ্ছিক)">
 
             <!-- Action Buttons -->
             <div class="pos-action-btns">
@@ -3758,12 +3781,12 @@ function renderPOS(){
   // Init cashTenderRow visibility
   const cr=$('cashTenderRow');
   if(cr) cr.style.display=_posPayment==='Cash'?'flex':'none';
-  // Category tabs — rebuild when cats change
+  // Category tabs — rebuild only when cats change (preserve active state)
   const tabsEl=$('posCatTabs');
   if(tabsEl&&!tabsEl.dataset.built){
     tabsEl.dataset.built='1';
     tabsEl.innerHTML=`<button class="pos-cat-tab active" onclick="filterPOSCat('',this)">🏪 সব</button>`
-      +DB.cats.map(c=>`<button class="pos-cat-tab" onclick="filterPOSCat('${c.id}',this)">${c.icon||''} ${c.name}</button>`).join('');
+      +DB.cats.map(c=>`<button class="pos-cat-tab${_posCatFilter===c.id?' active':''}" onclick="filterPOSCat('${c.id}',this)">${c.icon||''} ${c.name}</button>`).join('');
   }
   // Customer suggestions
   const dl=$('custSuggest');
@@ -3771,7 +3794,7 @@ function renderPOS(){
     const names=[...new Set([...DB.orders,...DB.sales].map(o=>o.custName).filter(Boolean))];
     dl.innerHTML=names.map(n=>`<option value="${n}">`).join('');
   }
-  // Update status bar
+  // Update status bar (lightweight)
   const lowStockCount=DB.products.filter(p=>p.stock>0&&p.stock<5).length;
   const totalAvail=DB.products.filter(p=>p.stock>0).length;
   const billCount=posBill.reduce((s,i)=>s+i.qty,0);
@@ -3780,8 +3803,11 @@ function renderPOS(){
   const plsEl=$('psLowStock');const plcEl=$('psLowCount');
   if(plsEl) plsEl.style.display=lowStockCount>0?'flex':'none';
   if(plcEl) plcEl.textContent=lowStockCount;
-  // Smart suggestion
-  renderSmartSuggestions();
+  // Smart suggestion — only if bill has items
+  if(posBill.length) renderSmartSuggestions();
+  // Save scroll position before re-render
+  const pg=$('posProducts');
+  const savedScroll=pg?pg.scrollTop:0;
   // Filter products
   let list=DB.products.filter(p=>
     (!q||p.name.toLowerCase().includes(q)||
@@ -3789,23 +3815,16 @@ function renderPOS(){
       (p.desc&&p.desc.toLowerCase().includes(q)))&&
     (!_posCatFilter||p.cat===_posCatFilter)
   );
-  // Popular items filter/sort
   if(_showPopular){
     const popIds=getPopularProductIds(20);
-    if(!q&&!_posCatFilter){
-      list=popIds.map(id=>DB.products.find(p=>p.id===id)).filter(Boolean);
-    }else{
-      list.sort((a,b)=>popIds.indexOf(a.id)===-1?1:popIds.indexOf(b.id)===-1?-1:popIds.indexOf(a.id)-popIds.indexOf(b.id));
-    }
+    if(!q&&!_posCatFilter){list=popIds.map(id=>DB.products.find(p=>p.id===id)).filter(Boolean);}
+    else{list.sort((a,b)=>popIds.indexOf(a.id)===-1?1:popIds.indexOf(b.id)===-1?-1:popIds.indexOf(a.id)-popIds.indexOf(b.id));}
   }
-  // Favorites filter
   const favIds=getFavoriteProductIds();
-  if(_showFavorites){
-    list=list.filter(p=>favIds.includes(p.id));
-  }
+  if(_showFavorites){list=list.filter(p=>favIds.includes(p.id));}
   const inBill=new Set(posBill.map(x=>x.productId));
   const popIdsSet=new Set(_showPopular?getPopularProductIds(20):[]);
-  $('posProducts').innerHTML=list.length?list.map((p,idx)=>{
+  if(pg) pg.innerHTML=list.length?list.map((p,idx)=>{
     const added=inBill.has(p.id);
     const qty=added?posBill.find(x=>x.productId===p.id).qty:0;
     const outOfStock=p.stock<1;
@@ -3832,11 +3851,13 @@ function renderPOS(){
       ${outOfStock?'<div class="pos-out-label">স্টক শেষ</div>':''}
     </div>`;
   }).join('')
-  :`<div class="empty-state" style="grid-column:1/-1;padding:24px">${_showFavorites?'<div class="ei">⭐</div><p>কোনো পছন্দের পণ্য নেই — পণ্য কার্ডের ⭐ আইকনে ক্লিক করুন</p>':''}
+  :`<div class="empty-state" style="grid-column:1/-1;padding:24px">
       <div class="ei">${q?'🔍':_showPopular?'🏆':'📦'}</div>
       <p>${q?`"${q}" পাওয়া যায়নি`:_showPopular?'এখনো কোনো বিক্রয় নেই':'কোনো পণ্য নেই'}</p>
       ${q?`<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="$('posSearch').value='';renderPOS()">✕ ক্লিয়ার করুন</button>`:''}
     </div>`;
+  // Restore scroll position (prevents jarring jump)
+  if(pg&&savedScroll) requestAnimationFrame(()=>{pg.scrollTop=savedScroll;});
 }
 
 function filterPOSCat(catId,btn){
@@ -3974,6 +3995,8 @@ function clearPOS(){
   const pp=$('posCustPhone');if(pp)pp.value='';
   const pn=$('posNote');if(pn)pn.value='';
   const di=$('discInput');if(di)di.value='0';
+  // FIX: Also reset discount type to default (% percent)
+  const dt=$('discType');if(dt)dt.value='pct';
   const ct=$('cashTender');if(ct)ct.value='';
   const ci=$('couponInput');if(ci)ci.value='';
   const cm=$('couponMsg');if(cm)cm.textContent='';
@@ -3986,9 +4009,14 @@ function clearPOS(){
   const sc=$('splitCash');if(sc)sc.value='';
   const sm=$('splitMobile');if(sm){sm.value='';sm._manualEdit=false;}
   window._appliedCoupon=null;
+  // FIX: Reset scheduled discount state so next bill starts fresh
+  window._scheduledDiscApplied=null;
+  // FIX: Hide smart discount hint
+  const sdh=$('smartDiscHint');if(sdh)sdh.style.display='none';
   // Reset payment selection to Cash
   selectPayment('Cash',document.querySelector('.pay-method-btn[onclick*="\'Cash\'"]'));
-  updatePosBill();renderPOS();
+  updatePosBill();
+  updatePosTotals();
 }
 
 function updatePosTotals(){
@@ -7998,7 +8026,7 @@ function loadDraftBill(){
         <div style="font-size:11px;color:var(--text2)">${mins} মিনিট আগে সেভ হয়েছিল${draft.cust?' | কাস্টমার: '+draft.cust:''}</div>
       </div>
       <div style="font-size:12px;color:var(--text2)">আগের বিলটি কি পুনরুদ্ধার করবেন?</div>
-    `,`<button class="btn btn-ghost" onclick="localStorage.removeItem('${DRAFT_KEY}');closeModal()">🗑️ না, বাদ দিন</button>
+    `,`<button class="btn btn-ghost" onclick="clearDraft();closeModal()">🗑️ না, বাদ দিন</button>
        <button class="btn btn-primary" onclick="restoreDraftBill()">✅ হ্যাঁ, পুনরুদ্ধার করুন</button>`);
   }catch(e){localStorage.removeItem(DRAFT_KEY);}
 }
@@ -8052,7 +8080,8 @@ window.addEventListener('storage',e=>{
   if(!activeP) return;
   const pid=activeP.id.replace('page-','');
   const map={dashboard:loadDash,products:renderProducts,orders:renderOrders,
-    pos:renderPOS,sales:renderSales,customers:renderCustomers,
+    pos:()=>{updatePOSHeader();},
+    sales:renderSales,customers:renderCustomers,
     due:renderDuePage,expenses:renderExp,activity:renderActivityLog};
   if(map[pid]) map[pid]();
   updateAdminQuickBar();updateDueSidebarBadge();
@@ -8791,7 +8820,8 @@ function realtimeTick(){
     voidPin:_loadIfChanged(KEYS.voidPin,'voidPin'),
     loyalty:_loadIfChanged(KEYS.loyalty,'loyalty'),
   };
-  if(changed.cats||changed.products){
+  // Only rebuild category tabs when categories actually change
+  if(changed.cats){
     const t=$('posCatTabs');if(t) delete t.dataset.built;
   }
   const rtP=$('rtProductCount'),rtC=$('rtCustCount');
@@ -8818,7 +8848,34 @@ function realtimeTick(){
     if(!(deps[pid]||[]).some(k=>changed[k])) return;
     const map={
       dashboard:loadDash,products:renderProducts,categories:renderCats,
-      orders:renderOrders,pos:renderPOS,sales:renderSales,
+      orders:renderOrders,
+      pos:()=>{
+        // Smart POS update — only refresh product cards, preserve bill/customer/note/discount
+        updatePOSHeader();
+        const pg=$('posProducts');if(!pg)return;
+        const savedScroll=pg.scrollTop;
+        const inBill=new Set(posBill.map(x=>x.productId));
+        pg.querySelectorAll('.pos-card').forEach(card=>{
+          const oc=card.getAttribute('onclick')||'';
+          const idM=oc.match(/addToPOS\('([^']+)'\)/);
+          if(!idM)return;
+          const pid2=idM[1];
+          const p=DB.products.find(x=>x.id===pid2);if(!p)return;
+          const isAdded=inBill.has(pid2);
+          card.classList.toggle('added',isAdded);
+          const badge=card.querySelector('.pos-added-badge');
+          if(badge) badge.textContent=isAdded?(posBill.find(x=>x.productId===pid2)?.qty||0):'';
+          const stockEl=card.querySelector('.pos-stock-label');
+          if(stockEl){
+            const out=p.stock<1,low=p.stock>0&&p.stock<5;
+            stockEl.innerHTML=out?'<span style="color:var(--danger)">স্টক শেষ</span>'
+              :low?`<span style="color:var(--warning)">⚠️ ${p.stock} বাকি</span>`
+              :`<span>স্টক: ${p.stock}</span>`;
+          }
+        });
+        requestAnimationFrame(()=>{if(pg) pg.scrollTop=savedScroll;});
+      },
+      sales:renderSales,
       customers:renderCustomers,due:renderDuePage,expenses:renderExp,
       activity:renderActivityLog,
       settings:()=>{renderLogoPreview();renderStaffTable();renderCoupons();renderVoidPinStatus();renderScheduledDiscounts();}
@@ -9483,7 +9540,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   function updateFooter(){
     const s=DB.settings;
-    // Basic info
+    // Basic footer info
     const fn=$('footerName');if(fn) fn.textContent=s.name||'SuperShop';
     const fd=$('footerDesc');if(fd) fd.textContent=s.footerdesc||`${s.name||'SuperShop'} — সেরা পণ্য, সেরা দামে। আমাদের দোকান থেকে কেনাকাটা করুন।`;
     const fp=$('footerPhone');if(fp) fp.textContent=`📞 ${s.phone||'01700000000'}`;
@@ -9496,13 +9553,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
     // Website
     const fw=$('footerWebsite');
     if(fw){if(s.website){fw.style.display='';fw.innerHTML=`<a href="${s.website}" target="_blank" style="color:inherit;text-decoration:none">🌐 ${s.website.replace(/^https?:\/\//,'')}</a>`;}else fw.style.display='none';}
-    // Social icons
+    // Footer social icons
     const fs=$('footerSocial');
     if(fs){
       const socials=[];
-      if(s.facebook) socials.push(`<a href="${s.facebook}" target="_blank" style="background:#1877f2;color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">📘 Facebook</a>`);
-      if(s.instagram) socials.push(`<a href="${s.instagram}" target="_blank" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">📸 Instagram</a>`);
-      if(s.whatsapp) socials.push(`<a href="https://wa.me/88${s.whatsapp.replace(/^0/,'')}" target="_blank" style="background:#25d366;color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">📱 WhatsApp</a>`);
+      if(s.facebook) socials.push(`<a href="${s.facebook}" target="_blank" style="background:#1877f2;color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px">📘 Facebook</a>`);
+      if(s.instagram) socials.push(`<a href="${s.instagram}" target="_blank" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px">📸 Instagram</a>`);
+      if(s.whatsapp) socials.push(`<a href="https://wa.me/88${s.whatsapp.replace(/^0/,'')}" target="_blank" style="background:#25d366;color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px">📱 WhatsApp</a>`);
       fs.innerHTML=socials.join('');
     }
     // Footer brand name
@@ -9512,10 +9569,64 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const fq=$('footerQuickLinks');
     if(fq){
       const extras=[];
-      if(s.quicklink1){const [label,url]=s.quicklink1.split('|').map(x=>x.trim());if(label) extras.push(`<li onclick="${url?`window.open('${url}','_blank')`:''}">🔗 ${label}</li>`);}
-      if(s.quicklink2){const [label,url]=s.quicklink2.split('|').map(x=>x.trim());if(label) extras.push(`<li onclick="${url?`window.open('${url}','_blank')`:''}">🔗 ${label}</li>`);}
+      if(s.quicklink1){const[label,url]=s.quicklink1.split('|').map(x=>x.trim());if(label)extras.push(`<li onclick="${url?`window.open('${url}','_blank')`:''}">🔗 ${label}</li>`);}
+      if(s.quicklink2){const[label,url]=s.quicklink2.split('|').map(x=>x.trim());if(label)extras.push(`<li onclick="${url?`window.open('${url}','_blank')`:''}">🔗 ${label}</li>`);}
       fq.innerHTML=`<li onclick="switchPanel('shop')">🏪 Shop</li><li onclick="toggleCart()">🛒 Cart</li><li onclick="showCustAuth('login')">👤 Login</li><li onclick="showCustAuth('reg')">📝 Register</li>${extras.join('')}`;
     }
+
+    // ── SHOP PAGE contact bar & hero ──
+    // Contact bar — phone
+    const sbPhone=$('shopBarPhone'),sbPhoneLink=$('shopBarPhoneLink');
+    if(sbPhone&&sbPhoneLink){
+      if(s.phone){sbPhone.style.display='inline-flex';sbPhoneLink.href=`tel:${s.phone}`;sbPhoneLink.textContent=s.phone;}
+      else sbPhone.style.display='none';
+    }
+    // Contact bar — email
+    const sbEmail=$('shopBarEmail'),sbEmailLink=$('shopBarEmailLink');
+    if(sbEmail&&sbEmailLink){
+      if(s.email){sbEmail.style.display='inline-flex';sbEmailLink.href=`mailto:${s.email}`;sbEmailLink.textContent=s.email;}
+      else sbEmail.style.display='none';
+    }
+    // Contact bar — hours
+    const sbHours=$('shopBarHours'),sbHoursText=$('shopBarHoursText');
+    if(sbHours&&sbHoursText){
+      if(s.hours){sbHours.style.display='inline-flex';sbHoursText.textContent=s.hours;}
+      else sbHours.style.display='none';
+    }
+    // Contact bar — social
+    const sbSocial=$('shopBarSocial');
+    if(sbSocial){
+      const soc=[];
+      if(s.facebook) soc.push(`<a href="${s.facebook}" target="_blank" style="background:#1877f2;color:#fff;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;text-decoration:none">📘 FB</a>`);
+      if(s.instagram) soc.push(`<a href="${s.instagram}" target="_blank" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888);color:#fff;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;text-decoration:none">📸 IG</a>`);
+      if(s.whatsapp) soc.push(`<a href="https://wa.me/88${s.whatsapp.replace(/^0/,'')}" target="_blank" style="background:#25d366;color:#fff;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;text-decoration:none">📱 WA</a>`);
+      if(s.website) soc.push(`<a href="${s.website}" target="_blank" style="background:var(--card2);color:var(--text2);padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;text-decoration:none;border:1px solid var(--border)">🌐 Web</a>`);
+      sbSocial.innerHTML=soc.join('');
+    }
+    // Hero logo
+    const heroLogo=$('shopHeroLogo'),heroLogoImg=$('shopHeroLogoImg');
+    if(heroLogo&&heroLogoImg){
+      if(s.logo){heroLogo.style.display='block';heroLogoImg.src=s.logo;}
+      else heroLogo.style.display='none';
+    }
+    // Hero description
+    const heroDesc=$('shopHeroDesc');
+    if(heroDesc){
+      if(s.footerdesc){heroDesc.style.display='block';heroDesc.textContent=s.footerdesc;}
+      else heroDesc.style.display='none';
+    }
+    // WhatsApp hero button
+    const waBtn=$('shopWhatsappBtn');
+    if(waBtn){
+      if(s.whatsapp){
+        waBtn.style.display='inline-flex';
+        waBtn.style.cssText='background:#25d366;color:#fff;border:none;padding:8px 16px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;display:inline-flex;align-items:center;gap:6px';
+        waBtn.onclick=()=>window.open(`https://wa.me/88${s.whatsapp.replace(/^0/,'')}?text=${encodeURIComponent(`হ্যালো ${s.name||'SuperShop'}! আমি কিছু জানতে চাই।`)}`,'_blank');
+      }else waBtn.style.display='none';
+    }
+    // Hide contact bar if nothing to show
+    const bar=$('shopContactBar');
+    if(bar) bar.style.display=(s.phone||s.email||s.hours||s.facebook||s.instagram||s.whatsapp||s.website)?'flex':'none';
   }
   updateFooter();
   window._updateFooter=updateFooter;
