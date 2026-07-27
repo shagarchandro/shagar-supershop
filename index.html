@@ -166,9 +166,11 @@ button,input,select,textarea,.stat-card,.pos-card,.sidebar-item{transition:var(-
 .page-header p{font-size:13px;color:var(--text2);margin-top:5px}
 
 /* Login */
-#loginOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;align-items:center;justify-content:center}
+#loginOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:400;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#loginOverlay.show{display:flex;animation:fadeIn .25s ease}
+#loginOverlay.show .login-box{animation:modalIn .3s cubic-bezier(.34,1.56,.64,1)}
 #loginOverlay.show{display:flex}
-.login-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:36px;width:340px}
+.login-box{background:linear-gradient(145deg,rgba(22,36,54,.97),rgba(15,26,42,.98));border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:36px;width:340px;box-shadow:0 32px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04)}
 .login-box h2{font-size:20px;font-weight:700;margin-bottom:20px;text-align:center}
 .login-box h2 span{color:var(--accent)}
 .form-group{margin-bottom:16px}
@@ -179,7 +181,7 @@ button,input,select,textarea,.stat-card,.pos-card,.sidebar-item{transition:var(-
 .form-group input::placeholder,.form-group textarea::placeholder{color:var(--text3)}
 .form-group textarea{resize:vertical;min-height:70px}
 .form-group select option{background:var(--card)}
-.login-err{color:var(--danger);font-size:12px;text-align:center;margin-bottom:10px;display:none}
+.login-err{background:rgba(233,69,96,.1);border:1px solid rgba(233,69,96,.3);color:var(--danger);font-size:12px;font-weight:600;text-align:center;margin-bottom:12px;display:none;padding:8px 12px;border-radius:8px}
 
 /* Cards */
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px}
@@ -674,9 +676,10 @@ body.light-theme .login-box{background:#fff;border-color:#dde6ef}
 body.light-theme .admin-quick-bar{background:#f7f9fc;border-bottom-color:#dde6ef}
 body.light-theme .product-card{background:#fff;border-color:#dde6ef}
 body.light-theme .site-footer{background:#fff;border-top-color:#dde6ef}
-/* Admin panel-এ footer লুকানো */
+/* Admin panel-এ footer সম্পূর্ণ লুকানো */
 #adminPanel.active~#siteFooter,
-body.admin-mode #siteFooter{display:none!important}
+body.admin-mode #siteFooter,
+.admin-mode #siteFooter{display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important;pointer-events:none!important}
 body.light-theme .realtime-bar{background:#f7f9fc;border-bottom-color:#dde6ef}
 body.light-theme .cart-item{background:#f7f9fc}
 body.light-theme #cartSidebar{background:#fff}
@@ -1048,6 +1051,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 
 /* ── ANIMATIONS ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 /* Page transition */
 @keyframes pageIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
 @keyframes pageOut{from{opacity:1}to{opacity:0;transform:translateX(8px)}}
@@ -1373,29 +1379,54 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 
 <!-- LOGIN OVERLAY -->
 <div id="loginOverlay">
-  <div class="login-box" style="width:360px">
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:40px;margin-bottom:8px">🔐</div>
-      <h2 style="font-size:20px">Admin <span>Login</span></h2>
-      <p style="font-size:12px;color:var(--text2);margin-top:4px">Owner বা Staff — Username/Email দিয়ে প্রবেশ করুন</p>
+  <div class="login-box" style="width:400px;max-width:95vw">
+    <!-- Logo/Brand -->
+    <div style="text-align:center;margin-bottom:24px">
+      <div id="loginLogo" style="font-size:52px;margin-bottom:10px;filter:drop-shadow(0 4px 16px rgba(255,77,109,.4))">🛒</div>
+      <h2 id="loginShopName" style="font-size:22px;font-weight:900;letter-spacing:-.5px">SuperShop</h2>
+      <p style="font-size:12px;color:var(--text2);margin-top:5px">Management System — Admin Portal</p>
     </div>
-    <div class="login-err" id="loginErr">❌ ভুল Username/Email বা পাসওয়ার্ড!</div>
+    <!-- Error -->
+    <div class="login-err" id="loginErr"></div>
+    <!-- Role tabs -->
+    <div style="display:flex;gap:6px;background:var(--primary);border-radius:10px;padding:4px;margin-bottom:16px">
+      <button id="loginTabOwner" onclick="switchLoginTab('owner')" style="flex:1;padding:7px;border:none;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;background:var(--accent);color:#fff;transition:.18s">👑 Owner</button>
+      <button id="loginTabStaff" onclick="switchLoginTab('staff')" style="flex:1;padding:7px;border:none;border-radius:7px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;background:transparent;color:var(--text2);transition:.18s">👤 Staff</button>
+    </div>
+    <!-- Username -->
     <div class="form-group">
       <label>Username / Email</label>
-      <input id="loginUser" placeholder="admin বা আপনার email" autocomplete="username">
+      <div style="position:relative">
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">👤</span>
+        <input id="loginUser" placeholder="admin বা আপনার username" autocomplete="username" style="padding-left:38px" onkeydown="if(event.key==='Enter')$('loginPass').focus()">
+      </div>
     </div>
+    <!-- Password -->
     <div class="form-group">
       <label>পাসওয়ার্ড</label>
       <div class="pass-wrap">
-        <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password">
+        <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
         <button class="pass-eye" type="button" onclick="togglePass('loginPass',this)">👁️</button>
       </div>
     </div>
-    <button class="btn btn-primary btn-full" onclick="doLogin()" style="margin-top:4px">🔐 প্রবেশ করুন</button>
+    <!-- Remember me -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <input type="checkbox" id="loginRemember" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
+      <label for="loginRemember" style="font-size:12px;color:var(--text2);cursor:pointer">এই ডিভাইসে মনে রাখুন</label>
+    </div>
+    <!-- Login button -->
+    <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()" style="padding:13px;font-size:14px;font-weight:700;letter-spacing:-.2px">
+      🔐 প্রবেশ করুন
+    </button>
     <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="closeLogin()">বাতিল</button>
-    <p style="font-size:11px;color:var(--text2);text-align:center;margin-top:12px">
-      Default: <code style="background:var(--card2);padding:2px 6px;border-radius:4px">admin</code> / <code style="background:var(--card2);padding:2px 6px;border-radius:4px">admin123</code>
-    </p>
+    <!-- Default credentials hint (collapsible) -->
+    <div style="margin-top:14px;text-align:center">
+      <button onclick="$('loginHint').style.display=$('loginHint').style.display==='none'?'block':'none'" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit">ℹ️ Default credentials</button>
+      <div id="loginHint" style="display:none;margin-top:8px;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px;font-size:11px;color:var(--text2);text-align:left;line-height:1.8">
+        <b>Owner:</b> <code style="background:var(--primary);padding:1px 6px;border-radius:4px">admin</code> / <code style="background:var(--primary);padding:1px 6px;border-radius:4px">admin123</code><br>
+        <b>Staff:</b> Staff username ও তাদের পাসওয়ার্ড
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2174,9 +2205,10 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <div class="form-group"><label>📱 WhatsApp নম্বর</label><input id="setWhatsapp" placeholder="01700000000"></div>
           <div class="form-group"><label>🕐 ব্যবসার সময়</label><input id="setHours" placeholder="সকাল ৯টা — রাত ১০টা"></div>
         </div>
-        <div class="form-group"><label>📝 Footer বিবরণ</label><input id="setFooterDesc" placeholder="দোকান সম্পর্কে সংক্ষিপ্ত বিবরণ..."></div>
-        <div class="form-group"><label>🔗 দ্রুত লিংক ১ (নাম | URL)</label><input id="setQuickLink1" placeholder="যেমন: আমাদের সম্পর্কে | /about"></div>
-        <div class="form-group"><label>🔗 দ্রুত লিংক ২ (নাম | URL)</label><input id="setQuickLink2" placeholder="যেমন: রিটার্ন পলিসি | /returns"></div>
+        <!-- Hidden fields for shop page display (not shown in admin) -->
+        <input type="hidden" id="setFooterDesc">
+        <input type="hidden" id="setQuickLink1">
+        <input type="hidden" id="setQuickLink2">
 
         <div class="section-title" style="margin-top:16px">🏪 শাখা ব্যবস্থাপনা (Multi-Branch)</div>
         <div class="toolbar" style="margin-bottom:10px">
@@ -2575,6 +2607,26 @@ function closeModal(){$('modalOverlay').classList.remove('show')}
 //  AUTH
 // ══════════════════════════════════════
 let isAdmin=false;
+let _loginTab='owner'; // 'owner' or 'staff'
+
+function switchLoginTab(tab){
+  _loginTab=tab;
+  const ownerBtn=$('loginTabOwner');
+  const staffBtn=$('loginTabStaff');
+  if(ownerBtn){
+    ownerBtn.style.background=tab==='owner'?'var(--accent)':'transparent';
+    ownerBtn.style.color=tab==='owner'?'#fff':'var(--text2)';
+  }
+  if(staffBtn){
+    staffBtn.style.background=tab==='staff'?'var(--accent)':'transparent';
+    staffBtn.style.color=tab==='staff'?'#fff':'var(--text2)';
+  }
+  const lu=$('loginUser');
+  if(lu){
+    lu.placeholder=tab==='owner'?'admin বা আপনার email':'স্টাফ username বা ফোন';
+    lu.focus();
+  }
+}
 
 function _setAdminUI(on){
   isAdmin=on;
@@ -2588,66 +2640,130 @@ function _setAdminUI(on){
   if(db) db.style.display=(on&&!currentStaff)?'inline-flex':'none';
   if(ns) ns.classList.toggle('active',!on);
   if(qb) qb.classList.toggle('show',on);
-  // Mobile bottom nav
-  const pbn=$('posBottomNav');
-  if(pbn) pbn.style.display=on?'flex':'none';
-  // Calculator FAB
-  const calcFab=$('calcFab');
-  if(calcFab) calcFab.classList.toggle('show',on);
+  const pbn=$('posBottomNav');if(pbn) pbn.style.display=on?'flex':'none';
+  const calcFab=$('calcFab');if(calcFab) calcFab.classList.toggle('show',on);
 }
 
-function showAdminLogin(){$('loginOverlay').classList.add('show')}
-function closeLogin(){$('loginOverlay').classList.remove('show')}
+function showAdminLogin(){
+  const lo=$('loginOverlay');if(!lo)return;
+  // Update login box with shop info
+  const logoEl=$('loginLogo'),nameEl=$('loginShopName');
+  if(logoEl&&DB.settings.logo) logoEl.innerHTML=`<img src="${DB.settings.logo}" style="height:64px;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.4)">`;
+  if(nameEl) nameEl.textContent=DB.settings.name||'SuperShop';
+  // Restore remembered username
+  const remembered=localStorage.getItem('ss_remember_user');
+  if(remembered){const lu=$('loginUser');if(lu)lu.value=remembered;}
+  const lrem=$('loginRemember');if(lrem&&remembered) lrem.checked=true;
+  // Clear error and password
+  const le=$('loginErr');if(le){le.style.display='none';le.textContent='';}
+  const lp=$('loginPass');if(lp)lp.value='';
+  // Reset tab
+  switchLoginTab('owner');
+  lo.classList.add('show');
+  // Focus username or password
+  setTimeout(()=>{
+    const lu=$('loginUser');
+    if(lu){if(lu.value)$('loginPass').focus();else lu.focus();}
+  },150);
+}
 
-let currentStaff=null; // null = owner/admin, else {id,name,role,username}
+function closeLogin(){
+  const lo=$('loginOverlay');if(lo) lo.classList.remove('show');
+}
+
+let currentStaff=null;
+
+function _showLoginLoading(loading){
+  const btn=$('loginBtn');
+  if(!btn) return;
+  if(loading){
+    btn.disabled=true;
+    btn.innerHTML='<span style="animation:spin .8s linear infinite;display:inline-block">⏳</span> প্রবেশ করছে...';
+  }else{
+    btn.disabled=false;
+    btn.innerHTML='🔐 প্রবেশ করুন';
+  }
+}
+
+function _showLoginError(msg){
+  const le=$('loginErr');
+  if(!le) return;
+  le.textContent=msg||'❌ ভুল Username বা পাসওয়ার্ড!';
+  le.style.display='block';
+  // Shake animation
+  le.style.animation='none';
+  requestAnimationFrame(()=>{le.style.animation='shake .4s ease';});
+  const lp=$('loginPass');if(lp){lp.value='';lp.focus();}
+}
+
+function _postLoginSuccess(name, role){
+  closeLogin();
+  _setAdminUI(true);
+  applyStaffPermissions();
+  switchPanel('admin');
+  loadAdminData();
+  updateAdminQuickBar();
+  // Success toast with role info
+  const roleLabel=role?staffRoleLabel(role):'Admin';
+  toast(`✅ স্বাগতম, ${name}! (${roleLabel})`, 'success');
+  addNotif('🔐 লগইন সফল',`${name} (${roleLabel}) প্রবেশ করেছেন`,'success');
+  startAutoLogoutTimer();
+  // Update last login time display in quick bar
+  const ql=$('qlLastLogin');
+  if(ql) ql.textContent=`শেষ লগইন: ${new Date().toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'})}`;
+}
 
 function doLogin(){
-  const u=$('loginUser').value.trim();
-  const p=$('loginPass').value;
-  const validOwner = u==='admin' || u===DB.adminUser || (DB.adminEmail&&u===DB.adminEmail);
-  // Owner login
-  if(validOwner&&p===DB.adminPass){
-    currentStaff=null;
-    sessionStorage.setItem('ss_admin_session','1');
-    sessionStorage.removeItem('ss_staff_id');
-    sessionStorage.setItem('ss_admin_page', sessionStorage.getItem('ss_admin_page')||'dashboard');
-    closeLogin();
-    _setAdminUI(true);
-    applyStaffPermissions();
-    switchPanel('admin');
-    loadAdminData();
-    updateAdminQuickBar();
-    addNotif('লগইন সফল','Admin panel-এ প্রবেশ করা হয়েছে','success');
-    logActivity('🔐','Owner লগইন',`ব্যবহারকারী: ${u}`);
-    toast('স্বাগতম, Admin! ✅');
-    startAutoLogoutTimer();
-    return;
-  }
-  // Staff login
-  const staffMatch=(DB.staff||[]).find(s=>(s.username===u||s.phone===u)&&s.password===p&&s.active!==false);
-  if(staffMatch){
-    currentStaff=staffMatch;
-    sessionStorage.setItem('ss_admin_session','1');
-    sessionStorage.setItem('ss_staff_id',staffMatch.id);
-    sessionStorage.setItem('ss_admin_page', staffMatch.role==='pos'?'pos':'dashboard');
-    closeLogin();
-    _setAdminUI(true);
-    applyStaffPermissions();
-    switchPanel('admin');
-    loadAdminData();
-    updateAdminQuickBar();
-    addNotif('লগইন সফল',`${staffMatch.name} (${staffRoleLabel(staffMatch.role)}) প্রবেশ করেছেন`,'success');
-    logActivity('👤','স্টাফ লগইন',`${staffMatch.name} — ${staffRoleLabel(staffMatch.role)}`);
-    toast(`স্বাগতম, ${staffMatch.name}! ✅`);
-    return;
-  }
-  $('loginErr').style.display='block';
-  $('loginPass').value='';
-  $('loginPass').focus();
+  const u=($('loginUser')||{value:''}).value.trim();
+  const p=($('loginPass')||{value:''}).value;
+  const remember=($('loginRemember')||{checked:false}).checked;
+
+  if(!u||!p){_showLoginError('❌ Username ও পাসওয়ার্ড দিন');return;}
+
+  _showLoginLoading(true);
+
+  // Small delay for UX (prevents brute-force feel)
+  setTimeout(()=>{
+    _showLoginLoading(false);
+    const validOwner=u==='admin'||u===DB.adminUser||(DB.adminEmail&&u===DB.adminEmail);
+
+    // Owner login
+    if(validOwner&&p===DB.adminPass){
+      currentStaff=null;
+      if(remember) localStorage.setItem('ss_remember_user',u);
+      else localStorage.removeItem('ss_remember_user');
+      sessionStorage.setItem('ss_admin_session','1');
+      sessionStorage.removeItem('ss_staff_id');
+      sessionStorage.setItem('ss_admin_page',sessionStorage.getItem('ss_admin_page')||'dashboard');
+      logActivity('🔐','Owner লগইন',`ব্যবহারকারী: ${u}`);
+      _postLoginSuccess(DB.adminUser||'Admin','owner');
+      return;
+    }
+
+    // Staff login
+    const staffMatch=(DB.staff||[]).find(s=>
+      (s.username===u||s.phone===u)&&s.password===p&&s.active!==false
+    );
+    if(staffMatch){
+      currentStaff=staffMatch;
+      if(remember) localStorage.setItem('ss_remember_user',u);
+      else localStorage.removeItem('ss_remember_user');
+      sessionStorage.setItem('ss_admin_session','1');
+      sessionStorage.setItem('ss_staff_id',staffMatch.id);
+      sessionStorage.setItem('ss_admin_page',staffMatch.role==='pos'?'pos':'dashboard');
+      logActivity('👤','স্টাফ লগইন',`${staffMatch.name} — ${staffRoleLabel(staffMatch.role)}`);
+      _postLoginSuccess(staffMatch.name,staffMatch.role);
+      return;
+    }
+
+    // Failed
+    logActivity('⚠️','লগইন ব্যর্থ',`ব্যবহারকারী: ${u}`);
+    _showLoginError('❌ ভুল Username বা পাসওয়ার্ড! আবার চেষ্টা করুন।');
+  }, 400);
 }
 
 function staffRoleLabel(role){
-  return {owner:'মালিক',manager:'ম্যানেজার',cashier:'ক্যাশিয়ার',pos:'POS অপারেটর'}[role]||role;
+  return{owner:'মালিক',manager:'ম্যানেজার',cashier:'ক্যাশিয়ার',pos:'POS অপারেটর'}[role]||role;
 }
 
 // ══════════════════════════════════════
@@ -2776,16 +2892,25 @@ function canDo(action){
 
 
 function logoutAdmin(){
-  isAdmin=false;
-  currentStaff=null;
+  const name=currentStaff?currentStaff.name:(DB.adminUser||'Admin');
+  const role=currentStaff?staffRoleLabel(currentStaff.role):'Owner';
+  confirm2(`👋 ${name} (${role})\n\nলগআউট করবেন?`,()=>{
+    _doLogout();
+  });
+}
+function _doLogout(){
+  const name=currentStaff?currentStaff.name:(DB.adminUser||'Admin');
+  logActivity('🚪','লগআউট',`${name} সেশন শেষ করেছেন`);
+  isAdmin=false;currentStaff=null;
   sessionStorage.removeItem('ss_admin_session');
   sessionStorage.removeItem('ss_admin_page');
   sessionStorage.removeItem('ss_staff_id');
   stopAutoLogoutTimer();
   closeSidebar();
   _setAdminUI(false);
+  document.body.classList.remove('admin-mode');
   switchPanel('shop');
-  toast('লগআউট সফল','warn');
+  toast('👋 লগআউট সফল','info');
 }
 
 // ══════════════════════════════════════
@@ -2798,10 +2923,12 @@ function switchPanel(p){
   if(p==='admin'){
     $('adminPanel').style.display='flex';
     $('adminPanel').classList.add('active');
+    document.body.classList.add('admin-mode');
     if(footer) footer.style.display='none';
   }else{
     $('shopPanel').classList.add('active');
     $('adminPanel').style.display='none';
+    document.body.classList.remove('admin-mode');
     if(footer) footer.style.display='';
   }
 }
@@ -6153,12 +6280,19 @@ function renderLogoPreview(){
 // ══════════════════════════════════════
 function exportAllData(){
   const backup={
-    version:2,exportedAt:new Date().toISOString(),
+    version:3,exportedAt:new Date().toISOString(),
     products:DB.products,cats:DB.cats,orders:DB.orders,sales:DB.sales,
     expenses:DB.expenses,settings:DB.settings,custUsers:DB.custUsers,
     staff:DB.staff,actLog:DB.actLog,invSeq:DB.invSeq,
     loyalty:DB.loyalty,
-    adminUser:DB.adminUser,adminEmail:DB.adminEmail
+    adminUser:DB.adminUser,adminEmail:DB.adminEmail,
+    // New data stores
+    cashbook:JSON.parse(localStorage.getItem(CB_KEY)||'[]'),
+    appointments:JSON.parse(localStorage.getItem(APPT_KEY)||'[]'),
+    stickyNotes:JSON.parse(localStorage.getItem('ss_sticky_notes')||'[]'),
+    cashFloat:JSON.parse(localStorage.getItem('ss_cash_float')||'{}'),
+    custNotes:JSON.parse(localStorage.getItem('ss_cust_notes')||'{}'),
+    staffTargets:JSON.parse(localStorage.getItem('ss_staff_targets')||'{}'),
   };
   const json=JSON.stringify(backup,null,2);
   const blob=new Blob([json],{type:'application/json'});
@@ -6167,8 +6301,8 @@ function exportAllData(){
   a.href=url;a.download=`SuperShop-Backup-${today()}.json`;
   document.body.appendChild(a);a.click();
   setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
-  toast('📥 ব্যাকআপ ডাউনলোড হচ্ছে');
-  logActivity('💾','ডেটা ব্যাকআপ','সম্পূর্ণ ডেটা এক্সপোর্ট করা হয়েছে');
+  toast('📥 সম্পূর্ণ ব্যাকআপ ডাউনলোড হচ্ছে');
+  logActivity('💾','ডেটা ব্যাকআপ (v3)','সম্পূর্ণ ডেটা এক্সপোর্ট করা হয়েছে');
 }
 
 function importAllData(input){
@@ -6192,6 +6326,13 @@ function importAllData(input){
       if(data.loyalty){DB.loyalty=data.loyalty;save(KEYS.loyalty,DB.loyalty);}
       if(data.adminUser){DB.adminUser=data.adminUser;save(KEYS.adminUser,DB.adminUser);}
       if(data.adminEmail){DB.adminEmail=data.adminEmail;save(KEYS.adminEmail,DB.adminEmail);}
+      // v3 new stores
+      if(data.cashbook) localStorage.setItem(CB_KEY,JSON.stringify(data.cashbook));
+      if(data.appointments) localStorage.setItem(APPT_KEY,JSON.stringify(data.appointments));
+      if(data.stickyNotes) localStorage.setItem('ss_sticky_notes',JSON.stringify(data.stickyNotes));
+      if(data.cashFloat) localStorage.setItem('ss_cash_float',JSON.stringify(data.cashFloat));
+      if(data.custNotes) localStorage.setItem('ss_cust_notes',JSON.stringify(data.custNotes));
+      if(data.staffTargets) localStorage.setItem('ss_staff_targets',JSON.stringify(data.staffTargets));
       toast('✅ ডেটা রিস্টোর সম্পন্ন হয়েছে! পেজ রিফ্রেশ হচ্ছে...');
       logActivity('💾','ডেটা রিস্টোর','ব্যাকআপ ফাইল থেকে ডেটা পুনরুদ্ধার করা হয়েছে');
       setTimeout(()=>location.reload(),1500);
@@ -6954,7 +7095,7 @@ function startAutoLogoutTimer(){
       clearInterval(_autoLogoutTimer);_autoLogoutTimer=null;
       toast('🔒 নিষ্ক্রিয়তার কারণে logout হয়েছে','warn');
       logActivity('🔒','Auto-Logout',`${mins} মিনিট নিষ্ক্রিয়`);
-      setTimeout(()=>logoutAdmin(),1000);
+      setTimeout(()=>_doLogout(),1000);
     }
   },30000);
 }
@@ -9669,6 +9810,36 @@ const splashScreen={
       `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
     }
   };
+
+  // Service Worker — offline support
+  if('serviceWorker' in navigator){
+    const swCode=`const CACHE='supershop-v1';
+self.addEventListener('install',e=>e.waitUntil(self.skipWaiting()));
+self.addEventListener('activate',e=>e.waitUntil(
+  caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
+  .then(()=>self.clients.claim())
+));
+self.addEventListener('fetch',e=>{
+  if(e.request.method!=='GET'||!e.request.url.startsWith('http')) return;
+  e.respondWith(
+    caches.match(e.request).then(cached=>{
+      const fetchPromise=fetch(e.request).then(res=>{
+        if(res&&res.status===200&&res.type!=='opaque'){
+          const clone=res.clone();
+          caches.open(CACHE).then(c=>c.put(e.request,clone));
+        }
+        return res;
+      }).catch(()=>cached);
+      return cached||fetchPromise;
+    })
+  );
+});`;
+    try{
+      const swBlob=new Blob([swCode],{type:'application/javascript'});
+      const swUrl=URL.createObjectURL(swBlob);
+      navigator.serviceWorker.register(swUrl).then(()=>{}).catch(()=>{});
+    }catch(e){}
+  }
 })();
 
 document.addEventListener('DOMContentLoaded', ()=>{
