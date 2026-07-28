@@ -1545,33 +1545,80 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 <div class="panel" id="adminPanel">
   <!-- Sidebar -->
   <div id="sidebar">
+    <!-- User Profile Card -->
+    <div id="sidebarProfile" style="padding:16px 14px 12px;border-bottom:1px solid rgba(31,51,72,.5);margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="sidebarAvatar" style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#c0223d);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 4px 12px rgba(255,77,109,.3)">A</div>
+        <div style="flex:1;min-width:0">
+          <div id="sidebarUserName" style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Admin</div>
+          <div id="sidebarUserRole" style="font-size:10px;color:var(--accent);font-weight:600;letter-spacing:.3px">👑 Owner</div>
+        </div>
+        <button onclick="_doLogout()" title="লগআউট" style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.2);color:var(--accent);padding:5px 7px;border-radius:8px;cursor:pointer;font-size:12px;flex-shrink:0;transition:var(--transition)">🚪</button>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px">
+        <span class="rt-dot" style="width:6px;height:6px"></span>
+        <span id="sidebarSessionTime">সেশন চলছে</span>
+      </div>
+    </div>
+
+    <!-- Sidebar Search -->
+    <div style="padding:8px 12px">
+      <input id="sidebarSearch" placeholder="🔍 মেনু খুঁজুন..." oninput="filterSidebar(this.value)" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(31,51,72,.7);color:var(--text);padding:7px 10px;border-radius:9px;font-family:inherit;font-size:12px;outline:none;transition:var(--transition)">
+    </div>
+
+    <!-- Navigation Groups -->
     <div class="sidebar-section">
       <div class="sidebar-label">মেইন</div>
-      <button class="sidebar-item active" onclick="showPage('dashboard',this)"><span class="icon">📊</span> ড্যাশবোর্ড</button>
+      <button class="sidebar-item active" onclick="showPage('dashboard',this)" data-label="ড্যাশবোর্ড"><span class="icon">📊</span> ড্যাশবোর্ড</button>
+      <button class="sidebar-item" onclick="showPage('pos',this)" data-label="POS বিলিং"><span class="icon">🖥️</span> POS / বিলিং</button>
     </div>
+
     <div class="sidebar-section">
       <div class="sidebar-label">ইনভেন্টরি</div>
-      <button class="sidebar-item" onclick="showPage('products',this)"><span class="icon">📦</span> পণ্য ব্যবস্থাপনা</button>
-      <button class="sidebar-item" onclick="showPage('categories',this)"><span class="icon">🏷️</span> ক্যাটাগরি</button>
+      <button class="sidebar-item" onclick="showPage('products',this)" data-label="পণ্য ব্যবস্থাপনা"><span class="icon">📦</span> পণ্য ব্যবস্থাপনা</button>
+      <button class="sidebar-item" onclick="showPage('categories',this)" data-label="ক্যাটাগরি"><span class="icon">🏷️</span> ক্যাটাগরি</button>
     </div>
+
     <div class="sidebar-section">
-      <div class="sidebar-label">বিক্রয়</div>
-      <button class="sidebar-item" onclick="showPage('orders',this)"><span class="icon">📋</span> অনলাইন অর্ডার</button>
-      <button class="sidebar-item" onclick="showPage('pos',this)"><span class="icon">🖥️</span> POS / অফলাইন বিল</button>
-      <button class="sidebar-item" onclick="showPage('sales',this)"><span class="icon">💰</span> বিক্রয় ইতিহাস</button>
+      <div class="sidebar-label">বিক্রয় ও অর্ডার</div>
+      <button class="sidebar-item" onclick="showPage('orders',this)" data-label="অনলাইন অর্ডার"><span class="icon">📋</span> অনলাইন অর্ডার</button>
+      <button class="sidebar-item" onclick="showPage('sales',this)" data-label="বিক্রয় ইতিহাস"><span class="icon">💰</span> বিক্রয় ইতিহাস</button>
     </div>
+
     <div class="sidebar-section">
-      <div class="sidebar-label">রিপোর্ট</div>
-      <button class="sidebar-item" onclick="showPage('customers',this)"><span class="icon">👥</span> কাস্টমার লিস্ট</button>
-      <button class="sidebar-item" onclick="showPage('due',this)"><span class="icon">📒</span> বাকি / Due <span id="dueSidebarBadge" style="display:none;background:var(--danger);color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;margin-left:auto"></span></button>
-      <button class="sidebar-item" onclick="showPage('expenses',this)"><span class="icon">💸</span> খরচের হিসাব</button>
+      <div class="sidebar-label">হিসাব-নিকাশ</div>
+      <button class="sidebar-item" onclick="showPage('due',this)" data-label="বাকি Due"><span class="icon">📒</span> বাকি / Due <span id="dueSidebarBadge" style="display:none;background:var(--danger);color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;margin-left:auto"></span></button>
+      <button class="sidebar-item" onclick="showPage('expenses',this)" data-label="খরচের হিসাব"><span class="icon">💸</span> খরচের হিসাব</button>
+      <button class="sidebar-item" onclick="showPage('cashbook',this)" data-label="ক্যাশবুক"><span class="icon">📓</span> ক্যাশবুক</button>
     </div>
+
     <div class="sidebar-section">
-      <button class="sidebar-item" onclick="showPage('activity',this)"><span class="icon">📜</span> কার্যক্রম লগ</button>
-      <button class="sidebar-item" onclick="showPage('cashbook',this)"><span class="icon">💸</span> ক্যাশবুক</button>
-      <button class="sidebar-item" onclick="showPage('appointments',this)"><span class="icon">📆</span> অ্যাপয়েন্টমেন্ট</button>
-      <button class="sidebar-item" onclick="showPage('ai',this)"><span class="icon">🤖</span> AI সহকারী</button>
-      <button class="sidebar-item" onclick="showPage('settings',this)"><span class="icon">⚙️</span> সেটিংস</button>
+      <div class="sidebar-label">কাস্টমার</div>
+      <button class="sidebar-item" onclick="showPage('customers',this)" data-label="কাস্টমার লিস্ট"><span class="icon">👥</span> কাস্টমার লিস্ট</button>
+      <button class="sidebar-item" onclick="showPage('appointments',this)" data-label="অ্যাপয়েন্টমেন্ট"><span class="icon">📆</span> অ্যাপয়েন্টমেন্ট</button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">টুলস</div>
+      <button class="sidebar-item" onclick="showPage('ai',this)" data-label="AI সহকারী"><span class="icon">🤖</span> AI সহকারী <span style="margin-left:auto;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:8px;padding:1px 5px;border-radius:99px;font-weight:700">NEW</span></button>
+      <button class="sidebar-item" onclick="showPage('activity',this)" data-label="কার্যক্রম লগ"><span class="icon">📜</span> কার্যক্রম লগ</button>
+      <button class="sidebar-item" onclick="showPage('settings',this)" data-label="সেটিংস"><span class="icon">⚙️</span> সেটিংস</button>
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="padding:10px 12px;border-top:1px solid rgba(31,51,72,.4);margin-top:4px">
+      <div style="font-size:9px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">দ্রুত কাজ</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        <button onclick="openGRNModal()" style="background:rgba(116,143,252,.1);border:1px solid rgba(116,143,252,.2);color:var(--info);padding:7px 6px;border-radius:9px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center">📦 GRN</button>
+        <button onclick="openCashFloatModal()" style="background:rgba(0,212,168,.1);border:1px solid rgba(0,212,168,.2);color:var(--success);padding:7px 6px;border-radius:9px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center">💰 Float</button>
+        <button onclick="showMonthComparison()" style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.2);color:var(--accent3);padding:7px 6px;border-radius:9px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center">📈 তুলনা</button>
+        <button onclick="exportAllData()" style="background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.2);color:var(--accent);padding:7px 6px;border-radius:9px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center">💾 ব্যাকআপ</button>
+      </div>
+    </div>
+
+    <!-- Version -->
+    <div style="padding:8px 16px 14px;text-align:center;font-size:9px;color:var(--text3)">
+      SuperShop v3.0 • <span id="sidebarDate"></span>
     </div>
   </div>
 
@@ -2697,20 +2744,19 @@ function _showLoginError(msg){
 }
 
 function _postLoginSuccess(name, role){
+  _sessionStart=Date.now();
   closeLogin();
   _setAdminUI(true);
   applyStaffPermissions();
   switchPanel('admin');
   loadAdminData();
   updateAdminQuickBar();
-  // Success toast with role info
+  updateSidebarProfile();
+  updateSidebarSessionTime();
   const roleLabel=role?staffRoleLabel(role):'Admin';
-  toast(`✅ স্বাগতম, ${name}! (${roleLabel})`, 'success');
+  toast(`✅ স্বাগতম, ${name}! (${roleLabel})`,'success');
   addNotif('🔐 লগইন সফল',`${name} (${roleLabel}) প্রবেশ করেছেন`,'success');
   startAutoLogoutTimer();
-  // Update last login time display in quick bar
-  const ql=$('qlLastLogin');
-  if(ql) ql.textContent=`শেষ লগইন: ${new Date().toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'})}`;
 }
 
 function doLogin(){
@@ -5764,6 +5810,55 @@ function doQuickSearch(q){
 // ══════════════════════════════════════
 //  ADMIN QUICK BAR UPDATE
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+//  SIDEBAR FUNCTIONS
+// ══════════════════════════════════════
+function updateSidebarProfile(){
+  if(!isAdmin) return;
+  const name=currentStaff?currentStaff.name:(DB.adminUser||'Admin');
+  const role=currentStaff?staffRoleLabel(currentStaff.role):'Owner';
+  const roleIcon=currentStaff?({'manager':'🧑‍💼','cashier':'🧾','pos':'🖥️'}[currentStaff.role]||'👤'):'👑';
+  // Avatar
+  const av=$('sidebarAvatar');
+  if(av){
+    if(DB.settings.logo){
+      av.innerHTML=`<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:12px">`;
+    }else{
+      av.textContent=name.charAt(0).toUpperCase();
+      av.style.background=currentStaff?'linear-gradient(135deg,#748ffc,#4a6cf7)':'linear-gradient(135deg,var(--accent),#c0223d)';
+    }
+  }
+  const un=$('sidebarUserName');if(un) un.textContent=name;
+  const ur=$('sidebarUserRole');if(ur) ur.textContent=`${roleIcon} ${role}`;
+  // Date
+  const sd=$('sidebarDate');if(sd) sd.textContent=new Date().toLocaleDateString('bn-BD',{day:'numeric',month:'short'});
+}
+
+// Sidebar menu search/filter
+function filterSidebar(q){
+  q=q.toLowerCase().trim();
+  document.querySelectorAll('#sidebar .sidebar-item').forEach(btn=>{
+    const label=(btn.dataset.label||btn.textContent||'').toLowerCase();
+    btn.style.display=(!q||label.includes(q))?'':'none';
+  });
+  // Show/hide section labels
+  document.querySelectorAll('#sidebar .sidebar-section').forEach(sec=>{
+    const visibleItems=[...sec.querySelectorAll('.sidebar-item')].some(b=>b.style.display!=='none');
+    sec.style.display=visibleItems?'':'none';
+  });
+}
+
+// Session timer in sidebar
+let _sessionStart=Date.now();
+function updateSidebarSessionTime(){
+  const el=$('sidebarSessionTime');if(!el||!isAdmin) return;
+  const mins=Math.floor((Date.now()-_sessionStart)/60000);
+  if(mins<1) el.textContent='সেশন শুরু হয়েছে';
+  else if(mins<60) el.textContent=`${mins} মিনিট ধরে সক্রিয়`;
+  else{const h=Math.floor(mins/60),m=mins%60;el.textContent=`${h} ঘণ্টা ${m} মিনিট`;}
+}
+setInterval(()=>{if(isAdmin)updateSidebarSessionTime();},60000);
+
 function updateAdminQuickBar(){
   const bar=$('adminQuickBar');if(!bar)return;
   if(!isAdmin){bar.classList.remove('show');return;}
@@ -10009,6 +10104,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     loadAdminData();
     if(currentStaff) applyStaffPermissions();
     updateAdminQuickBar();
+    updateSidebarProfile();
+    updateSidebarSessionTime();
     const savedPage=sessionStorage.getItem('ss_admin_page')||'dashboard';
     const sideBtn=document.querySelector(`.sidebar-item[onclick*="'${savedPage}'"]`);
     showPage(savedPage, sideBtn);
