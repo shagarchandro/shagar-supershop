@@ -145,7 +145,7 @@ button,input,select,textarea,.stat-card,.pos-card,.sidebar-item{transition:var(-
 /* ════════════════════════════
    ADMIN PANEL
 ════════════════════════════ */
-#adminPanel{display:none;flex-direction:row;min-height:100vh;padding-top:58px}
+#adminPanel{display:none;flex-direction:row;min-height:100vh;padding-top:58px;overflow:hidden}
 #adminPanel.active{display:flex}
 
 /* Sidebar */
@@ -158,8 +158,9 @@ button,input,select,textarea,.stat-card,.pos-card,.sidebar-item{transition:var(-
 .sidebar-item span.icon{font-size:17px;width:22px;text-align:center}
 
 /* Main content */
-#adminContent{margin-left:240px;flex:1;padding:24px;min-height:calc(100vh - 58px);background:linear-gradient(180deg,var(--primary) 0%,rgba(10,20,34,1) 100%)}
-.page{display:none}
+#adminContent{margin-left:240px;flex:1;padding:24px;min-height:calc(100vh - 58px);background:linear-gradient(180deg,var(--primary) 0%,rgba(10,20,34,1) 100%);overflow-y:auto;overflow-x:hidden}
+.page{display:none;min-height:0}
+.page.active{display:block;animation:pageIn .22s cubic-bezier(.4,0,.2,1)}
 .page.active{display:block}
 .page-header{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid rgba(31,51,72,.5)}
 .page-header h2{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.4px}
@@ -204,7 +205,7 @@ button,input,select,textarea,.stat-card,.pos-card,.sidebar-item{transition:var(-
 .stat-card .sub{font-size:11px;color:var(--text2);margin-top:6px;opacity:.85}
 
 /* Tables */
-.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid rgba(31,51,72,.7);box-shadow:var(--shadow-card)}
+.table-wrap{overflow-x:auto;overflow-y:visible;border-radius:var(--radius);border:1px solid rgba(31,51,72,.7);box-shadow:var(--shadow-card)}
 table{width:100%;border-collapse:collapse;min-width:500px}
 th{background:rgba(29,47,66,.9);padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border)}
 td{padding:11px 14px;font-size:13px;border-bottom:1px solid rgba(31,51,72,.5);vertical-align:middle}
@@ -244,11 +245,11 @@ canvas{display:block}
 /* ════════════════════════════════
    POS PREMIUM — BASE
 ════════════════════════════════ */
-.pos-wrap{display:flex;flex-direction:column;height:calc(100vh - 120px);min-height:0}
+.pos-wrap{display:flex;gap:0;height:calc(100vh - 116px);min-height:0;overflow:hidden}
 .pos-grid{display:grid;grid-template-columns:1fr 400px;gap:14px;flex:1;min-height:0;overflow:hidden}
 
 /* ── Left panel ── */
-.pos-left{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
+.pos-left{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:hidden;padding:12px}
 
 /* Search */
 /* ── BARCODE SCANNER ── */
@@ -2190,21 +2191,53 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <!-- AI ASSISTANT -->
     <div class="page" id="page-ai">
       <div class="page-header"><h2>🤖 AI সহকারী</h2><p>Claude AI দিয়ে বিক্রয় বিশ্লেষণ ও পরামর্শ</p></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px" id="aiQuickBtns">
+
+      <!-- API Key Setup -->
+      <div id="aiSetupCard" style="background:linear-gradient(135deg,rgba(116,143,252,.1),rgba(116,143,252,.05));border:1px solid rgba(116,143,252,.3);border-radius:14px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span style="font-size:24px">🔑</span>
+          <div>
+            <div style="font-size:13px;font-weight:700">Anthropic API Key প্রয়োজন</div>
+            <div style="font-size:11px;color:var(--text2)">AI সহকারী ব্যবহার করতে আপনার Claude API key দিন</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <div class="pass-wrap" style="flex:1">
+            <input id="aiApiKey" type="password" placeholder="sk-ant-api..." style="flex:1;background:rgba(13,27,42,.8);border:1.5px solid rgba(116,143,252,.4);color:var(--text);padding:9px 14px;border-radius:9px;font-family:inherit;font-size:13px;outline:none;width:100%" oninput="saveAiApiKey(this.value)">
+            <button class="pass-eye" type="button" onclick="togglePass('aiApiKey',this)">👁️</button>
+          </div>
+          <button class="btn btn-info btn-sm" onclick="testAiKey()" id="aiTestBtn">🧪 Test</button>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:8px">
+          🌐 API key পেতে: <a href="https://console.anthropic.com" target="_blank" style="color:var(--info)">console.anthropic.com</a> — Settings → API Keys → Create Key
+        </div>
+        <div id="aiKeyStatus" style="margin-top:6px;font-size:11px;display:none"></div>
+      </div>
+
+      <!-- Quick Analysis Buttons -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
         <button class="btn btn-ghost" onclick="askAI('আজকের বিক্রয় বিশ্লেষণ করো এবং কোন পণ্য সবচেয়ে বেশি বিক্রি হয়েছে বলো')">📊 আজকের বিশ্লেষণ</button>
         <button class="btn btn-ghost" onclick="askAI('গত সপ্তাহের তুলনায় এই সপ্তাহের বিক্রয় কেমন? উন্নতি বা অবনতির কারণ বিশ্লেষণ করো')">📈 সাপ্তাহিক তুলনা</button>
         <button class="btn btn-ghost" onclick="askAI('কোন পণ্যগুলো slow-moving এবং কী করলে বিক্রয় বাড়বে? পরামর্শ দাও')">💡 Slow মুভিং পণ্য</button>
-        <button class="btn btn-ghost" onclick="askAI('আমার দোকানের top customers কারা এবং তাদের ধরে রাখার জন্য কী করা উচিত?')">👑 Top Customer পরামর্শ</button>
-        <button class="btn btn-ghost" onclick="askAI('এই মাসের লাভ-ক্ষতির হিসাব করো এবং খরচ কমানোর উপায় বলো')">💰 লাভ-ক্ষতি বিশ্লেষণ</button>
+        <button class="btn btn-ghost" onclick="askAI('আমার দোকানের top customers কারা এবং তাদের ধরে রাখার জন্য কী করা উচিত?')">👑 Customer পরামর্শ</button>
+        <button class="btn btn-ghost" onclick="askAI('এই মাসের লাভ-ক্ষতির হিসাব করো এবং খরচ কমানোর উপায় বলো')">💰 লাভ-ক্ষতি</button>
         <button class="btn btn-ghost" onclick="askAI('স্টক কম আছে এমন পণ্যের তালিকা দাও এবং কতটা রিঅর্ডার করা উচিত বলো')">📦 স্টক পরামর্শ</button>
       </div>
-      <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+
+      <!-- Chat Input -->
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
         <div style="display:flex;gap:8px">
-          <input id="aiInput" placeholder="AI-কে যেকোনো প্রশ্ন করুন বাংলায়..." style="flex:1;background:var(--primary);border:1.5px solid var(--border);color:var(--text);padding:10px 14px;border-radius:9px;font-family:inherit;font-size:13px;outline:none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askAI($('aiInput').value)}">
+          <input id="aiInput" placeholder="AI-কে যেকোনো প্রশ্ন করুন বাংলায়..." style="flex:1;background:rgba(13,27,42,.8);border:1.5px solid var(--border);color:var(--text);padding:10px 14px;border-radius:9px;font-family:inherit;font-size:13px;outline:none;transition:var(--transition)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askAI($('aiInput').value)}">
           <button class="btn btn-primary" onclick="askAI($('aiInput').value)">🤖 জিজ্ঞেস করুন</button>
         </div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px">
+          <span style="font-size:11px;color:var(--text3)">Enter দিয়ে send করুন</span>
+          <button onclick="clearAiConversation()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit">🗑️ কথোপকথন মুছুন</button>
+        </div>
       </div>
-      <div id="aiConversation" style="display:flex;flex-direction:column;gap:10px;max-height:500px;overflow-y:auto"></div>
+
+      <!-- Conversation -->
+      <div id="aiConversation" style="display:flex;flex-direction:column;gap:10px;max-height:500px;overflow-y:auto;padding-right:4px"></div>
     </div>
 
     <!-- ACTIVITY LOG -->
@@ -2995,7 +3028,7 @@ function showPage(id,btn){
   $(`page-${id}`).classList.add('active');
   document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,due:renderDuePage,expenses:renderExp,activity:renderActivityLog,settings:loadSettings,cashbook:renderCashbook,appointments:renderAppointments,ai:()=>{}};
+  const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,due:renderDuePage,expenses:renderExp,activity:renderActivityLog,settings:loadSettings,cashbook:renderCashbook,appointments:renderAppointments,ai:()=>{loadAiKeyField();}};
   if(renderers[id]) renderers[id]();
   // Restore scroll position for this page
   restoreScrollPosition(id);
@@ -9142,58 +9175,140 @@ setInterval(()=>{if(isAdmin)checkApptReminders();},2*60*1000);
 //  🤖 AI ASSISTANT (Claude API)
 // ══════════════════════════════════════
 const _aiHistory=[];
+const AI_KEY_STORE='ss_ai_api_key';
+
+function getAiApiKey(){
+  return localStorage.getItem(AI_KEY_STORE)||'';
+}
+function saveAiApiKey(val){
+  if(val.trim()) localStorage.setItem(AI_KEY_STORE,val.trim());
+  else localStorage.removeItem(AI_KEY_STORE);
+  // Update status
+  const st=$('aiKeyStatus');
+  if(st){
+    if(val.trim()){st.style.display='block';st.innerHTML='<span style="color:var(--success)">✅ API Key সেট করা হয়েছে</span>';}
+    else{st.style.display='none';}
+  }
+}
+function loadAiKeyField(){
+  const k=getAiApiKey();
+  const inp=$('aiApiKey');if(inp&&k) inp.value=k;
+  const st=$('aiKeyStatus');
+  if(st&&k){st.style.display='block';st.innerHTML='<span style="color:var(--success)">✅ API Key সেট আছে — AI ব্যবহারের জন্য প্রস্তুত</span>';}
+}
+async function testAiKey(){
+  const key=($('aiApiKey')||{value:''}).value.trim()||getAiApiKey();
+  if(!key){toast('আগে API Key দিন','warn');return;}
+  const btn=$('aiTestBtn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Test করছে...';}
+  const st=$('aiKeyStatus');
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:50,messages:[{role:'user',content:'হ্যালো, একটি বাংলা শব্দ বলো।'}]})
+    });
+    const data=await resp.json();
+    if(data.content?.[0]?.text){
+      if(st){st.style.display='block';st.innerHTML='<span style="color:var(--success)">✅ API Key কাজ করছে! AI সহকারী প্রস্তুত।</span>';}
+      toast('✅ AI সংযোগ সফল!','success');
+      saveAiApiKey(key);
+    }else if(data.error){
+      if(st){st.style.display='block';st.innerHTML=`<span style="color:var(--danger)">❌ ${data.error.message||'API Key ভুল'}</span>`;}
+      toast('❌ API Key সমস্যা','warn');
+    }
+  }catch(e){
+    if(st){st.style.display='block';st.innerHTML='<span style="color:var(--danger)">❌ সংযোগ ব্যর্থ — CORS বা নেটওয়ার্ক সমস্যা</span>';}
+    toast('❌ সংযোগ ব্যর্থ','warn');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='🧪 Test';}
+  }
+}
+function clearAiConversation(){
+  _aiHistory.length=0;
+  const conv=$('aiConversation');
+  if(conv) conv.innerHTML='';
+  toast('🗑️ কথোপকথন মুছে ফেলা হয়েছে');
+}
 async function askAI(q){
   q=(q||'').trim();
   if(!q){const inp=$('aiInput');if(inp)q=inp.value.trim();}
   if(!q){toast('প্রশ্ন লিখুন','warn');return;}
+  const apiKey=getAiApiKey();
+  if(!apiKey){
+    toast('⚠️ AI Page-এ গিয়ে API Key সেট করুন','warn');
+    showPage('ai',document.querySelector('.sidebar-item[onclick*="\'ai\'"]'));
+    setTimeout(()=>$('aiApiKey')?.focus(),400);
+    return;
+  }
   const inp=$('aiInput');if(inp)inp.value='';
-  // Build context from DB
+  // Build shop context
   const todayStr=today();
   const todaySales=DB.sales.filter(s=>s.time.slice(0,10)===todayStr);
   const thisMonth=todayStr.slice(0,7);
   const monthSales=DB.sales.filter(s=>s.time.slice(0,7)===thisMonth);
-  const lowStock=DB.products.filter(p=>p.stock<5);
-  const topProds=Object.entries(DB.sales.reduce((m,s)=>{s.items?.forEach(i=>{m[i.name]=(m[i.name]||0)+i.qty});return m},{} )).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,q])=>`${n}(${q}টি)`).join(', ');
-  const context=`আমি ${DB.settings.name||'SuperShop'}-এর মালিক। আমার দোকানের তথ্য:
+  const lowStock=DB.products.filter(p=>p.stock>0&&p.stock<5);
+  const outOfStock=DB.products.filter(p=>p.stock<1);
+  const topProds=Object.entries(DB.sales.reduce((m,s)=>{
+    (s.items||[]).forEach(i=>{m[i.name]=(m[i.name]||0)+i.qty;});return m;},{})
+  ).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,q])=>`${n}(${q}টি)`).join(', ')||'কোনো বিক্রয় নেই';
+  const totalDue=DB.sales.filter(s=>s.dueAmount>0).reduce((s,x)=>s+x.dueAmount,0);
+  const context=`দোকানের নাম: ${DB.settings.name||'SuperShop'} | ঠিকানা: ${DB.settings.addr||''}
 আজ (${todayStr}): ${todaySales.length}টি বিক্রয়, আয়: ৳${todaySales.reduce((s,x)=>s+x.total,0).toFixed(0)}
-এই মাস: ${monthSales.length}টি বিক্রয়, আয়: ৳${monthSales.reduce((s,x)=>s+x.total,0).toFixed(0)}
-মোট পণ্য: ${DB.products.length}টি | কম স্টক: ${lowStock.length}টি (${lowStock.slice(0,3).map(p=>p.name).join(', ')})
-সেরা পণ্য: ${topProds}
-মোট কাস্টমার: ${DB.custUsers.length}জন নিবন্ধিত
-বকেয়া/বাকি: ${DB.sales.filter(s=>s.dueAmount>0).length}টি বিল`;
-  // Add message to conversation
+এই মাস (${thisMonth}): ${monthSales.length}টি বিক্রয়, আয়: ৳${monthSales.reduce((s,x)=>s+x.total,0).toFixed(0)}
+পণ্য: মোট ${DB.products.length}টি | কম স্টক: ${lowStock.length}টি | স্টকশেষ: ${outOfStock.length}টি
+সেরা পণ্য (বিক্রয় অনুযায়ী): ${topProds}
+কাস্টমার: ${DB.custUsers.length}জন নিবন্ধিত | বকেয়া: ৳${totalDue.toFixed(0)} (${DB.sales.filter(s=>s.dueAmount>0).length}টি বিল)
+মোট অর্ডার: ${DB.orders.length}টি | চলমান: ${DB.orders.filter(o=>o.status!=='Delivered'&&o.status!=='Cancelled').length}টি`;
+  // Show user message
   const conv=$('aiConversation');
   if(conv){
     const userDiv=document.createElement('div');
-    userDiv.style.cssText='display:flex;justify-content:flex-end;margin-bottom:8px';
-    userDiv.innerHTML=`<div style="background:var(--accent);color:#fff;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;max-width:80%">${q}</div>`;
+    userDiv.style.cssText='display:flex;justify-content:flex-end;margin-bottom:10px';
+    userDiv.innerHTML=`<div style="background:linear-gradient(135deg,var(--accent),#c0223d);color:#fff;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;max-width:80%;line-height:1.5">${q}</div>`;
     conv.appendChild(userDiv);
+    // Loading bubble
     const loadDiv=document.createElement('div');
     loadDiv.id='aiLoading';
-    loadDiv.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-bottom:8px';
-    loadDiv.innerHTML=`<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🤖</div><div style="background:var(--card2);border:1px solid var(--border);padding:10px 14px;border-radius:4px 14px 14px 14px;font-size:13px"><span style="animation:pulse 1s infinite">বিশ্লেষণ করছি...</span></div>`;
+    loadDiv.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-bottom:10px';
+    loadDiv.innerHTML=`<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#748ffc,#4a6cf7);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 4px 12px rgba(116,143,252,.3)">🤖</div>
+    <div style="background:var(--card2);border:1px solid var(--border);padding:12px 14px;border-radius:4px 14px 14px 14px;font-size:13px;color:var(--text2)">
+      <span style="display:inline-flex;gap:4px"><span style="animation:pulse 1s .0s infinite">●</span><span style="animation:pulse 1s .2s infinite">●</span><span style="animation:pulse 1s .4s infinite">●</span></span>
+    </div>`;
     conv.appendChild(loadDiv);
     conv.scrollTop=conv.scrollHeight;
   }
   try{
-    _aiHistory.push({role:'user',content:`${context}\n\nপ্রশ্ন: ${q}`});
+    _aiHistory.push({role:'user',content:`দোকানের ডেটা:\n${context}\n\nপ্রশ্ন: ${q}`});
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
       body:JSON.stringify({
         model:'claude-sonnet-4-6',max_tokens:1000,
-        system:'তুমি একজন বাংলাদেশি দোকানদারের AI সহকারী। সংক্ষিপ্ত, practical পরামর্শ দাও বাংলায়। emoji ব্যবহার করো।',
-        messages:_aiHistory.slice(-6)
+        system:'তুমি একজন অভিজ্ঞ ব্যবসায়িক পরামর্শদাতা এবং বাংলাদেশি দোকানদারের AI সহকারী। সংক্ষিপ্ত, practical এবং কার্যকর পরামর্শ দাও। সবসময় বাংলায় উত্তর দাও। প্রাসঙ্গিক emoji ব্যবহার করো। তথ্য bullet point বা numbered list-এ দাও।',
+        messages:_aiHistory.slice(-8)
       })
     });
+    if(!resp.ok){
+      const errData=await resp.json();
+      throw new Error(errData.error?.message||`HTTP ${resp.status}`);
+    }
     const data=await resp.json();
     const reply=data.content?.[0]?.text||'উত্তর পাওয়া যায়নি।';
     _aiHistory.push({role:'assistant',content:reply});
-    // Remove loading, add response
     const loadEl=$('aiLoading');if(loadEl)loadEl.remove();
     if(conv){
       const aiDiv=document.createElement('div');
-      aiDiv.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-bottom:8px';
-      aiDiv.innerHTML=`<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🤖</div><div style="background:var(--card2);border:1px solid var(--border);padding:12px 14px;border-radius:4px 14px 14px 14px;font-size:13px;line-height:1.7;max-width:85%;white-space:pre-wrap">${reply}</div>`;
+      aiDiv.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-bottom:10px';
+      // Convert newlines and markdown-like formatting
+      const formatted=reply.replace(/\n/g,'<br>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');
+      aiDiv.innerHTML=`<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#748ffc,#4a6cf7);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 4px 12px rgba(116,143,252,.3)">🤖</div>
+      <div style="background:var(--card2);border:1px solid var(--border);padding:12px 16px;border-radius:4px 14px 14px 14px;font-size:13px;line-height:1.7;max-width:88%">${formatted}</div>`;
       conv.appendChild(aiDiv);
       conv.scrollTop=conv.scrollHeight;
     }
@@ -9201,11 +9316,18 @@ async function askAI(q){
     const loadEl=$('aiLoading');if(loadEl)loadEl.remove();
     if(conv){
       const errDiv=document.createElement('div');
-      errDiv.style.cssText='display:flex;gap:8px;margin-bottom:8px';
-      errDiv.innerHTML=`<div style="width:32px;height:32px;border-radius:50%;background:var(--danger);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚠️</div><div style="background:rgba(233,69,96,.1);border:1px solid var(--danger);padding:10px 14px;border-radius:4px 14px 14px 14px;font-size:12px;color:var(--danger)">সংযোগ ব্যর্থ হয়েছে। ইন্টারনেট সংযোগ পরীক্ষা করুন।</div>`;
+      errDiv.style.cssText='display:flex;gap:8px;margin-bottom:10px';
+      const isKeyErr=err.message?.includes('401')||err.message?.includes('invalid')||err.message?.includes('authentication');
+      errDiv.innerHTML=`<div style="width:34px;height:34px;border-radius:50%;background:var(--danger);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⚠️</div>
+      <div style="background:rgba(233,69,96,.1);border:1px solid rgba(233,69,96,.3);padding:12px 14px;border-radius:4px 14px 14px 14px;font-size:12px;color:var(--danger)">
+        ${isKeyErr?'❌ API Key ভুল বা মেয়াদ শেষ। AI Page-এ গিয়ে নতুন key দিন।':'❌ সংযোগ ব্যর্থ। ইন্টারনেট ও API Key চেক করুন।'}<br>
+        <span style="opacity:.7;font-size:11px">${err.message||''}</span>
+      </div>`;
       conv.appendChild(errDiv);
       conv.scrollTop=conv.scrollHeight;
     }
+    // Remove failed message from history
+    if(_aiHistory.length&&_aiHistory[_aiHistory.length-1].role==='user') _aiHistory.pop();
   }
 }
 
