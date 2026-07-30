@@ -5869,16 +5869,23 @@ function updateSidebarProfile(){
 
 // Sidebar menu search/filter
 function filterSidebar(q){
-  q=q.toLowerCase().trim();
+  q=(q||'').toLowerCase().trim();
+  // Filter items
   document.querySelectorAll('#sidebar .sidebar-item').forEach(btn=>{
     const label=(btn.dataset.label||btn.textContent||'').toLowerCase();
-    btn.style.display=(!q||label.includes(q))?'':'none';
+    btn.style.display=(!q||label.includes(q))?'flex':'none';
   });
-  // Show/hide section labels
+  // Show/hide section groups
   document.querySelectorAll('#sidebar .sidebar-section').forEach(sec=>{
-    const visibleItems=[...sec.querySelectorAll('.sidebar-item')].some(b=>b.style.display!=='none');
-    sec.style.display=visibleItems?'':'none';
+    const hasVisible=[...sec.querySelectorAll('.sidebar-item')].some(b=>b.style.display!=='none');
+    sec.style.display=hasVisible?'':'none';
   });
+  // Clear search — restore all if empty
+  if(!q){
+    document.querySelectorAll('#sidebar .sidebar-section').forEach(sec=>sec.style.display='');
+    document.querySelectorAll('#sidebar .sidebar-item').forEach(btn=>btn.style.display='');
+    applyStaffPermissions(); // Re-apply role restrictions after clear
+  }
 }
 
 // Session timer in sidebar
