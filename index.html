@@ -2646,7 +2646,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 // ══════════════════════════════════════
 //  DATA STORE
 // ══════════════════════════════════════
-const KEYS = {products:'ss_products',cats:'ss_cats',orders:'ss_orders',sales:'ss_sales',expenses:'ss_expenses',settings:'ss_settings',adminPass:'ss_adminpass',custUsers:'ss_custusers',adminEmail:'ss_admin_email',adminUser:'ss_admin_user',actLog:'ss_activity_log',invSeq:'ss_inv_seq',staff:'ss_staff',voidPin:'ss_void_pin',loyalty:'ss_loyalty',attendance:'ss_attendance'};
+const KEYS = {products:'ss_products',cats:'ss_cats',orders:'ss_orders',sales:'ss_sales',expenses:'ss_expenses',settings:'ss_settings',adminPass:'ss_adminpass',custUsers:'ss_custusers',adminEmail:'ss_admin_email',adminUser:'ss_admin_user',actLog:'ss_activity_log',invSeq:'ss_inv_seq',staff:'ss_staff',voidPin:'ss_void_pin',loyalty:'ss_loyalty',attendance:'ss_attendance',reviews:'ss_reviews'};
 const load = k => JSON.parse(localStorage.getItem(k)||'null');
 const save = (k,v) => localStorage.setItem(k,JSON.stringify(v));
 
@@ -2666,6 +2666,7 @@ let DB = {
   staff: load(KEYS.staff)||[],
   voidPin: load(KEYS.voidPin)||'',
   attendance: load(KEYS.attendance)||[],
+  reviews: load(KEYS.reviews)||[],
   loyalty: load(KEYS.loyalty)||{points:{},rate:1,minRedeem:100,redeemValue:1} // rate: ৳X spent = 1 point
 };
 
@@ -3190,6 +3191,7 @@ function renderShop(){
     const imgHtml=p.img
       ?`<img src="${p.img}" class="zoomable-img" onclick="event.stopPropagation();openLightbox('${p.img}')" style="width:100%;height:100%;object-fit:cover" title="বড় করে দেখতে ক্লিক করুন">`
       :`<span style="font-size:48px">${p.icon||'📦'}</span>`;
+    const rt=_getProductRating(p.id);
     return`<div class="product-card">
       <div class="product-img" style="${p.img?'padding:0;overflow:hidden':''}">${imgHtml}
         <span class="stock-badge ${inStock?'in':'out'}" style="z-index:2">${inStock?`স্টক: ${p.stock}`:'শেষ'}</span>
@@ -3198,6 +3200,7 @@ function renderShop(){
         <h3 title="${p.name}">${p.name}</h3>
         <div class="cat">${c.icon||''} ${c.name||'অন্যান্য'}</div>
         <div class="price">${fmt(p.price)} <small>/ ${p.unit||'পিস'}</small></div>
+        <div style="cursor:pointer" onclick="openProductReviews('${p.id}')" title="রিভিউ দেখুন">${_starHtml(rt.avg)} <small style="color:var(--text2);font-size:11px">${rt.count?`(${rt.count})`:'রিভিউ দিন'}</small></div>
         ${inStock?`<button class="btn btn-primary btn-full" onclick="addToCart('${p.id}')">🛒 কার্টে যোগ</button>`
         :`<button class="btn btn-ghost btn-full" disabled style="opacity:.5">স্টক শেষ</button>`}
       </div>
@@ -3206,6 +3209,87 @@ function renderShop(){
   // Update realtime bar
   const rtP=$('rtProductCount');
   if(rtP) rtP.textContent=DB.products.filter(p=>p.stock>0).length;
+}
+
+// ══════════════════════════════════════
+//  PRODUCT REVIEWS / RATING
+// ══════════════════════════════════════
+function _getProductRating(pid){
+  const list=(DB.reviews||[]).filter(r=>r.productId===pid);
+  if(!list.length) return {avg:0,count:0};
+  const avg=list.reduce((s,r)=>s+r.rating,0)/list.length;
+  return {avg,count:list.length};
+}
+function _starHtml(avg,size=13){
+  const full=Math.round(avg);
+  let s='';
+  for(let i=1;i<=5;i++) s+=`<span style="font-size:${size}px;color:${i<=full?'#ffd166':'var(--text3)'}">★</span>`;
+  return `<span style="white-space:nowrap">${s}</span>`;
+}
+function openProductReviews(pid){
+  const p=DB.products.find(x=>x.id===pid);if(!p)return;
+  const list=(DB.reviews||[]).filter(r=>r.productId===pid).sort((a,b)=>b.date.localeCompare(a.date));
+  const rt=_getProductRating(pid);
+  const myReview=currentCust?list.find(r=>r.custId===currentCust.id):null;
+  const formHtml=currentCust?`
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px">${myReview?'✏️ আপনার রিভিউ সম্পাদনা করুন':'⭐ রিভিউ লিখুন'}</div>
+      <div id="reviewStarInput" style="font-size:24px;letter-spacing:4px;margin-bottom:8px;cursor:pointer">${[1,2,3,4,5].map(i=>`<span onclick="_setReviewStar(${i})" data-i="${i}" style="color:${myReview&&i<=myReview.rating?'#ffd166':'var(--text3)'}">★</span>`).join('')}</div>
+      <textarea id="reviewComment" placeholder="আপনার অভিজ্ঞতা লিখুন (ঐচ্ছিক)" style="width:100%;min-height:60px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-family:inherit;font-size:12px">${myReview?.comment||''}</textarea>
+      <button class="btn btn-primary btn-sm btn-full" style="margin-top:8px" onclick="submitReview('${pid}')">💾 রিভিউ জমা দিন</button>
+    </div>`
+    :`<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;text-align:center;font-size:12px;color:var(--text2)">
+      রিভিউ দিতে হলে <a href="#" onclick="closeModal();showCustAuth('login');return false" style="color:var(--accent)">লগইন করুন</a>
+    </div>`;
+  window._reviewStarSelected=myReview?.rating||0;
+  const reviewsHtml=list.length?list.map(r=>`
+    <div style="border-bottom:1px solid var(--border);padding:10px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:13px">${r.custName}</b>
+        <span style="font-size:10px;color:var(--text2)">${new Date(r.date).toLocaleDateString('bn-BD')}</span>
+      </div>
+      <div style="margin:3px 0">${_starHtml(r.rating,13)}</div>
+      ${r.comment?`<p style="font-size:12px;color:var(--text2);margin-top:3px">${r.comment}</p>`:''}
+    </div>`).join(''):'<p style="text-align:center;color:var(--text2);font-size:12px;padding:16px">এখনো কোনো রিভিউ নেই। প্রথম রিভিউ আপনিই দিন!</p>';
+  openModal(`⭐ ${p.name} — রিভিউ`,`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="font-size:28px;font-weight:800">${rt.avg.toFixed(1)}</div>
+      <div>${_starHtml(rt.avg,16)}<div style="font-size:11px;color:var(--text2)">${rt.count} টি রিভিউ</div></div>
+    </div>
+    ${formHtml}
+    <div>${reviewsHtml}</div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
+}
+function _setReviewStar(i){
+  window._reviewStarSelected=i;
+  document.querySelectorAll('#reviewStarInput span').forEach(el=>{
+    el.style.color=(+el.dataset.i<=i)?'#ffd166':'var(--text3)';
+  });
+}
+function submitReview(pid){
+  if(!currentCust){toast('রিভিউ দিতে লগইন করুন','warn');return;}
+  const rating=window._reviewStarSelected||0;
+  if(!rating){toast('স্টার রেটিং দিন','warn');return;}
+  const comment=($('reviewComment')||{value:''}).value.trim();
+  if(!DB.reviews) DB.reviews=[];
+  const existing=DB.reviews.find(r=>r.productId===pid&&r.custId===currentCust.id);
+  if(existing){
+    existing.rating=rating;existing.comment=comment;existing.date=new Date().toISOString();
+  }else{
+    DB.reviews.push({id:`rv${uid()}`,productId:pid,custId:currentCust.id,custName:currentCust.name,rating,comment,date:new Date().toISOString()});
+  }
+  save(KEYS.reviews,DB.reviews);
+  toast('✅ রিভিউ জমা হয়েছে, ধন্যবাদ!','success');
+  closeModal();
+  renderShop();
+}
+function deleteReview(id){
+  confirm2('এই রিভিউটি মুছে ফেলবেন?',()=>{
+    DB.reviews=(DB.reviews||[]).filter(r=>r.id!==id);
+    save(KEYS.reviews,DB.reviews);
+    toast('রিভিউ মুছে ফেলা হয়েছে','warn');
+    renderShop();
+  });
 }
 
 function addToCart(pid){
@@ -6772,6 +6856,7 @@ function exportAllData(){
     custNotes:JSON.parse(localStorage.getItem('ss_cust_notes')||'{}'),
     staffTargets:JSON.parse(localStorage.getItem('ss_staff_targets')||'{}'),
     attendance:DB.attendance,
+    reviews:DB.reviews,
   };
   const json=JSON.stringify(backup,null,2);
   const blob=new Blob([json],{type:'application/json'});
@@ -6804,6 +6889,7 @@ function importAllData(input){
       DB.invSeq=data.invSeq||1;save(KEYS.invSeq,DB.invSeq);
       if(data.loyalty){DB.loyalty=data.loyalty;save(KEYS.loyalty,DB.loyalty);}
       if(data.attendance){DB.attendance=data.attendance;save(KEYS.attendance,DB.attendance);}
+      if(data.reviews){DB.reviews=data.reviews;save(KEYS.reviews,DB.reviews);}
       if(data.adminUser){DB.adminUser=data.adminUser;save(KEYS.adminUser,DB.adminUser);}
       if(data.adminEmail){DB.adminEmail=data.adminEmail;save(KEYS.adminEmail,DB.adminEmail);}
       // v3 new stores
