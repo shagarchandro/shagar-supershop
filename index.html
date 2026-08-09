@@ -13,6 +13,9 @@
 <title>SuperShop — Management System</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/ZXingBrowser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{
   /* Dark theme — deep navy + vibrant accents */
@@ -1693,6 +1696,11 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     </div>
 
     <div class="sidebar-section">
+      <div class="sidebar-label">স্টাফ</div>
+      <button class="sidebar-item" onclick="showPage('attendance',this)" data-label="হাজিরা"><span class="icon">🕒</span> হাজিরা</button>
+    </div>
+
+    <div class="sidebar-section">
       <div class="sidebar-label">টুলস</div>
       <button class="sidebar-item" onclick="showPage('ai',this)" data-label="AI সহকারী"><span class="icon">🤖</span> AI সহকারী <span style="margin-left:auto;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:8px;padding:1px 5px;border-radius:99px;font-weight:700">NEW</span></button>
       <button class="sidebar-item" onclick="showPage('activity',this)" data-label="কার্যক্রম লগ"><span class="icon">📜</span> কার্যক্রম লগ</button>
@@ -2179,6 +2187,8 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <select id="salesBranch" onchange="renderSales()" style="display:none"><option value="">সব শাখা</option></select>
         <div class="spacer"></div>
         <button class="btn btn-success" onclick="exportCSV()">📥 CSV ডাউনলোড</button>
+        <button class="btn btn-success" onclick="exportSalesExcel()">📊 Excel ডাউনলোড</button>
+        <button class="btn btn-danger" onclick="exportSalesPDF()">📕 PDF রিপোর্ট</button>
       </div>
       <div class="table-wrap"><table>
         <thead><tr><th>বিল ID</th><th>কাস্টমার</th><th class="hide-xs">পেমেন্ট</th><th>ধরন</th><th>মোট</th><th class="hide-xs">তারিখ</th><th>একশন</th></tr></thead>
@@ -2278,6 +2288,33 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       <div class="table-wrap"><table>
         <thead><tr><th>সময়</th><th>কাস্টমার</th><th>সেবা</th><th>স্ট্যাটাস</th><th>নোট</th><th>একশন</th></tr></thead>
         <tbody id="appointmentsBody"></tbody>
+      </table></div>
+    </div>
+
+    <!-- ATTENDANCE -->
+    <div class="page" id="page-attendance">
+      <div class="page-header"><h2>🕒 স্টাফ হাজিরা</h2><p>দৈনিক চেক-ইন/চেক-আউট ও উপস্থিতির রেকর্ড</p></div>
+
+      <div class="welcome-banner" id="attendanceCheckBox" style="margin-bottom:16px">
+        <div>
+          <h3 id="attToday">আজকের হাজিরা</h3>
+          <p id="attStatusText" style="font-size:12px;opacity:.9;margin-top:4px">লোড হচ্ছে...</p>
+        </div>
+        <div style="display:flex;gap:8px" id="attActionBtns"></div>
+      </div>
+
+      <div class="stat-grid" id="attStats"></div>
+
+      <div class="toolbar">
+        <input type="date" id="attFrom" onchange="renderAttendance()">
+        <input type="date" id="attTo" onchange="renderAttendance()">
+        <select id="attStaffFilter" onchange="renderAttendance()"><option value="">সব স্টাফ</option></select>
+        <div class="spacer"></div>
+        <button class="btn btn-success btn-sm" onclick="exportAttendanceCSV()">📥 CSV ডাউনলোড</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>স্টাফ</th><th>তারিখ</th><th>চেক-ইন</th><th>চেক-আউট</th><th>মোট সময়</th><th class="hide-xs">নোট</th><th>একশন</th></tr></thead>
+        <tbody id="attendanceBody"></tbody>
       </table></div>
     </div>
 
@@ -2609,7 +2646,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 // ══════════════════════════════════════
 //  DATA STORE
 // ══════════════════════════════════════
-const KEYS = {products:'ss_products',cats:'ss_cats',orders:'ss_orders',sales:'ss_sales',expenses:'ss_expenses',settings:'ss_settings',adminPass:'ss_adminpass',custUsers:'ss_custusers',adminEmail:'ss_admin_email',adminUser:'ss_admin_user',actLog:'ss_activity_log',invSeq:'ss_inv_seq',staff:'ss_staff',voidPin:'ss_void_pin',loyalty:'ss_loyalty'};
+const KEYS = {products:'ss_products',cats:'ss_cats',orders:'ss_orders',sales:'ss_sales',expenses:'ss_expenses',settings:'ss_settings',adminPass:'ss_adminpass',custUsers:'ss_custusers',adminEmail:'ss_admin_email',adminUser:'ss_admin_user',actLog:'ss_activity_log',invSeq:'ss_inv_seq',staff:'ss_staff',voidPin:'ss_void_pin',loyalty:'ss_loyalty',attendance:'ss_attendance'};
 const load = k => JSON.parse(localStorage.getItem(k)||'null');
 const save = (k,v) => localStorage.setItem(k,JSON.stringify(v));
 
@@ -2628,6 +2665,7 @@ let DB = {
   invSeq: load(KEYS.invSeq)||1,
   staff: load(KEYS.staff)||[],
   voidPin: load(KEYS.voidPin)||'',
+  attendance: load(KEYS.attendance)||[],
   loyalty: load(KEYS.loyalty)||{points:{},rate:1,minRedeem:100,redeemValue:1} // rate: ৳X spent = 1 point
 };
 
@@ -3121,7 +3159,7 @@ function showPage(id,btn){
   $(`page-${id}`).classList.add('active');
   document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,due:renderDuePage,expenses:renderExp,activity:renderActivityLog,settings:loadSettings,cashbook:renderCashbook,appointments:renderAppointments,ai:()=>{loadAiKeyField();}};
+  const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,due:renderDuePage,expenses:renderExp,activity:renderActivityLog,settings:loadSettings,cashbook:renderCashbook,appointments:renderAppointments,attendance:renderAttendance,ai:()=>{loadAiKeyField();}};
   if(renderers[id]) renderers[id]();
   // Restore scroll position for this page
   restoreScrollPosition(id);
@@ -4166,6 +4204,15 @@ function updateOrderStatus(id,status){
   }
   toast(`স্ট্যাটাস "${status}" করা হয়েছে`);
   realtimeUpdate();
+  // ── Auto WhatsApp notify offer (Confirmed/Delivered/Cancelled অবস্থায়) ──
+  if(['Confirmed','Delivered','Cancelled'].includes(status)&&o.custPhone){
+    setTimeout(()=>{
+      openModal('📱 কাস্টমারকে জানাবেন?',
+        `<p style="font-size:14px;color:var(--text2);line-height:1.7">অর্ডার <b>${o.id}</b>-এর স্ট্যাটাস "<b>${status}</b>" করা হয়েছে। কাস্টমার (${o.custName}) কে এখনই WhatsApp-এ জানিয়ে দিতে চান?</p>`,
+        `<button class="btn btn-ghost" onclick="closeModal()">না, থাক</button>
+         <button class="btn btn-whatsapp" onclick="closeModal();shareOrderWhatsApp(DB.orders.find(x=>x.id==='${id}'))">📱 হ্যাঁ, পাঠান</button>`);
+    },300);
+  }
 }
 
 function viewOrder(id){
@@ -4779,13 +4826,79 @@ function viewDueHistory(saleId){
      ${s.dueAmount>0?`<button class="btn btn-success" onclick="closeModal();openCollectDueModal('${saleId}')">💰 আদায় করুন</button>`:''}`);
 }
 
+function _getFilteredSalesList(){
+  const from=($('salesFrom')||{value:''}).value;
+  const to=($('salesTo')||{value:''}).value;
+  const type=($('salesType')||{value:''}).value;
+  const pay=($('salesPayment')||{value:''}).value;
+  const branch=($('salesBranch')||{value:''}).value;
+  return DB.sales.filter(s=>
+    (!from||s.time.slice(0,10)>=from)&&
+    (!to||s.time.slice(0,10)<=to)&&
+    (!type||s.type===type)&&
+    (!pay||s.payment===pay)&&
+    (!branch||s.branchId===branch)
+  );
+}
 function exportCSV(){
+  const list=_getFilteredSalesList();
   const rows=[['ID','কাস্টমার','পেমেন্ট','ধরন','মোট','তারিখ']];
-  DB.sales.forEach(s=>rows.push([s.id,s.custName||'সাধারণ',s.payment||'',s.type,s.total.toFixed(2),s.time.slice(0,10)]));
+  list.forEach(s=>rows.push([s.id,s.custName||'সাধারণ',s.payment||'',s.type,s.total.toFixed(2),s.time.slice(0,10)]));
   const csv=rows.map(r=>r.join(',')).join('\n');
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download=`sales_${today()}.csv`;a.click();
   toast('CSV ডাউনলোড হচ্ছে 📥');
+}
+function exportSalesExcel(){
+  if(typeof XLSX==='undefined'){toast('Excel লাইব্রেরি লোড হয়নি, ইন্টারনেট চেক করুন','danger');return;}
+  const list=_getFilteredSalesList();
+  if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
+  const rows=list.map(s=>({
+    'বিল ID':s.id,
+    'কাস্টমার':s.custName||'সাধারণ',
+    'ফোন':s.custPhone||'',
+    'পেমেন্ট':s.payment||'',
+    'ধরন':s.type,
+    'মোট':s.total,
+    'বাকি':s.dueAmount||0,
+    'তারিখ':s.time.slice(0,10),
+    'সময়':new Date(s.time).toLocaleTimeString('bn-BD')
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:16},{wch:18},{wch:14},{wch:14},{wch:10},{wch:12},{wch:10},{wch:12},{wch:10}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'বিক্রয় রিপোর্ট');
+  XLSX.writeFile(wb,`Sales-Report-${today()}.xlsx`);
+  toast('📊 Excel ডাউনলোড হচ্ছে...','success');
+  logActivity('📊','সেলস রিপোর্ট এক্সপোর্ট','Excel ফরম্যাটে ডাউনলোড করা হয়েছে');
+}
+function exportSalesPDF(){
+  if(typeof window.jspdf==='undefined'){toast('PDF লাইব্রেরি লোড হয়নি, ইন্টারনেট চেক করুন','danger');return;}
+  const list=_getFilteredSalesList();
+  if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape',unit:'pt'});
+  const totalRev=list.reduce((s,x)=>s+x.total,0);
+  doc.setFontSize(16);
+  doc.text(DB.settings.name||'SuperShop', 40, 40);
+  doc.setFontSize(10);
+  doc.text(`বিক্রয় রিপোর্ট — তৈরি: ${new Date().toLocaleString('en-GB')}`, 40, 58);
+  doc.text(`মোট বিক্রয়: ${list.length}  |  মোট রাজস্ব: ${fmt(totalRev)}`, 40, 74);
+  const body=list.map(s=>[
+    s.id, s.custName||'সাধারণ', s.payment||'-', s.type,
+    (s.total||0).toFixed(2), (s.dueAmount||0).toFixed(2), s.time.slice(0,10)
+  ]);
+  doc.autoTable({
+    startY:90,
+    head:[['বিল ID','কাস্টমার','পেমেন্ট','ধরন','মোট','বাকি','তারিখ']],
+    body,
+    styles:{fontSize:9},
+    headStyles:{fillColor:[255,77,109]},
+    theme:'grid'
+  });
+  doc.save(`Sales-Report-${today()}.pdf`);
+  toast('📕 PDF রিপোর্ট ডাউনলোড হচ্ছে...','success');
+  logActivity('📕','সেলস রিপোর্ট এক্সপোর্ট','PDF ফরম্যাটে ডাউনলোড করা হয়েছে');
 }
 
 // ══════════════════════════════════════
@@ -6469,6 +6582,143 @@ function deleteStaff(id){
 }
 
 // ══════════════════════════════════════
+//  STAFF ATTENDANCE
+// ══════════════════════════════════════
+function _attWhoAmI(){
+  // Owner (no staff login) বা লগইনকৃত স্টাফ — উভয়ের জন্য একটা পরিচয় দেয়
+  if(currentStaff) return {id:currentStaff.id, name:currentStaff.name};
+  return {id:'owner', name:DB.adminUser||'Owner'};
+}
+function _attTodayKey(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function _attFmtTime(iso){
+  if(!iso) return '—';
+  return new Date(iso).toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'});
+}
+function _attFmtDur(inIso,outIso){
+  if(!inIso) return '—';
+  const end=outIso?new Date(outIso):new Date();
+  const ms=end-new Date(inIso);
+  if(ms<0) return '—';
+  const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000);
+  return `${h} ঘণ্টা ${m} মিনিট`;
+}
+function staffCheckIn(){
+  const who=_attWhoAmI();
+  const today=_attTodayKey();
+  if(!DB.attendance) DB.attendance=[];
+  const existing=DB.attendance.find(a=>a.staffId===who.id&&a.date===today);
+  if(existing){toast('আজকে ইতিমধ্যে চেক-ইন করা হয়েছে','warn');return;}
+  DB.attendance.push({id:`att${uid()}`,staffId:who.id,staffName:who.name,date:today,checkIn:new Date().toISOString(),checkOut:null,note:''});
+  save(KEYS.attendance,DB.attendance);
+  toast(`✅ চেক-ইন সফল — ${who.name}`,'success');
+  logActivity('🕒','চেক-ইন',`${who.name} — ${_attFmtTime(new Date().toISOString())}`);
+  renderAttendance();
+}
+function staffCheckOut(){
+  const who=_attWhoAmI();
+  const today=_attTodayKey();
+  const rec=(DB.attendance||[]).find(a=>a.staffId===who.id&&a.date===today);
+  if(!rec){toast('আগে চেক-ইন করুন','warn');return;}
+  if(rec.checkOut){toast('আজকে ইতিমধ্যে চেক-আউট করা হয়েছে','warn');return;}
+  rec.checkOut=new Date().toISOString();
+  save(KEYS.attendance,DB.attendance);
+  toast(`👋 চেক-আউট সফল — ${who.name}`,'success');
+  logActivity('🕒','চেক-আউট',`${who.name} — ${_attFmtTime(rec.checkOut)}`);
+  renderAttendance();
+}
+function deleteAttendance(id){
+  confirm2('এই হাজিরা রেকর্ড মুছে ফেলবেন?',()=>{
+    DB.attendance=(DB.attendance||[]).filter(x=>x.id!==id);
+    save(KEYS.attendance,DB.attendance);
+    renderAttendance();
+    toast('রেকর্ড মুছে ফেলা হয়েছে','warn');
+  });
+}
+function renderAttendance(){
+  if(!DB.attendance) DB.attendance=[];
+  const who=_attWhoAmI();
+  const today=_attTodayKey();
+  const todayRec=DB.attendance.find(a=>a.staffId===who.id&&a.date===today);
+
+  // Check-in/out box
+  const statusEl=$('attStatusText'), btnsEl=$('attActionBtns');
+  if(statusEl&&btnsEl){
+    if(!todayRec){
+      statusEl.textContent=`${who.name} — আজ এখনো চেক-ইন করেননি`;
+      btnsEl.innerHTML=`<button class="btn btn-primary" onclick="staffCheckIn()">🟢 চেক-ইন করুন</button>`;
+    }else if(!todayRec.checkOut){
+      statusEl.textContent=`${who.name} — চেক-ইন: ${_attFmtTime(todayRec.checkIn)} (চলমান: ${_attFmtDur(todayRec.checkIn)})`;
+      btnsEl.innerHTML=`<button class="btn btn-danger" onclick="staffCheckOut()">🔴 চেক-আউট করুন</button>`;
+    }else{
+      statusEl.textContent=`${who.name} — আজকের হাজিরা সম্পন্ন (${_attFmtDur(todayRec.checkIn,todayRec.checkOut)})`;
+      btnsEl.innerHTML=`<span class="badge badge-success">✓ সম্পন্ন</span>`;
+    }
+  }
+
+  // Staff filter dropdown (owner/manager only meaningfully useful, but harmless for all)
+  const sf=$('attStaffFilter');
+  if(sf&&sf.options.length<=1){
+    const names=[...new Map((DB.staff||[]).map(s=>[s.id,s.name])).entries()];
+    sf.innerHTML='<option value="">সব স্টাফ</option>'+names.map(([id,name])=>`<option value="${id}">${name}</option>`).join('')+'<option value="owner">Owner</option>';
+  }
+
+  // Filter records
+  const from=$('attFrom')?.value, to=$('attTo')?.value, staffId=$('attStaffFilter')?.value;
+  let list=[...DB.attendance];
+  // Staff (non-manager/owner) শুধু নিজের রেকর্ড দেখবে
+  const isRestricted=currentStaff&&!['manager'].includes(currentStaff.role);
+  if(isRestricted) list=list.filter(a=>a.staffId===who.id);
+  if(from) list=list.filter(a=>a.date>=from);
+  if(to) list=list.filter(a=>a.date<=to);
+  if(staffId) list=list.filter(a=>a.staffId===staffId);
+  list.sort((a,b)=>b.date.localeCompare(a.date)||(b.checkIn||'').localeCompare(a.checkIn||''));
+
+  // Stats
+  const statsEl=$('attStats');
+  if(statsEl){
+    const presentToday=DB.attendance.filter(a=>a.date===today).length;
+    const totalStaff=(DB.staff||[]).filter(s=>s.active!==false).length+1; // +1 owner
+    let totalHoursMs=0;
+    list.forEach(a=>{if(a.checkIn&&a.checkOut) totalHoursMs+=(new Date(a.checkOut)-new Date(a.checkIn));});
+    statsEl.innerHTML=`
+      <div class="stat-card"><div style="font-size:22px;font-weight:800">${presentToday}/${totalStaff}</div><div style="font-size:12px;color:var(--text2)">আজ উপস্থিত</div></div>
+      <div class="stat-card"><div style="font-size:22px;font-weight:800">${list.length}</div><div style="font-size:12px;color:var(--text2)">মোট রেকর্ড (ফিল্টার অনুযায়ী)</div></div>
+      <div class="stat-card"><div style="font-size:22px;font-weight:800">${Math.round(totalHoursMs/3600000)} ঘণ্টা</div><div style="font-size:12px;color:var(--text2)">মোট কর্মঘণ্টা</div></div>
+    `;
+  }
+
+  // Table
+  const tb=$('attendanceBody');
+  if(!tb) return;
+  tb.innerHTML=list.length?list.map(a=>`<tr>
+    <td style="font-weight:600">${a.staffName}</td>
+    <td>${a.date}</td>
+    <td>${_attFmtTime(a.checkIn)}</td>
+    <td>${a.checkOut?_attFmtTime(a.checkOut):'<span class="badge badge-warn">চলমান</span>'}</td>
+    <td>${_attFmtDur(a.checkIn,a.checkOut)}</td>
+    <td class="hide-xs" style="font-size:11px;color:var(--text2)">${a.note||'—'}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteAttendance('${a.id}')">🗑️</button></td>
+  </tr>`).join('')
+  :'<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:16px">কোনো হাজিরা রেকর্ড নেই</td></tr>';
+}
+function exportAttendanceCSV(){
+  if(!DB.attendance||!DB.attendance.length){toast('কোনো ডেটা নেই','warn');return;}
+  const rows=[['স্টাফ','তারিখ','চেক-ইন','চেক-আউট','মোট সময়']];
+  DB.attendance.forEach(a=>rows.push([a.staffName,a.date,_attFmtTime(a.checkIn),a.checkOut?_attFmtTime(a.checkOut):'চলমান',_attFmtDur(a.checkIn,a.checkOut)]));
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='Attendance-'+_attTodayKey()+'.csv';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  toast('📥 CSV ডাউনলোড হচ্ছে...','success');
+}
+
+// ══════════════════════════════════════
 //  SHOP LOGO UPLOAD
 // ══════════════════════════════════════
 function previewShopLogo(input){
@@ -6521,6 +6771,7 @@ function exportAllData(){
     cashFloat:JSON.parse(localStorage.getItem('ss_cash_float')||'{}'),
     custNotes:JSON.parse(localStorage.getItem('ss_cust_notes')||'{}'),
     staffTargets:JSON.parse(localStorage.getItem('ss_staff_targets')||'{}'),
+    attendance:DB.attendance,
   };
   const json=JSON.stringify(backup,null,2);
   const blob=new Blob([json],{type:'application/json'});
@@ -6552,6 +6803,7 @@ function importAllData(input){
       DB.actLog=data.actLog||[];save(KEYS.actLog,DB.actLog);
       DB.invSeq=data.invSeq||1;save(KEYS.invSeq,DB.invSeq);
       if(data.loyalty){DB.loyalty=data.loyalty;save(KEYS.loyalty,DB.loyalty);}
+      if(data.attendance){DB.attendance=data.attendance;save(KEYS.attendance,DB.attendance);}
       if(data.adminUser){DB.adminUser=data.adminUser;save(KEYS.adminUser,DB.adminUser);}
       if(data.adminEmail){DB.adminEmail=data.adminEmail;save(KEYS.adminEmail,DB.adminEmail);}
       // v3 new stores
