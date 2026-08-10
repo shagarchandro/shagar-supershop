@@ -949,6 +949,18 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 .rt-live{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:var(--success);background:rgba(0,212,168,.1);padding:2px 8px;border-radius:99px}
 .de-val{font-weight:700;color:var(--text)}
 
+/* ── SETTINGS TABS ── */
+.settings-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.settings-tab-btn{
+  padding:8px 14px;border-radius:99px;border:1px solid var(--border2);
+  background:var(--card2);color:var(--text2);font-family:inherit;font-size:12.5px;font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:var(--transition);
+}
+.settings-tab-btn:hover{background:var(--card3);color:var(--text)}
+.settings-tab-btn.active{background:linear-gradient(135deg,var(--accent),var(--accent-hover));border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(255,77,109,.3)}
+.settings-tab-content{display:none}
+.settings-tab-content.active{display:block;animation:pageIn .22s cubic-bezier(.4,0,.2,1)}
+
 /* ══════════════════════════════════════════
    RESPONSIVE — ALL DEVICES
    Desktop (>1024) | Tablet (768-1024) | Mobile (480-768) | Small (360-480) | XS (<360)
@@ -1386,6 +1398,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <button id="navShop" class="active" onclick="switchPanel('shop')">🏪 Shop</button>
     <button id="searchBtn" onclick="toggleQuickSearch()" title="দ্রুত খুঁজুন (Ctrl+K)">🔍</button>
     <button id="cartBtn" onclick="toggleCart()">🛒 Cart <span class="cart-badge" id="cartCount">0</span></button>
+    <button id="wishlistBtn" onclick="openWishlist()" style="position:relative">❤️ <span class="cart-badge" id="wishlistCount">0</span></button>
     <button id="custLoginBtn" onclick="showCustAuth('login')" style="background:var(--card2)!important;color:var(--text)!important">👤 লগইন</button>
     <button id="custUserBtn" onclick="showCustMenu()" style="display:none;background:var(--card2)!important;color:var(--accent2)!important">👤 <span id="custUserName">User</span> ▾</button>
     <div class="notif-wrap">
@@ -1552,6 +1565,8 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <p style="font-size:12px;color:var(--text2);margin-bottom:4px">দ্রুত কাজ করুন কীবোর্ড দিয়ে</p>
     <div class="shortcut-grid">
       <div class="shortcut-item"><span class="shortcut-key">F2</span><span>POS বিলিং খুলুন</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">Ctrl+Enter</span><span>বিল সম্পন্ন করুন (POS)</span></div>
+      <div class="shortcut-item"><span class="shortcut-key">F4</span><span>বিল হোল্ড করুন (POS)</span></div>
       <div class="shortcut-item"><span class="shortcut-key">Ctrl+F</span><span>Advanced Search</span></div>
       <div class="shortcut-item"><span class="shortcut-key">Ctrl+M</span><span>ক্যালকুলেটর</span></div>
       <div class="shortcut-item"><span class="shortcut-key">Ctrl+K</span><span>দ্রুত খুঁজুন</span></div>
@@ -1698,6 +1713,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <div class="sidebar-section">
       <div class="sidebar-label">স্টাফ</div>
       <button class="sidebar-item" onclick="showPage('attendance',this)" data-label="হাজিরা"><span class="icon">🕒</span> হাজিরা</button>
+      <button class="sidebar-item" onclick="showPage('payroll',this)" data-label="বেতন"><span class="icon">💵</span> বেতন</button>
     </div>
 
     <div class="sidebar-section">
@@ -1896,7 +1912,8 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <div>
             <h2 style="font-size:18px;font-weight:700;margin:0" id="posShopNameDisplay">🖥️ POS — অফলাইন বিলিং</h2>
             <p style="font-size:11px;color:var(--text2);margin:2px 0 0;display:flex;align-items:center;gap:8px">
-              <kbd style="background:var(--card2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:10px">F2</kbd>
+              <kbd style="background:var(--card2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:10px" title="বিল সম্পন্ন করুন">Ctrl+Enter</kbd>
+              <kbd style="background:var(--card2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:10px" title="বিল হোল্ড করুন">F4</kbd>
               <span class="rt-live">Live</span>
               <span id="posTodayTotal" style="color:var(--success);font-weight:600"></span>
             </p>
@@ -1908,6 +1925,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <button class="btn btn-ghost btn-sm" onclick="undoLastSale()" title="শেষ বিক্রয় বাতিল করুন">🔄 Undo</button>
           <button class="btn btn-ghost btn-sm" onclick="openFlashSaleModal()" title="Flash Sale Timer">🎊 Flash Sale</button>
           <button class="btn btn-ghost btn-sm" onclick="openGRNModal()" title="Goods Received Note">📦 GRN</button>
+          <button class="btn btn-ghost btn-sm" onclick="reprintLastReceipt()" title="সর্বশেষ বিক্রয়ের রিসিপ্ট আবার প্রিন্ট করুন">🖨️ শেষ রিসিপ্ট</button>
           <button class="btn btn-ghost btn-sm" onclick="showDayClose()">📊 দিন বন্ধ</button>
         </div>
       </div>
@@ -2052,9 +2070,19 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
               <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">🧾 বিলের বিবরণ</div>
               <div class="pos-cust-row">
                 <input type="text" id="posCust" placeholder="👤 কাস্টমার নাম" list="custSuggest">
-                <input type="text" id="posCustPhone" placeholder="📞 মোবাইল" oninput="renderSmartSuggestions()" onchange="renderSmartSuggestions()">
+                <input type="text" id="posCustPhone" placeholder="📞 মোবাইল" oninput="renderSmartSuggestions();renderPosLoyalty()" onchange="renderSmartSuggestions();renderPosLoyalty()">
               </div>
               <datalist id="custSuggest"></datalist>
+              <div id="posLoyaltyWrap" style="display:none;margin-top:8px;background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);border-radius:9px;padding:8px 10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:6px">
+                  <span>⭐ <b id="posLoyaltyPts" style="color:#ffd166">0</b> পয়েন্ট আছে (মূল্য: <span id="posLoyaltyVal">৳0</span>)</span>
+                </div>
+                <div style="display:flex;gap:6px" id="posLoyaltyActionRow">
+                  <input type="number" id="posLoyaltyRedeemInput" placeholder="পয়েন্ট সংখ্যা" min="0" style="flex:1;min-width:60px;font-size:12px">
+                  <button class="btn btn-warn btn-sm" onclick="posRedeemLoyaltyClick()" style="flex-shrink:0">✅ রিডিম</button>
+                </div>
+                <div id="posLoyaltyAppliedMsg" style="display:none;font-size:11px;color:var(--success);margin-top:4px;font-weight:600"></div>
+              </div>
               <input type="text" id="posNote" class="pos-note-input" placeholder="📝 অর্ডার নোট (ঐচ্ছিক)" style="margin-bottom:0">
             </div>
 
@@ -2318,6 +2346,24 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       </table></div>
     </div>
 
+    <!-- PAYROLL -->
+    <div class="page" id="page-payroll">
+      <div class="page-header"><h2>💵 স্টাফ বেতন</h2><p>মাসিক বেতন প্রদান ও হিসাব ট্র্যাকিং</p></div>
+
+      <div class="stat-grid" id="payrollStats"></div>
+
+      <div class="toolbar">
+        <input type="month" id="payrollMonth" onchange="renderPayroll()">
+        <button class="btn btn-primary btn-sm" onclick="generatePayrollForMonth()">🔄 এই মাসের বেতন তৈরি করুন</button>
+        <div class="spacer"></div>
+        <button class="btn btn-success btn-sm" onclick="exportPayrollCSV()">📥 CSV ডাউনলোড</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>স্টাফ</th><th>মাস</th><th>বেতন</th><th>স্ট্যাটাস</th><th class="hide-xs">পরিশোধের তারিখ</th><th>একশন</th></tr></thead>
+        <tbody id="payrollBody"></tbody>
+      </table></div>
+    </div>
+
     <!-- AI ASSISTANT -->
     <div class="page" id="page-ai">
       <div class="page-header"><h2>🤖 AI সহকারী</h2><p>Claude AI দিয়ে বিক্রয় বিশ্লেষণ ও পরামর্শ</p></div>
@@ -2385,7 +2431,22 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="page-header"><h2>⚙️ সেটিংস</h2><p>শপের তথ্য ও কনফিগারেশন</p></div>
-      <div style="max-width:520px">
+      <div class="settings-tabs" id="settingsTabs">
+        <button class="settings-tab-btn active" onclick="switchSettingsTab('general',this)">🏪 সাধারণ</button>
+        <button class="settings-tab-btn" onclick="switchSettingsTab('branch',this)">🏢 শাখা ও ব্র্যান্ড</button>
+        <button class="settings-tab-btn" onclick="switchSettingsTab('account',this)">🔐 অ্যাকাউন্ট ও নিরাপত্তা</button>
+        <button class="settings-tab-btn" onclick="switchSettingsTab('promo',this)">🎟️ কুপন ও লোগো</button>
+        <button class="settings-tab-btn" onclick="switchSettingsTab('staff',this)">👥 স্টাফ ও ব্যাকআপ</button>
+        <button class="settings-tab-btn" onclick="switchSettingsTab('loyalty',this)">💎 লয়্যালটি ও সাপ্লায়ার</button>
+        <button class="settings-tab-btn" onclick="switchSettingsTab('offers',this)">🎁 অফার ও খরচ</button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;align-items:center">
+        <button class="btn btn-primary" onclick="saveSettings()">💾 সব সেটিংস সেভ করুন</button>
+        <button class="btn btn-ghost btn-sm" onclick="requestPushPermission()" title="Browser Push Notification চালু করুন">🔔 Push Notification চালু করুন</button>
+        <span style="font-size:11px;color:var(--text2)">ℹ️ যেকোনো ট্যাব থেকে পরিবর্তন করে এখানে চাপলেই সব সেভ হয়ে যাবে</span>
+      </div>
+      <div style="max-width:900px">
+        <div class="settings-tab-content active" id="stab-general">
         <div class="form-group"><label>শপের নাম</label><input id="setName" placeholder="SuperShop"></div>
         <div class="form-group"><label>ঠিকানা</label><input id="setAddr" placeholder="ঢাকা, বাংলাদেশ"></div>
         <div class="form-group"><label>ফোন</label><input id="setPhone" placeholder="01XXXXXXXXX"></div>
@@ -2420,6 +2481,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <input type="hidden" id="setQuickLink1">
         <input type="hidden" id="setQuickLink2">
 
+        </div><!-- end stab-general -->
+
+        <div class="settings-tab-content" id="stab-branch" style="display:none">
         <div class="section-title" style="margin-top:16px">🏪 শাখা ব্যবস্থাপনা (Multi-Branch)</div>
         <div class="toolbar" style="margin-bottom:10px">
           <div class="spacer"></div>
@@ -2441,6 +2505,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <div style="font-size:11px;color:var(--text2);margin-top:6px">বর্তমান রঙ: <span id="currentColorLabel" style="font-weight:700;color:var(--accent)">#ff4d6d</span></div>
         </div>
 
+        </div><!-- end stab-branch -->
+
+        <div class="settings-tab-content" id="stab-account" style="display:none">
         <div class="section-title" style="margin-top:20px">🔐 Admin অ্যাকাউন্ট</div>
         <!-- Current admin info card -->
         <div id="adminInfoCard" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
@@ -2480,10 +2547,6 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <div id="adminEmailDisplay" style="font-size:12px;color:var(--text2);margin-bottom:14px;padding:8px 12px;background:var(--card2);border-radius:8px;border:1px solid var(--border)">
           ℹ️ Username বা Email যেকোনোটি দিয়ে login করা যাবে। খালি রাখলে পরিবর্তন হবে না।
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-          <button class="btn btn-primary" onclick="saveSettings()">💾 সেটিংস সেভ করুন</button>
-          <button class="btn btn-ghost btn-sm" onclick="requestPushPermission()" title="Browser Push Notification চালু করুন">🔔 Push Notification চালু করুন</button>
-        </div>
 
         <div class="section-title" style="margin-top:24px">🔐 ডিলিট/ভয়েড নিরাপত্তা PIN</div>
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px">
@@ -2507,6 +2570,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           </div>
         </div>
 
+        </div><!-- end stab-account -->
+
+        <div class="settings-tab-content" id="stab-promo" style="display:none">
         <div class="section-title" style="margin-top:24px">🎟️ ডিসকাউন্ট কুপন</div>
         <div class="toolbar" style="margin-bottom:10px">
           <div class="spacer"></div>
@@ -2530,6 +2596,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           </div>
         </div>
 
+        </div><!-- end stab-promo -->
+
+        <div class="settings-tab-content" id="stab-staff" style="display:none">
         <div class="section-title" style="margin-top:24px">👥 স্টাফ লগইন ব্যবস্থাপনা</div>
         <div class="toolbar" style="margin-bottom:10px">
           <div class="spacer"></div>
@@ -2551,6 +2620,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <button class="btn btn-warn btn-sm" onclick="document.getElementById('restoreFileInput').click()">📤 রিস্টোর করুন</button>
         </div>
 
+        </div><!-- end stab-staff -->
+
+        <div class="settings-tab-content" id="stab-loyalty" style="display:none">
         <div class="section-title" style="margin-top:24px">💎 Customer Loyalty Points</div>
         <div id="loyaltySettingsWrap" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px"></div>
 
@@ -2565,6 +2637,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <tbody id="supplierTableBody"></tbody>
         </table></div>
 
+        </div><!-- end stab-loyalty -->
+
+        <div class="settings-tab-content" id="stab-offers" style="display:none">
         <div class="section-title" style="margin-top:24px">🎁 Product Bundle / Combo Deal</div>
         <div class="toolbar" style="margin-bottom:10px">
           <div class="spacer"></div>
@@ -2594,6 +2669,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <thead><tr><th>নাম</th><th>ছাড়</th><th>শুরু</th><th>শেষ</th><th>স্ট্যাটাস</th><th>একশন</th></tr></thead>
           <tbody id="scheduledDiscBody"></tbody>
         </table></div>
+        </div><!-- end stab-offers -->
       </div>
     </div>
 
@@ -2646,7 +2722,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 // ══════════════════════════════════════
 //  DATA STORE
 // ══════════════════════════════════════
-const KEYS = {products:'ss_products',cats:'ss_cats',orders:'ss_orders',sales:'ss_sales',expenses:'ss_expenses',settings:'ss_settings',adminPass:'ss_adminpass',custUsers:'ss_custusers',adminEmail:'ss_admin_email',adminUser:'ss_admin_user',actLog:'ss_activity_log',invSeq:'ss_inv_seq',staff:'ss_staff',voidPin:'ss_void_pin',loyalty:'ss_loyalty',attendance:'ss_attendance',reviews:'ss_reviews'};
+const KEYS = {products:'ss_products',cats:'ss_cats',orders:'ss_orders',sales:'ss_sales',expenses:'ss_expenses',settings:'ss_settings',adminPass:'ss_adminpass',custUsers:'ss_custusers',adminEmail:'ss_admin_email',adminUser:'ss_admin_user',actLog:'ss_activity_log',invSeq:'ss_inv_seq',staff:'ss_staff',voidPin:'ss_void_pin',loyalty:'ss_loyalty',attendance:'ss_attendance',reviews:'ss_reviews',payroll:'ss_payroll',wishlist:'ss_wishlist'};
 const load = k => JSON.parse(localStorage.getItem(k)||'null');
 const save = (k,v) => localStorage.setItem(k,JSON.stringify(v));
 
@@ -2667,6 +2743,7 @@ let DB = {
   voidPin: load(KEYS.voidPin)||'',
   attendance: load(KEYS.attendance)||[],
   reviews: load(KEYS.reviews)||[],
+  payroll: load(KEYS.payroll)||[],
   loyalty: load(KEYS.loyalty)||{points:{},rate:1,minRedeem:100,redeemValue:1} // rate: ৳X spent = 1 point
 };
 
@@ -3160,7 +3237,7 @@ function showPage(id,btn){
   $(`page-${id}`).classList.add('active');
   document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,due:renderDuePage,expenses:renderExp,activity:renderActivityLog,settings:loadSettings,cashbook:renderCashbook,appointments:renderAppointments,attendance:renderAttendance,ai:()=>{loadAiKeyField();}};
+  const renderers={dashboard:loadDash,products:renderProducts,categories:renderCats,orders:renderOrders,pos:renderPOS,sales:renderSales,customers:renderCustomers,due:renderDuePage,expenses:renderExp,activity:renderActivityLog,settings:loadSettings,cashbook:renderCashbook,appointments:renderAppointments,attendance:renderAttendance,payroll:renderPayroll,ai:()=>{loadAiKeyField();}};
   if(renderers[id]) renderers[id]();
   // Restore scroll position for this page
   restoreScrollPosition(id);
@@ -3172,6 +3249,7 @@ function showPage(id,btn){
 //  SHOP
 // ══════════════════════════════════════
 let cart=[];
+let wishlist=load(KEYS.wishlist)||[];
 
 function renderShop(){
   const q=$('shopSearch').value.toLowerCase();
@@ -3195,6 +3273,7 @@ function renderShop(){
     return`<div class="product-card">
       <div class="product-img" style="${p.img?'padding:0;overflow:hidden':''}">${imgHtml}
         <span class="stock-badge ${inStock?'in':'out'}" style="z-index:2">${inStock?`স্টক: ${p.stock}`:'শেষ'}</span>
+        <span onclick="event.stopPropagation();toggleWishlist('${p.id}')" title="উইশলিস্টে যোগ/বাদ দিন" style="position:absolute;top:6px;left:6px;z-index:2;cursor:pointer;font-size:16px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))">${wishlist.includes(p.id)?'❤️':'🤍'}</span>
       </div>
       <div class="product-info">
         <h3 title="${p.name}">${p.name}</h3>
@@ -3290,6 +3369,46 @@ function deleteReview(id){
     toast('রিভিউ মুছে ফেলা হয়েছে','warn');
     renderShop();
   });
+}
+
+// ══════════════════════════════════════
+//  WISHLIST
+// ══════════════════════════════════════
+function toggleWishlist(pid){
+  const p=DB.products.find(x=>x.id===pid);if(!p)return;
+  const idx=wishlist.indexOf(pid);
+  if(idx>=0){
+    wishlist.splice(idx,1);
+    toast(`💔 "${p.name}" উইশলিস্ট থেকে বাদ দেওয়া হয়েছে`,'warn');
+  }else{
+    wishlist.push(pid);
+    toast(`❤️ "${p.name}" উইশলিস্টে যোগ হয়েছে`,'success');
+  }
+  save(KEYS.wishlist,wishlist);
+  renderWishlistBadge();
+  renderShop();
+}
+function renderWishlistBadge(){
+  const el=$('wishlistCount');
+  if(el) el.textContent=wishlist.length;
+}
+function openWishlist(){
+  const items=wishlist.map(pid=>DB.products.find(p=>p.id===pid)).filter(Boolean);
+  const body=items.length?items.map(p=>{
+    const inStock=p.stock>0;
+    return `<div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);padding:10px 0">
+      <div style="width:48px;height:48px;background:var(--card2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;overflow:hidden">
+        ${p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover">`:(p.icon||'📦')}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+        <div style="font-size:12px;color:var(--accent);font-weight:700">${fmt(p.price)}</div>
+      </div>
+      <button class="btn btn-sm ${inStock?'btn-primary':'btn-ghost'}" ${inStock?'':'disabled'} onclick="addToCart('${p.id}')">🛒</button>
+      <button class="btn btn-danger btn-sm" onclick="toggleWishlist('${p.id}');openWishlist()">🗑️</button>
+    </div>`;
+  }).join(''):'<p style="text-align:center;color:var(--text2);font-size:12px;padding:24px">উইশলিস্ট খালি — পছন্দের পণ্যে ❤️ চাপুন</p>';
+  openModal(`❤️ আমার উইশলিস্ট (${items.length})`, body, `<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
 }
 
 function addToCart(pid){
@@ -3437,6 +3556,11 @@ function buildReceipt(sale){
   <div class="print-thanks" style="font-size:10px;margin-top:6px">${s.name} — ${s.addr}</div>`;
 }
 
+function reprintLastReceipt(){
+  if(!window._lastCompletedSale){toast('এই সেশনে এখনো কোনো বিক্রয় হয়নি','warn');return;}
+  printReceipt(window._lastCompletedSale);
+  toast(`🖨️ শেষ রিসিপ্ট (${window._lastCompletedSale.id}) আবার প্রিন্ট করা হচ্ছে`);
+}
 function printReceipt(saleOrOrder){
   if(!saleOrOrder){toast('ডেটা পাওয়া যায়নি','danger');return;}
   const pa=$('printArea');
@@ -4605,6 +4729,12 @@ function clearPOS(){
   const sc=$('splitCash');if(sc)sc.value='';
   const sm=$('splitMobile');if(sm){sm.value='';sm._manualEdit=false;}
   window._appliedCoupon=null;
+  // Reset loyalty redemption state
+  window._appliedLoyaltyPoints=0;window._appliedLoyaltyDiscount=0;window._appliedLoyaltyPhone=null;
+  const plw=$('posLoyaltyWrap');if(plw)plw.style.display='none';
+  const plam=$('posLoyaltyAppliedMsg');if(plam)plam.style.display='none';
+  const plar=$('posLoyaltyActionRow');if(plar)plar.style.display='flex';
+  const plri=$('posLoyaltyRedeemInput');if(plri)plri.value='';
   // FIX: Reset scheduled discount state so next bill starts fresh
   window._scheduledDiscApplied=null;
   // FIX: Hide smart discount hint
@@ -4615,11 +4745,55 @@ function clearPOS(){
   updatePosTotals();
 }
 
+function renderPosLoyalty(){
+  const wrap=$('posLoyaltyWrap');if(!wrap)return;
+  const phone=($('posCustPhone')||{value:''}).value.trim();
+  // নতুন নম্বর দিলে আগের রিডেম্পশন রিসেট করি
+  if(window._appliedLoyaltyPhone&&window._appliedLoyaltyPhone!==phone){
+    window._appliedLoyaltyDiscount=0;window._appliedLoyaltyPoints=0;window._appliedLoyaltyPhone=null;
+    const am=$('posLoyaltyAppliedMsg');if(am)am.style.display='none';
+    const ar=$('posLoyaltyActionRow');if(ar)ar.style.display='flex';
+  }
+  const pts=phone?getLoyaltyPoints(phone):0;
+  if(!phone||pts<=0){wrap.style.display='none';updatePosTotals();return;}
+  wrap.style.display='block';
+  const val=DB.loyalty.redeemValue||1;
+  $('posLoyaltyPts').textContent=pts.toLocaleString();
+  $('posLoyaltyVal').textContent=fmt(pts*val);
+}
+function posRedeemLoyaltyClick(){
+  const phone=($('posCustPhone')||{value:''}).value.trim();
+  if(!phone){toast('আগে কাস্টমারের মোবাইল নম্বর দিন','warn');return;}
+  const pts=parseInt(($('posLoyaltyRedeemInput')||{value:0}).value)||0;
+  const minRedeem=DB.loyalty.minRedeem||100;
+  const available=getLoyaltyPoints(phone);
+  if(pts<minRedeem){toast(`ন্যূনতম ${minRedeem} পয়েন্ট প্রয়োজন`,'warn');return;}
+  if(pts>available){toast('পর্যাপ্ত পয়েন্ট নেই','warn');return;}
+  const val=DB.loyalty.redeemValue||1;
+  window._appliedLoyaltyPoints=pts;
+  window._appliedLoyaltyDiscount=pts*val;
+  window._appliedLoyaltyPhone=phone;
+  const am=$('posLoyaltyAppliedMsg');
+  if(am){am.style.display='block';am.textContent=`✅ ${pts} পয়েন্ট রিডিম করা হয়েছে — ${fmt(pts*val)} ছাড় প্রয়োগ হয়েছে (বিল দিলে নিশ্চিত হবে)`;}
+  const ar=$('posLoyaltyActionRow');if(ar)ar.style.display='none';
+  updatePosTotals();
+  toast(`⭐ ${fmt(pts*val)} লয়্যালটি ছাড় যোগ হয়েছে`,'success');
+}
+function _posLoyaltyDiscForTotal(afterDiscBeforeLoyalty){
+  return Math.min(window._appliedLoyaltyDiscount||0, Math.max(afterDiscBeforeLoyalty,0));
+}
+
 function updatePosTotals(){
   const sub=posBill.reduce((s,i)=>s+i.price*i.qty,0);
   const dv=parseFloat(($('discInput')||{value:0}).value)||0;
   const dt=($('discType')||{value:'pct'}).value;
-  const disc=dt==='pct'?sub*dv/100:Math.min(dv,sub);
+  const baseDisc=dt==='pct'?sub*dv/100:Math.min(dv,sub);
+  const afterBase=sub-baseDisc;
+  const coup=window._appliedCoupon;
+  const couponDisc=coup?(coup.type==='pct'?afterBase*coup.value/100:Math.min(coup.value,afterBase)):0;
+  const afterCoupon=afterBase-couponDisc;
+  const loyaltyDisc=_posLoyaltyDiscForTotal(afterCoupon);
+  const disc=baseDisc+couponDisc+loyaltyDisc;
   const tax=(sub-disc)*taxRate()/100;
   const total=sub-disc+tax;
   if($('posSub')) $('posSub').textContent=fmt(sub);
@@ -4642,7 +4816,10 @@ function _buildSale(){
   // Coupon discount
   const coup=window._appliedCoupon;
   const couponDisc=coup?(coup.type==='pct'?afterBase*coup.value/100:Math.min(coup.value,afterBase)):0;
-  const disc=baseDisc+couponDisc;
+  const afterCoupon=afterBase-couponDisc;
+  // Loyalty points discount
+  const loyaltyDisc=_posLoyaltyDiscForTotal(afterCoupon);
+  const disc=baseDisc+couponDisc+loyaltyDisc;
   const tax=(sub-disc)*taxRate()/100;
   const total=sub-disc+tax;
 
@@ -4665,12 +4842,14 @@ function _buildSale(){
     const ci=$('couponInput');if(ci)ci.value='';
     const cm=$('couponMsg');if(cm)cm.textContent='';
   }
+  const loyaltyPointsUsed=window._appliedLoyaltyPoints||0;
   return{
     id:`BILL-${nextInvNum()}`,
     custName:($('posCust').value.trim())||'সাধারণ কাস্টমার',
     custPhone,
     note:$('posNote').value.trim(),
     couponCode:coup?.code||'',
+    loyaltyPointsUsed,loyaltyDiscount:loyaltyDisc,
     splitCash:_splitMode?parseFloat(($('splitCash')||{value:0}).value)||0:null,
     splitMobile:_splitMode?parseFloat(($('splitMobile')||{value:0}).value)||0:null,
     items:posBill.map(i=>({productId:i.productId,name:i.name,price:i.price,qty:i.qty,unit:i.unit||'পিস'})),
@@ -4695,8 +4874,15 @@ function _commitSale(sale){
   });
   save(KEYS.products,DB.products);
   DB.sales.unshift(sale);save(KEYS.sales,DB.sales);
+  window._lastCompletedSale=sale;
   // Earn loyalty points for customer
   if(sale.custPhone) addLoyaltyPoints(sale.custPhone,sale.total);
+  // Redeem loyalty points (deduct) if used in this sale
+  if(sale.loyaltyPointsUsed>0&&sale.custPhone){
+    redeemLoyaltyPoints(sale.custPhone,sale.loyaltyPointsUsed);
+    logActivity('⭐','Loyalty রিডিম (POS)',`${sale.custName} — ${sale.loyaltyPointsUsed} পয়েন্ট = ${fmt(sale.loyaltyDiscount||0)}`);
+  }
+  window._appliedLoyaltyPoints=0;window._appliedLoyaltyDiscount=0;window._appliedLoyaltyPhone=null;
   if(sale.dueAmount>0){
     addNotif('📒 বাকি বিক্রয়',`${sale.custName} — মোট ${fmt(sale.total)}, বাকি ${fmt(sale.dueAmount)}`,'sale');
     logActivity('📒','বাকি বিক্রয়',`${sale.custName} — বাকি ${fmt(sale.dueAmount)}`);
@@ -5215,6 +5401,14 @@ function deleteExp(id){
 // ══════════════════════════════════════
 //  SETTINGS
 // ══════════════════════════════════════
+function switchSettingsTab(tab,btn){
+  document.querySelectorAll('.settings-tab-content').forEach(el=>{el.style.display='none';el.classList.remove('active')});
+  document.querySelectorAll('.settings-tab-btn').forEach(b=>b.classList.remove('active'));
+  const target=$('stab-'+tab);
+  if(target){target.style.display='block';target.classList.add('active');}
+  if(btn) btn.classList.add('active');
+}
+
 function loadSettings(){
   const s=DB.settings;
   $('setName').value=s.name||'';
@@ -5471,20 +5665,34 @@ function doCustLogout(){currentCust=null;updateCustUI();closeCustDropdown();toas
 
 function showMyOrders(){
   const orders=currentCust?DB.orders.filter(o=>o.custPhone===currentCust.phone||o.custName===currentCust.name):[];
-  const html=orders.length?orders.map(o=>`
+  const html=orders.length?orders.map(o=>{
+    const stage=o.courierStatus||'Pending';
+    const stageIdx=COURIER_STAGES.indexOf(stage);
+    const trackingHtml=o.status==='Cancelled'?`<div style="text-align:center;padding:8px;color:var(--danger);font-size:12px;font-weight:600">❌ অর্ডারটি বাতিল করা হয়েছে</div>`:`
+      <div class="courier-status-track" style="margin:10px 0">
+        ${COURIER_STAGES.map((s,i)=>`
+          <div class="cst-step ${i<stageIdx?'done':i===stageIdx?'active':''}">
+            <div class="cst-dot">${i<stageIdx?'✓':COURIER_ICONS[s]}</div>
+            <div class="cst-label">${s==='Pending'?'অপেক্ষমান':s==='Processing'?'প্রসেসিং':s==='Shipped'?'পাঠানো হয়েছে':'ডেলিভার্ড'}</div>
+          </div>`).join('')}
+      </div>
+      ${o.courierService?`<div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:6px">🚚 ${o.courierService}${o.courierTrackingNo?` • ট্র্যাকিং: <b style="color:var(--text)">${o.courierTrackingNo}</b>`:''}</div>`:''}`;
+    return`
     <div class="order-history-item">
       <div class="oh-header">
         <span class="oh-id">${o.id}</span>
         ${statusBadge(o.status)}
       </div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${new Date(o.time).toLocaleString('bn-BD')} • ${o.items.length}টি পণ্য</div>
+      ${trackingHtml}
       ${o.items.map(i=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)"><span>${i.name} ×${i.qty}</span><span>${fmt(i.price*i.qty)}</span></div>`).join('')}
       <div class="oh-header" style="margin-top:8px;margin-bottom:0"><span style="font-size:12px;color:var(--text2)">মোট</span><span class="oh-total">${fmt(o.total)}</span></div>
       <div style="display:flex;gap:6px;margin-top:10px">
         <button class="btn btn-ghost btn-sm" onclick="printReceipt(DB.orders.find(x=>x.id==='${o.id}'))">🖨️ প্রিন্ট</button>
         <button class="btn btn-info btn-sm" onclick="downloadInvoicePDF(DB.orders.find(x=>x.id==='${o.id}'))">📄 PDF</button>
       </div>
-    </div>`).join('')
+    </div>`;
+  }).join('')
   :`<div class="empty-state"><div class="ei">📋</div><p>কোনো অর্ডার নেই</p></div>`;
   openModal(`📋 আমার অর্ডার — ${currentCust?.name||''}`,html,'<button class="btn btn-ghost" onclick="closeModal()">বন্ধ করুন</button>');
 }
@@ -6607,6 +6815,10 @@ function openStaffModal(id){
       <div class="form-group"><label>ফোন (ঐচ্ছিক)</label><input id="sf_phone" value="${s?.phone||''}" placeholder="017XXXXXXXX"></div>
     </div>
     <div class="two-col">
+      <div class="form-group"><label>মাসিক বেতন (৳)</label><input id="sf_salary" type="number" min="0" value="${s?.salary||''}" placeholder="যেমন: 15000"></div>
+      <div></div>
+    </div>
+    <div class="two-col">
       <div class="form-group"><label>পাসওয়ার্ড ${id?'(পরিবর্তন না করলে খালি রাখুন)':'*'}</label>
         <div class="pass-wrap"><input id="sf_pass" type="password" placeholder="${id?'অপরিবর্তিত রাখুন':'কমপক্ষে ৬ অক্ষর'}" autocomplete="new-password"><button class="pass-eye" type="button" onclick="togglePass('sf_pass',this)">👁️</button></div>
       </div>
@@ -6629,6 +6841,7 @@ function saveStaff(id){
   const name=$('sf_name').value.trim();
   const username=$('sf_username').value.trim();
   const phone=$('sf_phone').value.trim();
+  const salary=parseFloat($('sf_salary').value)||0;
   const pass=$('sf_pass').value;
   const role=$('sf_role').value;
   if(!name||!username){toast('নাম ও ইউজারনেম দিন','warn');return;}
@@ -6638,11 +6851,11 @@ function saveStaff(id){
   if(username==='admin'||username===DB.adminUser){toast('এই ইউজারনেম Owner-এর জন্য সংরক্ষিত','warn');return;}
   if(id){
     const s=DB.staff.find(x=>x.id===id);
-    Object.assign(s,{name,username,phone,role});
+    Object.assign(s,{name,username,phone,role,salary});
     if(pass){if(pass.length<6){toast('পাসওয়ার্ড কমপক্ষে ৬ অক্ষর','warn');return;}s.password=pass;}
   }else{
     if(!pass||pass.length<6){toast('পাসওয়ার্ড কমপক্ষে ৬ অক্ষর দিন','warn');return;}
-    DB.staff.push({id:`st${uid()}`,name,username,phone,password:pass,role,active:true,created:new Date().toISOString()});
+    DB.staff.push({id:`st${uid()}`,name,username,phone,password:pass,role,salary,active:true,created:new Date().toISOString()});
   }
   save(KEYS.staff,DB.staff);
   closeModal();renderStaffTable();
@@ -6803,6 +7016,100 @@ function exportAttendanceCSV(){
 }
 
 // ══════════════════════════════════════
+//  STAFF PAYROLL
+// ══════════════════════════════════════
+function _payrollCurMonth(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function generatePayrollForMonth(){
+  const month=($('payrollMonth')?.value)||_payrollCurMonth();
+  if(!DB.payroll) DB.payroll=[];
+  const staffList=[...(DB.staff||[]).filter(s=>s.active!==false).map(s=>({id:s.id,name:s.name,salary:s.salary||0}))];
+  let added=0;
+  staffList.forEach(s=>{
+    if(!s.salary) return; // বেতন সেট করা না থাকলে স্কিপ
+    const exists=DB.payroll.find(p=>p.staffId===s.id&&p.month===month);
+    if(!exists){
+      DB.payroll.push({id:`pr${uid()}`,staffId:s.id,staffName:s.name,month,amount:s.salary,status:'due',paidDate:null});
+      added++;
+    }
+  });
+  save(KEYS.payroll,DB.payroll);
+  toast(added?`✅ ${added} জন স্টাফের বেতন এন্ট্রি তৈরি হয়েছে`:'এই মাসের এন্ট্রি ইতিমধ্যে আছে','success');
+  renderPayroll();
+}
+function markPayrollPaid(id){
+  const p=(DB.payroll||[]).find(x=>x.id===id);if(!p)return;
+  if(p.status==='paid'){toast('ইতিমধ্যে পরিশোধ করা হয়েছে','warn');return;}
+  p.status='paid';p.paidDate=new Date().toISOString();
+  save(KEYS.payroll,DB.payroll);
+  // Expenses-এও যোগ হবে হিসাবের সামঞ্জস্যের জন্য
+  if(!DB.expenses) DB.expenses=[];
+  DB.expenses.push({id:`e${uid()}`,title:`বেতন — ${p.staffName} (${p.month})`,cat:'Salary',amount:p.amount,date:new Date().toISOString().slice(0,10)});
+  save(KEYS.expenses,DB.expenses);
+  toast(`✅ ${p.staffName}-এর বেতন পরিশোধ হয়েছে`,'success');
+  logActivity('💵','বেতন পরিশোধ',`${p.staffName} — ${fmt(p.amount)} (${p.month})`);
+  renderPayroll();
+}
+function deletePayrollEntry(id){
+  confirm2('এই বেতন এন্ট্রি মুছে ফেলবেন?',()=>{
+    DB.payroll=(DB.payroll||[]).filter(x=>x.id!==id);
+    save(KEYS.payroll,DB.payroll);
+    renderPayroll();
+    toast('এন্ট্রি মুছে ফেলা হয়েছে','warn');
+  });
+}
+function renderPayroll(){
+  if(!DB.payroll) DB.payroll=[];
+  const mEl=$('payrollMonth');
+  if(mEl&&!mEl.value) mEl.value=_payrollCurMonth();
+  const month=mEl?.value||_payrollCurMonth();
+  const list=DB.payroll.filter(p=>p.month===month).sort((a,b)=>a.staffName.localeCompare(b.staffName));
+
+  const statsEl=$('payrollStats');
+  if(statsEl){
+    const total=list.reduce((s,p)=>s+p.amount,0);
+    const paid=list.filter(p=>p.status==='paid').reduce((s,p)=>s+p.amount,0);
+    const due=total-paid;
+    statsEl.innerHTML=`
+      <div class="stat-card"><div style="font-size:22px;font-weight:800">${fmt(total)}</div><div style="font-size:12px;color:var(--text2)">এই মাসের মোট বেতন</div></div>
+      <div class="stat-card"><div style="font-size:22px;font-weight:800;color:var(--success)">${fmt(paid)}</div><div style="font-size:12px;color:var(--text2)">পরিশোধিত</div></div>
+      <div class="stat-card"><div style="font-size:22px;font-weight:800;color:var(--danger)">${fmt(due)}</div><div style="font-size:12px;color:var(--text2)">বাকি</div></div>
+    `;
+  }
+  const tb=$('payrollBody');
+  if(!tb) return;
+  tb.innerHTML=list.length?list.map(p=>`<tr>
+    <td style="font-weight:600">${p.staffName}</td>
+    <td>${p.month}</td>
+    <td>${fmt(p.amount)}</td>
+    <td>${p.status==='paid'?'<span class="badge badge-success">পরিশোধিত</span>':'<span class="badge badge-warn">বাকি</span>'}</td>
+    <td class="hide-xs" style="font-size:11px;color:var(--text2)">${p.paidDate?new Date(p.paidDate).toLocaleDateString('bn-BD'):'—'}</td>
+    <td style="display:flex;gap:6px">
+      ${p.status!=='paid'?`<button class="btn btn-success btn-sm" onclick="markPayrollPaid('${p.id}')">✅ পরিশোধ করুন</button>`:''}
+      <button class="btn btn-danger btn-sm" onclick="deletePayrollEntry('${p.id}')">🗑️</button>
+    </td>
+  </tr>`).join('')
+  :'<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:16px">এই মাসের কোনো বেতন এন্ট্রি নেই — "এই মাসের বেতন তৈরি করুন" চাপুন</td></tr>';
+}
+function exportPayrollCSV(){
+  const month=$('payrollMonth')?.value||_payrollCurMonth();
+  const list=DB.payroll.filter(p=>p.month===month);
+  if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
+  const rows=[['স্টাফ','মাস','বেতন','স্ট্যাটাস','পরিশোধের তারিখ']];
+  list.forEach(p=>rows.push([p.staffName,p.month,p.amount,p.status==='paid'?'পরিশোধিত':'বাকি',p.paidDate?new Date(p.paidDate).toLocaleDateString('bn-BD'):'']));
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`Payroll-${month}.csv`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  toast('📥 CSV ডাউনলোড হচ্ছে...','success');
+}
+
+// ══════════════════════════════════════
 //  SHOP LOGO UPLOAD
 // ══════════════════════════════════════
 function previewShopLogo(input){
@@ -6857,6 +7164,8 @@ function exportAllData(){
     staffTargets:JSON.parse(localStorage.getItem('ss_staff_targets')||'{}'),
     attendance:DB.attendance,
     reviews:DB.reviews,
+    payroll:DB.payroll,
+    wishlist:wishlist,
   };
   const json=JSON.stringify(backup,null,2);
   const blob=new Blob([json],{type:'application/json'});
@@ -6890,6 +7199,8 @@ function importAllData(input){
       if(data.loyalty){DB.loyalty=data.loyalty;save(KEYS.loyalty,DB.loyalty);}
       if(data.attendance){DB.attendance=data.attendance;save(KEYS.attendance,DB.attendance);}
       if(data.reviews){DB.reviews=data.reviews;save(KEYS.reviews,DB.reviews);}
+      if(data.payroll){DB.payroll=data.payroll;save(KEYS.payroll,DB.payroll);}
+      if(data.wishlist){wishlist=data.wishlist;save(KEYS.wishlist,wishlist);}
       if(data.adminUser){DB.adminUser=data.adminUser;save(KEYS.adminUser,DB.adminUser);}
       if(data.adminEmail){DB.adminEmail=data.adminEmail;save(KEYS.adminEmail,DB.adminEmail);}
       // v3 new stores
@@ -10509,6 +10820,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(mod&&e.key==='f'&&isAdmin){e.preventDefault();openAdvancedSearch();}
     if(mod&&e.key==='m'&&isAdmin){e.preventDefault();toggleCalculator();}
     if(mod&&e.key==='b'&&isAdmin){e.preventDefault();if($('page-pos').classList.contains('active'))openScanner();}
+    if(mod&&e.key==='Enter'&&isAdmin){if($('page-pos')&&$('page-pos').classList.contains('active')){e.preventDefault();generateBill();}}
+    if(e.key==='F4'&&isAdmin){if($('page-pos')&&$('page-pos').classList.contains('active')){e.preventDefault();holdBill();}}
     if(mod&&e.key==='r'){e.preventDefault();realtimeTick();toast('🔄 রিফ্রেশ হয়েছে');}
     if(mod&&e.key==='/'&&!e.shiftKey){e.preventDefault();$('shortcutPanel').classList.toggle('show');}
     if(mod&&e.key==='l'&&isAdmin){e.preventDefault();if(confirm('লগআউট করবেন?'))logoutAdmin();}
@@ -10653,6 +10966,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $('shopNameDisplay').textContent=DB.settings.name;
   $('shopSubDisplay').textContent=DB.settings.addr;
   updateCustUI();
+  renderWishlistBadge();
 
   // ── SESSION RESTORE ──
   if(sessionStorage.getItem('ss_admin_session')==='1'){
