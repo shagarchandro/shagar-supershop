@@ -14,8 +14,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/ZXingBrowser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{
   /* Dark theme — deep navy + vibrant accents */
@@ -60,7 +58,9 @@ button,input,select,textarea,.stat-card,.pos-card,.sidebar-item{transition:var(-
 #topbar{position:fixed;top:0;left:0;right:0;height:58px;background:rgba(11,22,35,.95);border-bottom:1px solid rgba(31,51,72,.5);display:flex;align-items:center;padding:0 16px;z-index:200;gap:8px;box-shadow:0 4px 24px rgba(0,0,0,.4);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 #topbar .logo{font-size:19px;font-weight:900;color:var(--accent);letter-spacing:-.8px;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0}
 #topbar .logo span{color:var(--text);font-weight:600}
-.topnav,.topnav-right{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.topnav,.topnav-right{display:flex;align-items:center;gap:3px;flex-shrink:1;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch}
+.topnav::-webkit-scrollbar,.topnav-right::-webkit-scrollbar{display:none}
+.topnav>*{flex-shrink:0}
 .icon-btn{background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;padding:5px 7px;border-radius:8px;transition:var(--transition);line-height:1;display:inline-flex;align-items:center;justify-content:center}
 .icon-btn:hover{background:rgba(255,255,255,.07);color:var(--text)}
 .topnav button,.topnav-right button{background:none;border:none;color:var(--text2);padding:6px 10px;border-radius:9px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;transition:var(--transition);display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
@@ -93,6 +93,7 @@ button,input,select,textarea,.stat-card,.pos-card,.sidebar-item{transition:var(-
   #topbar .logo{font-size:15px}
   #custLoginBtn,#custUserBtn{display:none!important}
   #logoutBtn{max-width:80px;font-size:11px}
+  #soundBtn,#netStatusChip,#shortcutBtn{display:none!important}
 }
 @media(max-width:360px){
   #topbar .logo{font-size:13px}
@@ -1247,11 +1248,11 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
   .product-img{height:110px}
 
   /* POS — tablet/mobile */
+  /* NOTE: .pos-left/.pos-right height & position are governed by the
+     dedicated mobile POS layout block above (max-width:768px, !important) */
   .pos-wrap{height:auto}
   .pos-grid{grid-template-columns:1fr;height:auto;gap:12px}
-  .pos-left{max-height:48vh;min-height:200px}
   .pos-products{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
-  .pos-right{max-height:none}
   .pos-footer{max-height:none;overflow-y:visible}
   .pay-methods,.pay-methods-row2{grid-template-columns:repeat(3,1fr)}
   .pos-action-btns{grid-template-columns:1fr auto}
@@ -1299,7 +1300,6 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
   .shop-controls{padding:10px 12px}
 
   /* POS — small phones */
-  .pos-left{max-height:42vh}
   .pos-products{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:7px}
   .pos-card{padding:8px 6px}
   .pos-card .pos-img{height:44px}
@@ -4492,6 +4492,16 @@ let _posCatFilter='';
 function renderPOS(){
   // Update POS header (logo, shop name, live counter)
   updatePOSHeader();
+  // On mobile, start with the bill sheet collapsed so products are visible first
+  if(!window._posRightInit){
+    window._posRightInit=true;
+    if(window.innerWidth<=768&&posBill.length===0){
+      _posRightCollapsed=true;
+      const pr=$('posRight'),arrow=$('posRightArrow');
+      if(pr) pr.classList.add('collapsed');
+      if(arrow) arrow.textContent='▼';
+    }
+  }
   const q=($('posSearch')||{value:''}).value.toLowerCase();
   // Init cashTenderRow visibility
   const cr=$('cashTenderRow');
@@ -5096,6 +5106,104 @@ function viewDueHistory(saleId){
      ${s.dueAmount>0?`<button class="btn btn-success" onclick="closeModal();openCollectDueModal('${saleId}')">💰 আদায় করুন</button>`:''}`);
 }
 
+function exportSalesPDF(){
+  const list=_getFilteredSalesList();
+  if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
+  const html=buildSalesReportHTML(list);
+  try{
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.target='_blank';a.rel='noopener';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},2000);
+    toast('📕 রিপোর্ট খুলছে — প্রিন্ট ডায়ালগ থেকে "Save as PDF" বেছে নিন');
+    logActivity('📕','সেলস রিপোর্ট এক্সপোর্ট','PDF রিপোর্ট জেনারেট করা হয়েছে');
+  }catch(e){
+    toast('রিপোর্ট খোলা যায়নি: '+e.message,'danger');
+  }
+}
+function buildSalesReportHTML(list){
+  const s=DB.settings;
+  const cur=s.currency||'৳';
+  const totalRev=list.reduce((sum,x)=>sum+(x.total||0),0);
+  const totalDue=list.reduce((sum,x)=>sum+(x.dueAmount||0),0);
+  const avgSale=totalRev/list.length;
+  const byPayment={};
+  list.forEach(x=>{const p=x.payment||'অজানা';byPayment[p]=(byPayment[p]||0)+(x.total||0);});
+  const paymentRows=Object.entries(byPayment).sort((a,b)=>b[1]-a[1])
+    .map(([p,amt])=>`<div class="pm-row"><span>${p}</span><span>${cur}${amt.toLocaleString('en-IN',{minimumFractionDigits:2})}</span></div>`).join('');
+  const dates=list.map(x=>x.time.slice(0,10)).sort();
+  const rangeText=dates[0]===dates[dates.length-1]?dates[0]:`${dates[0]} — ${dates[dates.length-1]}`;
+  const rows=list.map(x=>`
+    <tr>
+      <td style="font-weight:700">${x.id}</td>
+      <td>${x.custName||'সাধারণ কাস্টমার'}</td>
+      <td>${x.payment||'-'}</td>
+      <td>${x.type==='online'?'🌐 Online':'🏪 Offline'}</td>
+      <td style="text-align:right;font-weight:700">${cur}${(x.total||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+      <td style="text-align:right;color:${x.dueAmount>0?'#e94560':'#888'}">${x.dueAmount>0?cur+x.dueAmount.toLocaleString('en-IN',{minimumFractionDigits:2}):'—'}</td>
+      <td>${new Date(x.time).toLocaleDateString('bn-BD')}</td>
+    </tr>`).join('');
+  return `<!DOCTYPE html>
+<html lang="bn"><head><meta charset="UTF-8"><title>বিক্রয় রিপোর্ট — ${today()}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+@page{size:A4 landscape;margin:12mm}
+body{font-family:Arial,sans-serif;font-size:12px;color:#1a2639;padding:28px;background:#fff}
+.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #e94560}
+.shop-name{font-size:24px;font-weight:900;color:#e94560}
+.shop-info{font-size:11px;color:#666;margin-top:4px;line-height:1.7}
+.rep-label{font-size:24px;font-weight:900;color:#1a2639;text-align:right}
+.rep-sub{font-size:11px;color:#888;text-align:right;margin-top:4px;line-height:1.7}
+.stat-row{display:flex;gap:12px;margin-bottom:18px}
+.stat-box{flex:1;background:#f8fafc;border-radius:8px;padding:12px 14px;border:1px solid #e2eaf4}
+.stat-lbl{font-size:9px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.stat-val{font-size:17px;color:#1a2639;font-weight:900}
+.stat-val.accent{color:#e94560}
+.stat-val.green{color:#00b48c}
+.pm-box{background:#f8fafc;border-radius:8px;padding:12px 14px;border:1px solid #e2eaf4;margin-bottom:18px}
+.pm-title{font-size:9px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.pm-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px dashed #e2eaf4}
+.pm-row:last-child{border:none}
+table{width:100%;border-collapse:collapse}
+thead tr{background:#1a2639}
+thead th{padding:9px 8px;text-align:left;font-size:10px;font-weight:700;color:#fff;letter-spacing:.3px}
+thead th:not(:first-child){text-align:right}
+thead th:nth-child(2),thead th:nth-child(3),thead th:nth-child(4){text-align:left}
+tbody td{padding:7px 8px;border-bottom:1px solid #eee;font-size:11px}
+tbody tr:nth-child(even){background:#f8fafc}
+.footer-note{text-align:center;margin-top:18px;padding-top:12px;border-top:1px dashed #ccc;font-size:10px;color:#aaa}
+@media print{.no-print{display:none}}
+</style></head><body>
+<div class="top">
+  <div style="display:flex;gap:12px;align-items:flex-start">
+    ${s.logo?`<img src="${s.logo}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0">`:''}
+    <div><div class="shop-name">${s.logo?'':'🛒 '}${s.name||'SuperShop'}</div>
+    <div class="shop-info">${s.addr||''}<br>📞 ${s.phone||''}</div></div>
+  </div>
+  <div><div class="rep-label">বিক্রয় রিপোর্ট</div>
+    <div class="rep-sub">তারিখ: ${rangeText}<br>তৈরি হয়েছে: ${new Date().toLocaleString('bn-BD')}</div></div>
+</div>
+<div class="stat-row">
+  <div class="stat-box"><div class="stat-lbl">মোট বিক্রয়</div><div class="stat-val">${list.length}টি</div></div>
+  <div class="stat-box"><div class="stat-lbl">মোট রাজস্ব</div><div class="stat-val accent">${cur}${totalRev.toLocaleString('en-IN',{minimumFractionDigits:2})}</div></div>
+  <div class="stat-box"><div class="stat-lbl">গড় বিক্রয়</div><div class="stat-val">${cur}${avgSale.toLocaleString('en-IN',{minimumFractionDigits:2})}</div></div>
+  <div class="stat-box"><div class="stat-lbl">মোট বাকি</div><div class="stat-val ${totalDue>0?'accent':'green'}">${cur}${totalDue.toLocaleString('en-IN',{minimumFractionDigits:2})}</div></div>
+</div>
+<div class="pm-box">
+  <div class="pm-title">পেমেন্ট পদ্ধতি অনুযায়ী বিভাজন</div>
+  ${paymentRows}
+</div>
+<table>
+  <thead><tr><th>বিল ID</th><th>কাস্টমার</th><th>পেমেন্ট</th><th>ধরন</th><th>মোট</th><th>বাকি</th><th>তারিখ</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer-note">${s.name||'SuperShop'} — স্বয়ংক্রিয়ভাবে তৈরি রিপোর্ট | ${s.addr||''}</div>
+<script>window.addEventListener("load",()=>{window.print();});<\/script>
+</body></html>`;
+}
+
 function _getFilteredSalesList(){
   const from=($('salesFrom')||{value:''}).value;
   const to=($('salesTo')||{value:''}).value;
@@ -5142,35 +5250,6 @@ function exportSalesExcel(){
   toast('📊 Excel ডাউনলোড হচ্ছে...','success');
   logActivity('📊','সেলস রিপোর্ট এক্সপোর্ট','Excel ফরম্যাটে ডাউনলোড করা হয়েছে');
 }
-function exportSalesPDF(){
-  if(typeof window.jspdf==='undefined'){toast('PDF লাইব্রেরি লোড হয়নি, ইন্টারনেট চেক করুন','danger');return;}
-  const list=_getFilteredSalesList();
-  if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({orientation:'landscape',unit:'pt'});
-  const totalRev=list.reduce((s,x)=>s+x.total,0);
-  doc.setFontSize(16);
-  doc.text(DB.settings.name||'SuperShop', 40, 40);
-  doc.setFontSize(10);
-  doc.text(`বিক্রয় রিপোর্ট — তৈরি: ${new Date().toLocaleString('en-GB')}`, 40, 58);
-  doc.text(`মোট বিক্রয়: ${list.length}  |  মোট রাজস্ব: ${fmt(totalRev)}`, 40, 74);
-  const body=list.map(s=>[
-    s.id, s.custName||'সাধারণ', s.payment||'-', s.type,
-    (s.total||0).toFixed(2), (s.dueAmount||0).toFixed(2), s.time.slice(0,10)
-  ]);
-  doc.autoTable({
-    startY:90,
-    head:[['বিল ID','কাস্টমার','পেমেন্ট','ধরন','মোট','বাকি','তারিখ']],
-    body,
-    styles:{fontSize:9},
-    headStyles:{fillColor:[255,77,109]},
-    theme:'grid'
-  });
-  doc.save(`Sales-Report-${today()}.pdf`);
-  toast('📕 PDF রিপোর্ট ডাউনলোড হচ্ছে...','success');
-  logActivity('📕','সেলস রিপোর্ট এক্সপোর্ট','PDF ফরম্যাটে ডাউনলোড করা হয়েছে');
-}
-
 // ══════════════════════════════════════
 //  CUSTOMERS
 // ══════════════════════════════════════
