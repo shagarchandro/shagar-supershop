@@ -286,6 +286,7 @@ canvas{display:block}
 .pos-products{
   flex:1;overflow-y:auto;display:grid;
   grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+  grid-auto-rows:min-content;
   gap:10px;padding:2px 1px 8px;min-height:0;
   scrollbar-width:thin;scrollbar-color:var(--border) transparent
 }
@@ -1156,7 +1157,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 .stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.25)}
 
 /* ── PRODUCT GRID/CARD (base) ── */
-.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;padding:16px}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));grid-auto-rows:min-content;gap:14px;padding:16px}
 .product-card{
   display:flex;flex-direction:column;
   background:var(--card2);border:1px solid var(--border);border-radius:var(--radius);
@@ -1466,6 +1467,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       <div id="authLoginForm">
         <div class="form-group"><label>ইমেইল / ফোন</label><input id="cLoginId" placeholder="আপনার ইমেইল বা ফোন"></div>
         <div class="form-group"><label>পাসওয়ার্ড</label><div class="pass-wrap"><input id="cLoginPass" type="password" placeholder="পাসওয়ার্ড"><button class="pass-eye" type="button" onclick="togglePass('cLoginPass',this)">👁️</button></div></div>
+        <div style="text-align:right;margin:-6px 0 12px"><a href="#" onclick="showForgotPassword();return false" style="font-size:12px;color:var(--text2)">পাসওয়ার্ড ভুলে গেছেন?</a></div>
         <div id="cLoginErr" style="color:var(--danger);font-size:12px;margin-bottom:10px;display:none">❌ ভুল তথ্য দেওয়া হয়েছে</div>
         <button class="btn btn-primary btn-full" onclick="doCustLogin()">লগইন করুন</button>
       </div>
@@ -5690,6 +5692,23 @@ function switchAuthTab(tab){
   $('tabLogin').style.borderBottomColor=tab==='login'?'var(--accent)':'transparent';
   $('tabReg').style.color=tab==='reg'?'var(--accent)':'var(--text2)';
   $('tabReg').style.borderBottomColor=tab==='reg'?'var(--accent)':'transparent';
+}
+function showForgotPassword(){
+  const s=DB.settings;
+  const phone=s.phone||'';
+  const waLink=phone?`https://wa.me/${phone.replace(/^0/,'88')}?text=${encodeURIComponent('আসসালামু আলাইকুম, আমি আমার অ্যাকাউন্টের পাসওয়ার্ড ভুলে গেছি। সাহায্য করবেন প্লিজ।')}`:'';
+  openModal('🔑 পাসওয়ার্ড ভুলে গেছেন?',`
+    <p style="font-size:13px;color:var(--text2);line-height:1.8">
+      নিরাপত্তার জন্য আমরা স্বয়ংক্রিয়ভাবে পাসওয়ার্ড পরিবর্তন করতে দিই না। অনুগ্রহ করে সরাসরি
+      <b style="color:var(--text)">${s.name||'আমাদের'}</b>-এর সাথে যোগাযোগ করুন, আমরা আপনার পরিচয় যাচাই করে
+      নতুন পাসওয়ার্ড সেট করে দেব।
+    </p>
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+      ${phone?`<a href="tel:${phone}" class="btn btn-primary btn-full" style="text-decoration:none">📞 কল করুন — ${phone}</a>`:''}
+      ${waLink?`<a href="${waLink}" target="_blank" rel="noopener" class="btn btn-whatsapp btn-full" style="text-decoration:none">📱 WhatsApp-এ মেসেজ করুন</a>`:''}
+      ${!phone?'<p style="font-size:12px;color:var(--text2)">যোগাযোগের তথ্য সেট করা নেই — সরাসরি দোকানে যোগাযোগ করুন।</p>':''}
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal();showCustAuth('login')">← লগইনে ফিরুন</button>`);
 }
 function doCustLogin(){
   const id=$('cLoginId').value.trim().toLowerCase();
