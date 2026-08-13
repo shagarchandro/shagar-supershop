@@ -14,6 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/ZXingBrowser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/JsBarcode/3.11.6/JsBarcode.all.min.js"></script>
 <style>
 :root{
   /* Dark theme — deep navy + vibrant accents */
@@ -954,6 +955,24 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 
 /* ── MISC ── */
 .rt-live{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:var(--success);background:rgba(0,212,168,.1);padding:2px 8px;border-radius:99px}
+
+/* ── POS TOOLBAR: compact on narrow width OR short height (landscape phones/tablets) ── */
+@media(max-width:900px),(max-height:520px){
+  #posAdvancedBtns{
+    display:none!important;position:absolute;top:100%;right:0;z-index:60;
+    background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:8px;box-shadow:var(--shadow-lg);flex-direction:column!important;min-width:200px;
+  }
+  #posAdvancedBtns.show{display:flex!important}
+  #posAdvancedBtns .btn{width:100%;justify-content:flex-start}
+  #posToolbarToggle{display:flex!important;align-items:center;justify-content:center}
+  #posTopBar{position:relative}
+}
+@media(max-height:420px){
+  #posKbdHints kbd,#posKbdHints .rt-live{display:none}
+  #posShopNameDisplay{font-size:15px!important}
+  #posTopBar{margin-bottom:6px!important}
+}
 .de-val{font-weight:700;color:var(--text)}
 
 /* ── SETTINGS TABS ── */
@@ -1354,6 +1373,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
   .stat-card{padding:12px}
   .stat-card .value{font-size:16px}
   .pos-products{grid-template-columns:repeat(3,1fr)}
+  #posShopNameDisplay{font-size:15px!important;white-space:normal!important;word-break:break-word}
   .pay-methods,.pay-methods-row2{grid-template-columns:repeat(2,1fr)}
   .pos-bill-item .pi-price{min-width:50px;font-size:11px}
   .admin-quick-bar{gap:10px;font-size:11px;padding:5px 12px}
@@ -1490,6 +1510,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
   <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
     <div style="font-weight:600;font-size:14px" id="ddName">User</div>
     <div style="font-size:12px;color:var(--text2)" id="ddPhone">—</div>
+    <div style="margin-top:6px" id="ddTierBadge"></div>
   </div>
   <button onclick="showMyOrders();closeCustDropdown()" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;background:none;border:none;color:var(--text);font-family:inherit;font-size:13px;cursor:pointer">📋 আমার অর্ডার</button>
   <button onclick="showMyProfile();closeCustDropdown()" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;background:none;border:none;color:var(--text);font-family:inherit;font-size:13px;cursor:pointer">👤 প্রোফাইল</button>
@@ -1866,6 +1887,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <div class="spacer"></div>
         <button class="btn btn-ghost btn-sm" onclick="openAdvancedSearch()" title="Advanced Search (Ctrl+F)">🔍 Advanced</button>
         <button class="btn btn-ghost btn-sm" onclick="bulkBarcodeGenerate()" title="সব পণ্যে একসাথে বারকোড তৈরি">🔢 Bulk বারকোড</button>
+        <button class="btn btn-warn btn-sm" onclick="openLabelPrintStudio()" title="বারকোড/লেবেল/স্টিকার প্রিন্ট করুন">🏷️ লেবেল প্রিন্ট</button>
         <button class="btn btn-ghost btn-sm" onclick="printProductCatalog()" title="সব পণ্যের printable তালিকা">📋 ক্যাটালগ</button>
         <button class="btn btn-ghost btn-sm" onclick="openBatchPriceModal()" title="সব পণ্যের দাম একসাথে আপডেট">📦 Batch দাম</button>
         <button class="btn btn-ghost btn-sm" onclick="bulkImportCSV()" title="CSV থেকে পণ্য আমদানি">📥 CSV আমদানি</button>
@@ -1913,14 +1935,14 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <!-- POS -->
     <div class="page" id="page-pos">
       <!-- POS Top Bar -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div id="posTopBar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
         <div style="display:flex;align-items:center;gap:12px">
           <div id="posLogoDisplay" style="display:none;width:42px;height:42px;border-radius:10px;overflow:hidden;flex-shrink:0;border:1px solid var(--border)">
             <img id="posLogoImg" src="" style="width:100%;height:100%;object-fit:cover">
           </div>
           <div>
             <h2 style="font-size:18px;font-weight:700;margin:0" id="posShopNameDisplay">🖥️ POS — অফলাইন বিলিং</h2>
-            <p style="font-size:11px;color:var(--text2);margin:2px 0 0;display:flex;align-items:center;gap:8px">
+            <p style="font-size:11px;color:var(--text2);margin:2px 0 0;display:flex;align-items:center;gap:8px" id="posKbdHints">
               <kbd style="background:var(--card2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:10px" title="বিল সম্পন্ন করুন">Ctrl+Enter</kbd>
               <kbd style="background:var(--card2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-size:10px" title="বিল হোল্ড করুন">F4</kbd>
               <span class="rt-live">Live</span>
@@ -1928,6 +1950,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
             </p>
           </div>
         </div>
+        <button id="posToolbarToggle" onclick="$('posAdvancedBtns').classList.toggle('show')" title="আরও অ্যাকশন" style="display:none;background:var(--card2);border:1px solid var(--border);color:var(--text2);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">⋯</button>
         <div style="display:flex;gap:6px;flex-wrap:wrap" id="posAdvancedBtns">
           <button class="btn btn-ghost btn-sm" onclick="showPage('products',document.querySelector('.sidebar-item[onclick*=products]'))">📦 পণ্য যোগ</button>
           <button class="btn btn-ghost btn-sm" onclick="openCashFloatModal()" title="ক্যাশ ড্রয়ার শুরুর ব্যালেন্স">💰 Cash Float</button>
@@ -5328,7 +5351,7 @@ function renderCustomers(){
       const loyaltyPts=getLoyaltyPoints(c.phone);
       const custNote=getCustNote(c.phone,c.name);
       return`<tr>
-    <td><b>${c.name}</b>${c.userId?`<span class="badge badge-success" style="margin-left:6px;font-size:10px">✓ নিবন্ধিত</span>`:''}${segBadge(c)}${loyaltyPts>0?`<span class="loyalty-badge" style="margin-left:6px" onclick="showLoyaltyModal('${c.phone}','${c.name}')" title="Loyalty Points — ক্লিক করুন">⭐${loyaltyPts}</span>`:''}${custNote?`<br><span style="font-size:10px;color:var(--text2);font-style:italic">💬 ${custNote.slice(0,40)}${custNote.length>40?'...':''}</span>`:''}</td>
+    <td><b>${c.name}</b>${c.userId?`<span class="badge badge-success" style="margin-left:6px;font-size:10px">✓ নিবন্ধিত</span>`:''}${tierBadgeHtml(c.spent)} ${segBadge(c)}${loyaltyPts>0?`<span class="loyalty-badge" style="margin-left:6px" onclick="showLoyaltyModal('${c.phone}','${c.name}')" title="Loyalty Points — ক্লিক করুন">⭐${loyaltyPts}</span>`:''}${custNote?`<br><span style="font-size:10px;color:var(--text2);font-style:italic">💬 ${custNote.slice(0,40)}${custNote.length>40?'...':''}</span>`:''}</td>
     <td>${c.phone||'—'}</td>
     <td><span class="badge badge-info">${c.orders}</span></td>
     <td style="color:var(--success);font-weight:600">${fmt(c.spent)}</td>
@@ -5772,6 +5795,8 @@ function showCustMenu(){
   if(!isOpen&&currentCust){
     $('ddName').textContent=currentCust.name;
     $('ddPhone').textContent=currentCust.phone;
+    const spend=[...DB.orders,...DB.sales].filter(o=>o.custPhone===currentCust.phone).reduce((s,o)=>s+(o.total||0),0);
+    const ddt=$('ddTierBadge');if(ddt)ddt.innerHTML=tierBadgeHtml(spend,'11px');
     // Reposition on mobile
     const rect=btn.getBoundingClientRect();
     dd.style.right=Math.max(4,window.innerWidth-rect.right)+'px';
@@ -7429,54 +7454,185 @@ function switchTrendPeriod(p){
 // ══════════════════════════════════════
 //  BARCODE LABEL PRINT
 // ══════════════════════════════════════
+function _renderBarcodeSVG(text,opts={}){
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  try{
+    JsBarcode(svg,text,{
+      format:'CODE128',width:opts.width||2,height:opts.height||45,
+      displayValue:opts.displayValue!==false,fontSize:opts.fontSize||12,
+      margin:opts.margin??4,background:'#ffffff',lineColor:'#000000'
+    });
+  }catch(e){
+    return `<div style="font-size:9px;color:red;padding:4px">⚠️ অবৈধ বারকোড: ${text}</div>`;
+  }
+  return svg.outerHTML;
+}
+
 function printBarcodeLabel(id){
   const p=DB.products.find(x=>x.id===id);if(!p)return;
   if(!p.barcode){toast('এই পণ্যের কোনো বারকোড নেই','warn');return;}
   openModal(`🏷️ বারকোড লেবেল — ${p.name}`,`
-    <div class="form-group"><label>লেবেল সংখ্যা</label><input id="lbl_count" type="number" value="6" min="1" max="50"></div>
-    <div style="background:var(--card2);border-radius:8px;padding:12px;text-align:center;margin-top:8px">
-      <div style="font-size:11px;color:var(--text2);margin-bottom:4px">${p.name}</div>
-      <div style="font-family:'Courier New',monospace;font-size:18px;letter-spacing:3px;font-weight:700;color:var(--text)">${generateBarcodeBars(p.barcode)}</div>
-      <div style="font-size:11px;letter-spacing:2px;margin-top:2px">${p.barcode}</div>
-      <div style="font-size:13px;font-weight:700;color:var(--accent2);margin-top:4px">${fmt(p.price)}</div>
+    <div class="form-group"><label>লেবেল সংখ্যা</label><input id="lbl_count" type="number" value="6" min="1" max="200"></div>
+    <div style="background:#fff;border-radius:8px;padding:12px;text-align:center;margin-top:8px">
+      <div style="font-size:11px;color:#555;margin-bottom:4px">${p.name}</div>
+      <div>${_renderBarcodeSVG(p.barcode,{height:50})}</div>
+      <div style="font-size:14px;font-weight:700;color:#e94560;margin-top:2px">${fmt(p.price)}</div>
     </div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
      <button class="btn btn-primary" onclick="doPrintBarcodeLabel('${id}')">🖨️ প্রিন্ট করুন</button>`);
-}
-
-function generateBarcodeBars(code){
-  // Simple visual representation using unicode block characters (not a real scannable barcode renderer, just visual)
-  return code.split('').map(ch=>{
-    const n=ch.charCodeAt(0)%4;
-    return ['▌','▌▌','▌ ','▌▌▌'][n];
-  }).join('');
 }
 
 function doPrintBarcodeLabel(id){
   const p=DB.products.find(x=>x.id===id);if(!p)return;
   const count=parseInt(($('lbl_count')||{value:6}).value)||6;
   const s=DB.settings;
+  const barcodeSvg=_renderBarcodeSVG(p.barcode,{height:40,fontSize:11});
   const labelsHtml=Array(count).fill(0).map(()=>`
-    <div style="display:inline-block;width:180px;border:1px dashed #999;border-radius:6px;padding:10px;margin:4px;text-align:center;font-family:Arial">
+    <div style="display:inline-flex;flex-direction:column;align-items:center;width:180px;border:1px dashed #999;border-radius:6px;padding:8px;margin:4px;text-align:center;font-family:Arial">
       <div style="font-size:10px;color:#666;margin-bottom:2px">${s.name||'SuperShop'}</div>
-      <div style="font-size:11px;font-weight:600;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
-      <div style="font-family:'Libre Barcode 128',monospace;font-size:32px;letter-spacing:0;line-height:1">${generateBarcodeBars(p.barcode)}</div>
-      <div style="font-size:11px;letter-spacing:2px;font-family:monospace">${p.barcode}</div>
+      <div style="font-size:11px;font-weight:600;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${p.name}</div>
+      <div style="max-width:100%">${barcodeSvg}</div>
       <div style="font-size:14px;font-weight:800;margin-top:4px">${fmt(p.price)}</div>
     </div>`).join('');
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Barcode Labels</title>
   <style>body{font-family:Arial;padding:10px}@media print{body{padding:0}}</style></head>
-  <body>${labelsHtml}<script>window.onload=()=>window.print()<\/script></body></html>`;
+  <body>${labelsHtml}<script>window.addEventListener("load",()=>{window.print();});<\/script></body></html>`;
   try{
     const blob=new Blob([html],{type:'text/html;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;a.download=`Barcode-${p.barcode}.html`;a.style.display='none';
+    a.href=url;a.target='_blank';a.rel='noopener';
     document.body.appendChild(a);a.click();
-    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+    setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},2000);
     closeModal();
-    toast('🏷️ লেবেল ফাইল ডাউনলোড হচ্ছে — খুলে প্রিন্ট করুন');
+    toast('🏷️ লেবেল খুলছে — প্রিন্ট ডায়ালগ ব্যবহার করুন');
   }catch(e){toast('লেবেল তৈরি করতে সমস্যা হয়েছে','danger');}
+}
+
+// ══════════════════════════════════════
+//  🏷️ LABEL / BARCODE / STICKER PRINT STUDIO
+// ══════════════════════════════════════
+const LABEL_SIZES={
+  small:{w:38,h:25,fs:8,label:'ছোট (৩৮×২৫মিমি)'},
+  medium:{w:50,h:30,fs:9,label:'মাঝারি (৫০×৩০মিমি)'},
+  large:{w:70,h:37,fs:11,label:'বড় (৭০×৩৭মিমি)'},
+};
+function openLabelPrintStudio(){
+  if(typeof JsBarcode==='undefined'){toast('বারকোড লাইব্রেরি লোড হয়নি, ইন্টারনেট চেক করুন','danger');return;}
+  const withoutBarcode=DB.products.filter(p=>!p.barcode);
+  const rows=DB.products.map(p=>`
+    <tr data-pid="${p.id}">
+      <td style="text-align:center"><input type="checkbox" class="lbl-chk" value="${p.id}" ${p.barcode?'':'disabled'} onchange="_lblUpdateCount()"></td>
+      <td>${p.name}${!p.barcode?' <span style="color:var(--danger);font-size:10px">(বারকোড নেই)</span>':''}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--text2)">${p.barcode||'—'}</td>
+      <td><input type="number" class="lbl-qty" data-pid="${p.id}" value="${Math.max(1,Math.min(p.stock||1,20))}" min="1" max="200" style="width:64px;padding:5px" ${p.barcode?'':'disabled'}></td>
+    </tr>`).join('');
+  openModal('🏷️ বারকোড / লেবেল / স্টিকার প্রিন্ট স্টুডিও',`
+    ${withoutBarcode.length?`<div style="background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px">
+      ⚠️ ${withoutBarcode.length}টি পণ্যে বারকোড নেই, তাই সিলেক্ট করা যাবে না। <a href="#" onclick="closeModal();bulkBarcodeGenerate();return false" style="color:var(--accent)">এখনই সবার জন্য তৈরি করুন</a>
+    </div>`:''}
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="lblSearch" placeholder="🔍 পণ্য খুঁজুন..." oninput="_lblFilterTable()" style="flex:1;min-width:150px">
+      <button class="btn btn-ghost btn-sm" onclick="_lblSelectAll(true)">✅ সব সিলেক্ট</button>
+      <button class="btn btn-ghost btn-sm" onclick="_lblSelectAll(false)">❌ বাদ দিন</button>
+    </div>
+    <div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px">
+      <table style="width:100%">
+        <thead><tr style="position:sticky;top:0;background:var(--card2)"><th style="width:36px"></th><th>পণ্য</th><th>বারকোড</th><th style="width:74px">পরিমাণ</th></tr></thead>
+        <tbody id="lblProductTable">${rows}</tbody>
+      </table>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label>লেবেল সাইজ</label>
+        <select id="lblSize" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+          ${Object.entries(LABEL_SIZES).map(([k,v])=>`<option value="${k}" ${k==='medium'?'selected':''}>${v.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>দোকানের নাম দেখাবে?</label>
+        <select id="lblShowShop" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+          <option value="1">হ্যাঁ</option><option value="0">না</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>দাম দেখাবে?</label>
+      <select id="lblShowPrice" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+        <option value="1">হ্যাঁ</option><option value="0">না</option>
+      </select>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-top:6px" id="lblSelectedCount">০টি পণ্য সিলেক্ট করা আছে</div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="generateLabelSheet()">🖨️ প্রিন্ট শিট তৈরি করুন</button>`);
+  setTimeout(_lblUpdateCount,50);
+}
+function _lblFilterTable(){
+  const q=($('lblSearch')||{value:''}).value.toLowerCase();
+  document.querySelectorAll('#lblProductTable tr').forEach(tr=>{
+    tr.style.display=tr.textContent.toLowerCase().includes(q)?'':'none';
+  });
+}
+function _lblSelectAll(state){
+  document.querySelectorAll('.lbl-chk:not(:disabled)').forEach(c=>{
+    if(c.closest('tr').style.display!=='none') c.checked=state;
+  });
+  _lblUpdateCount();
+}
+function _lblUpdateCount(){
+  const n=document.querySelectorAll('.lbl-chk:checked').length;
+  const el=$('lblSelectedCount');if(el) el.textContent=`${n}টি পণ্য সিলেক্ট করা আছে`;
+}
+function generateLabelSheet(){
+  const selected=[...document.querySelectorAll('.lbl-chk:checked')].map(c=>c.value);
+  if(!selected.length){toast('কমপক্ষে একটি পণ্য সিলেক্ট করুন','warn');return;}
+  const sizeKey=($('lblSize')||{value:'medium'}).value;
+  const showShop=($('lblShowShop')||{value:'1'}).value==='1';
+  const showPrice=($('lblShowPrice')||{value:'1'}).value==='1';
+  const sz=LABEL_SIZES[sizeKey]||LABEL_SIZES.medium;
+  const shopName=DB.settings.name||'SuperShop';
+  let labelsHtml='',totalLabels=0;
+  selected.forEach(pid=>{
+    const p=DB.products.find(x=>x.id===pid);if(!p||!p.barcode)return;
+    const qtyInput=document.querySelector(`.lbl-qty[data-pid="${pid}"]`);
+    const qty=Math.max(1,Math.min(200,parseInt(qtyInput?.value)||1));
+    const barcodeSvg=_renderBarcodeSVG(p.barcode,{height:Math.round(sz.h*0.85),width:1.5,fontSize:Math.max(7,sz.fs-1)});
+    for(let i=0;i<qty;i++){
+      totalLabels++;
+      labelsHtml+=`<div class="lbl-item" style="width:${sz.w}mm;height:${sz.h}mm">
+        ${showShop?`<div class="lbl-shop">${shopName}</div>`:''}
+        <div class="lbl-name">${p.name}</div>
+        <div class="lbl-barcode">${barcodeSvg}</div>
+        ${showPrice?`<div class="lbl-price">${fmt(p.price)}</div>`:''}
+      </div>`;
+    }
+  });
+  if(!totalLabels){toast('বৈধ বারকোডসহ কোনো পণ্য পাওয়া যায়নি','warn');return;}
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Labels — ${today()}</title>
+  <style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  @page{size:A4;margin:8mm}
+  body{font-family:Arial,sans-serif;display:flex;flex-wrap:wrap;gap:2mm;align-content:flex-start;background:#fff}
+  .lbl-item{border:1px dashed #bbb;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.2mm;overflow:hidden;page-break-inside:avoid}
+  .lbl-shop{font-size:7px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .lbl-name{font-size:${sz.fs}px;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:1.15;color:#111}
+  .lbl-barcode svg{max-width:100%;height:auto}
+  .lbl-price{font-size:${sz.fs+1}px;font-weight:900;margin-top:0.5mm;color:#111}
+  @media print{.lbl-item{border:none}}
+  </style></head>
+  <body>${labelsHtml}
+  <script>window.addEventListener("load",()=>{window.print();});<\/script>
+  </body></html>`;
+  try{
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.target='_blank';a.rel='noopener';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},2000);
+    closeModal();
+    toast(`🏷️ ${totalLabels}টি লেবেল খুলছে — প্রিন্ট ডায়ালগ ব্যবহার করুন`);
+    logActivity('🏷️','লেবেল প্রিন্ট',`${selected.length}টি পণ্যের মোট ${totalLabels}টি লেবেল`);
+  }catch(e){
+    toast('লেবেল তৈরি করতে সমস্যা হয়েছে: '+e.message,'danger');
+  }
 }
 
 // ══════════════════════════════════════
@@ -7690,20 +7846,46 @@ function doRedeemPoints(phone){
 function renderLoyaltySettings(){
   const el=$('loyaltySettingsWrap');if(!el)return;
   const L=DB.loyalty;
+  const T=L.tiers||{silver:5000,gold:15000,platinum:40000};
   el.innerHTML=`
     <div class="two-col">
       <div class="form-group"><label>পয়েন্ট রেট (প্রতি ৳)</label><input id="loy_rate" type="number" value="${L.rate||1}" min="1" placeholder="যেমন: 10 মানে ৳10 = 1pt"></div>
       <div class="form-group"><label>রিডিম মূল্য (৳/পয়েন্ট)</label><input id="loy_val" type="number" value="${L.redeemValue||1}" min="0.5" step="0.5"></div>
     </div>
     <div class="form-group"><label>ন্যূনতম রিডিম পয়েন্ট</label><input id="loy_min" type="number" value="${L.minRedeem||100}" min="1"></div>
+    <div style="border-top:1px solid var(--border);margin:14px 0 10px;padding-top:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">🏆 কাস্টমার টায়ার (মোট কেনাকাটার ভিত্তিতে)</div>
+      <div class="two-col">
+        <div class="form-group"><label>🥈 সিলভার — ন্যূনতম মোট কেনাকাটা (৳)</label><input id="loy_tier_silver" type="number" value="${T.silver}" min="0"></div>
+        <div class="form-group"><label>🥇 গোল্ড — ন্যূনতম মোট কেনাকাটা (৳)</label><input id="loy_tier_gold" type="number" value="${T.gold}" min="0"></div>
+      </div>
+      <div class="form-group"><label>💎 প্লাটিনাম — ন্যূনতম মোট কেনাকাটা (৳)</label><input id="loy_tier_platinum" type="number" value="${T.platinum}" min="0"></div>
+    </div>
     <button class="btn btn-primary btn-sm" onclick="saveLoyaltySettings()">💾 সেভ করুন</button>`;
 }
 function saveLoyaltySettings(){
   DB.loyalty.rate=parseFloat($('loy_rate').value)||1;
   DB.loyalty.redeemValue=parseFloat($('loy_val').value)||1;
   DB.loyalty.minRedeem=parseInt($('loy_min').value)||100;
+  DB.loyalty.tiers={
+    silver:parseFloat($('loy_tier_silver').value)||5000,
+    gold:parseFloat($('loy_tier_gold').value)||15000,
+    platinum:parseFloat($('loy_tier_platinum').value)||40000,
+  };
   save(KEYS.loyalty,DB.loyalty);
   toast('💎 Loyalty সেটিংস সেভ হয়েছে');
+  renderCustomers();
+}
+function getCustomerTier(totalSpend){
+  const T=DB.loyalty.tiers||{silver:5000,gold:15000,platinum:40000};
+  if(totalSpend>=T.platinum) return {name:'প্লাটিনাম',icon:'💎',color:'#8ec9ff',min:T.platinum};
+  if(totalSpend>=T.gold) return {name:'গোল্ড',icon:'🥇',color:'#ffd166',min:T.gold};
+  if(totalSpend>=T.silver) return {name:'সিলভার',icon:'🥈',color:'#c9d3e0',min:T.silver};
+  return {name:'ব্রোঞ্জ',icon:'🥉',color:'#e8a87c',min:0};
+}
+function tierBadgeHtml(totalSpend,size='11px'){
+  const t=getCustomerTier(totalSpend);
+  return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:${size};font-weight:700;color:${t.color};background:${t.color}1a;border:1px solid ${t.color}55;padding:2px 8px;border-radius:99px" title="মোট কেনাকাটা: ${fmt(totalSpend)}">${t.icon} ${t.name}</span>`;
 }
 
 // ══════════════════════════════════════
