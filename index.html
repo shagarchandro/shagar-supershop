@@ -7458,7 +7458,7 @@ function _renderBarcodeSVG(text,opts={}){
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
   try{
     JsBarcode(svg,text,{
-      format:'CODE128',width:opts.width||2,height:opts.height||45,
+      format:opts.format||'CODE128',width:opts.width||2,height:opts.height||45,
       displayValue:opts.displayValue!==false,fontSize:opts.fontSize||12,
       margin:opts.margin??4,background:'#ffffff',lineColor:'#000000'
     });
@@ -7516,12 +7516,36 @@ const LABEL_SIZES={
   small:{w:38,h:25,fs:8,label:'ছোট (৩৮×২৫মিমি)'},
   medium:{w:50,h:30,fs:9,label:'মাঝারি (৫০×৩০মিমি)'},
   large:{w:70,h:37,fs:11,label:'বড় (৭০×৩৭মিমি)'},
+  custom:{w:50,h:30,fs:9,label:'✏️ কাস্টম (নিজে মাপ দিন)'},
 };
+const BARCODE_FORMATS={
+  CODE128:'CODE128 (সব ধরনের টেক্সট/সংখ্যা)',
+  EAN13:'EAN-13 (১৩ ডিজিট — রিটেইল স্ট্যান্ডার্ড)',
+  CODE39:'CODE39 (ওয়্যারহাউজ/ইন্ডাস্ট্রি)',
+};
+function _lblLoadPrefs(){
+  try{return JSON.parse(localStorage.getItem('ss_label_prefs')||'{}');}catch(e){return{};}
+}
+function _lblSavePrefs(){
+  const prefs={
+    size:($('lblSize')||{value:'medium'}).value,
+    format:($('lblFormat')||{value:'CODE128'}).value,
+    showShop:($('lblShowShop')||{value:'1'}).value,
+    showPrice:($('lblShowPrice')||{value:'1'}).value,
+    showCode:($('lblShowCode')||{value:'1'}).value,
+    customW:($('lblCustomW')||{value:50}).value,
+    customH:($('lblCustomH')||{value:30}).value,
+    footer:($('lblFooter')||{value:''}).value,
+  };
+  localStorage.setItem('ss_label_prefs',JSON.stringify(prefs));
+}
 function openLabelPrintStudio(){
   if(typeof JsBarcode==='undefined'){toast('বারকোড লাইব্রেরি লোড হয়নি, ইন্টারনেট চেক করুন','danger');return;}
+  const prefs=_lblLoadPrefs();
   const withoutBarcode=DB.products.filter(p=>!p.barcode);
+  const cats=[...new Map(DB.cats.map(c=>[c.id,c])).values()];
   const rows=DB.products.map(p=>`
-    <tr data-pid="${p.id}">
+    <tr data-pid="${p.id}" data-cat="${p.cat||''}">
       <td style="text-align:center"><input type="checkbox" class="lbl-chk" value="${p.id}" ${p.barcode?'':'disabled'} onchange="_lblUpdateCount()"></td>
       <td>${p.name}${!p.barcode?' <span style="color:var(--danger);font-size:10px">(বারকোড নেই)</span>':''}</td>
       <td style="font-family:monospace;font-size:11px;color:var(--text2)">${p.barcode||'—'}</td>
@@ -7532,37 +7556,100 @@ function openLabelPrintStudio(){
       ⚠️ ${withoutBarcode.length}টি পণ্যে বারকোড নেই, তাই সিলেক্ট করা যাবে না। <a href="#" onclick="closeModal();bulkBarcodeGenerate();return false" style="color:var(--accent)">এখনই সবার জন্য তৈরি করুন</a>
     </div>`:''}
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-      <input type="text" id="lblSearch" placeholder="🔍 পণ্য খুঁজুন..." oninput="_lblFilterTable()" style="flex:1;min-width:150px">
+      <input type="text" id="lblSearch" placeholder="🔍 পণ্য খুঁজুন..." oninput="_lblFilterTable()" style="flex:1;min-width:130px">
+      <select id="lblCatFilter" onchange="_lblSelectCategory()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px">
+        <option value="">📂 ক্যাটাগরি বেছে সিলেক্ট করুন</option>
+        ${cats.map(c=>`<option value="${c.id}">${c.icon||''} ${c.name}</option>`).join('')}
+      </select>
       <button class="btn btn-ghost btn-sm" onclick="_lblSelectAll(true)">✅ সব সিলেক্ট</button>
       <button class="btn btn-ghost btn-sm" onclick="_lblSelectAll(false)">❌ বাদ দিন</button>
     </div>
-    <div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px">
+    <div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px">
       <table style="width:100%">
         <thead><tr style="position:sticky;top:0;background:var(--card2)"><th style="width:36px"></th><th>পণ্য</th><th>বারকোড</th><th style="width:74px">পরিমাণ</th></tr></thead>
         <tbody id="lblProductTable">${rows}</tbody>
       </table>
     </div>
-    <div class="two-col">
-      <div class="form-group"><label>লেবেল সাইজ</label>
-        <select id="lblSize" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
-          ${Object.entries(LABEL_SIZES).map(([k,v])=>`<option value="${k}" ${k==='medium'?'selected':''}>${v.label}</option>`).join('')}
-        </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div class="form-group"><label>লেবেল সাইজ</label>
+          <select id="lblSize" onchange="_lblSizeChange();_lblUpdatePreview()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+            ${Object.entries(LABEL_SIZES).map(([k,v])=>`<option value="${k}" ${(prefs.size||'medium')===k?'selected':''}>${v.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="two-col" id="lblCustomSizeWrap" style="display:${prefs.size==='custom'?'grid':'none'}">
+          <div class="form-group"><label>চওড়া (মিমি)</label><input id="lblCustomW" type="number" value="${prefs.customW||50}" min="20" max="150" oninput="_lblUpdatePreview()"></div>
+          <div class="form-group"><label>উঁচু (মিমি)</label><input id="lblCustomH" type="number" value="${prefs.customH||30}" min="15" max="100" oninput="_lblUpdatePreview()"></div>
+        </div>
+        <div class="form-group"><label>বারকোড ফরম্যাট</label>
+          <select id="lblFormat" onchange="_lblUpdatePreview()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+            ${Object.entries(BARCODE_FORMATS).map(([k,v])=>`<option value="${k}" ${(prefs.format||'CODE128')===k?'selected':''}>${v}</option>`).join('')}
+          </select>
+          <div style="font-size:10px;color:var(--text2);margin-top:3px">ℹ️ EAN-13 বাছলে বারকোড অবশ্যই ১৩ ডিজিটের হতে হবে, নাহলে সেই পণ্য বাদ যাবে</div>
+        </div>
+        <div class="form-group"><label>নিচে অতিরিক্ত লেখা (ঐচ্ছিক)</label><input id="lblFooter" placeholder="যেমন: Made in Bangladesh" value="${prefs.footer||''}" oninput="_lblUpdatePreview()"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="lblShowShop" onchange="_lblUpdatePreview()" ${prefs.showShop!=='0'?'checked':''}> দোকানের নাম</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="lblShowPrice" onchange="_lblUpdatePreview()" ${prefs.showPrice!=='0'?'checked':''}> দাম</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="lblShowCode" onchange="_lblUpdatePreview()" ${prefs.showCode!=='0'?'checked':''}> বারকোড নম্বর</label>
+        </div>
       </div>
-      <div class="form-group"><label>দোকানের নাম দেখাবে?</label>
-        <select id="lblShowShop" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
-          <option value="1">হ্যাঁ</option><option value="0">না</option>
-        </select>
+      <div>
+        <label style="font-size:12px;color:var(--text2);font-weight:600">লাইভ প্রিভিউ</label>
+        <div style="background:#fff;border-radius:8px;padding:14px;display:flex;align-items:center;justify-content:center;min-height:140px;margin-top:6px">
+          <div id="lblPreviewBox"></div>
+        </div>
       </div>
     </div>
-    <div class="form-group"><label>দাম দেখাবে?</label>
-      <select id="lblShowPrice" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
-        <option value="1">হ্যাঁ</option><option value="0">না</option>
-      </select>
-    </div>
-    <div style="font-size:12px;color:var(--text2);margin-top:6px" id="lblSelectedCount">০টি পণ্য সিলেক্ট করা আছে</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:10px" id="lblSelectedCount">০টি পণ্য সিলেক্ট করা আছে</div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
      <button class="btn btn-primary" onclick="generateLabelSheet()">🖨️ প্রিন্ট শিট তৈরি করুন</button>`);
-  setTimeout(_lblUpdateCount,50);
+  setTimeout(()=>{_lblUpdateCount();_lblUpdatePreview();document.querySelectorAll('.lbl-chk').forEach(c=>c.addEventListener('change',_lblUpdatePreview));},50);
+}
+function _lblSizeChange(){
+  const wrap=$('lblCustomSizeWrap');
+  if(wrap) wrap.style.display=($('lblSize').value==='custom')?'grid':'none';
+}
+function _lblSelectCategory(){
+  const catId=$('lblCatFilter').value;
+  if(!catId)return;
+  document.querySelectorAll('#lblProductTable tr').forEach(tr=>{
+    if(tr.dataset.cat===catId){
+      const chk=tr.querySelector('.lbl-chk');
+      if(chk&&!chk.disabled) chk.checked=true;
+    }
+  });
+  _lblUpdateCount();_lblUpdatePreview();
+  toast('ক্যাটাগরির সব পণ্য সিলেক্ট হয়েছে ✅');
+}
+function _lblCurrentSize(){
+  const key=($('lblSize')||{value:'medium'}).value;
+  if(key==='custom'){
+    return {w:parseFloat(($('lblCustomW')||{value:50}).value)||50,h:parseFloat(($('lblCustomH')||{value:30}).value)||30,fs:9};
+  }
+  return LABEL_SIZES[key]||LABEL_SIZES.medium;
+}
+function _lblUpdatePreview(){
+  const box=$('lblPreviewBox');if(!box)return;
+  const selected=[...document.querySelectorAll('.lbl-chk:checked')];
+  const pid=selected.length?selected[0].value:(document.querySelector('.lbl-chk:not(:disabled)')||{}).value;
+  const p=DB.products.find(x=>x.id===pid);
+  if(!p||!p.barcode){box.innerHTML='<div style="color:#999;font-size:12px">প্রিভিউ দেখতে একটি পণ্য সিলেক্ট করুন</div>';return;}
+  const sz=_lblCurrentSize();
+  const format=($('lblFormat')||{value:'CODE128'}).value;
+  const showShop=($('lblShowShop')||{checked:true}).checked;
+  const showPrice=($('lblShowPrice')||{checked:true}).checked;
+  const showCode=($('lblShowCode')||{checked:true}).checked;
+  const footer=($('lblFooter')||{value:''}).value;
+  const shopName=DB.settings.name||'SuperShop';
+  const barcodeSvg=_renderBarcodeSVG(p.barcode,{format,height:Math.round(sz.h*0.85*3),width:3,fontSize:(sz.fs+2)*2,displayValue:showCode});
+  box.innerHTML=`<div style="width:${sz.w*3}px;height:${sz.h*3}px;border:1px dashed #ccc;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;font-family:Arial;overflow:hidden">
+    ${showShop?`<div style="font-size:20px;color:#666;white-space:nowrap">${shopName}</div>`:''}
+    <div style="font-size:${(sz.fs+2)*2.2}px;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;color:#111">${p.name}</div>
+    <div style="max-width:100%">${barcodeSvg}</div>
+    ${showPrice?`<div style="font-size:${(sz.fs+3)*2.2}px;font-weight:900;color:#111">${fmt(p.price)}</div>`:''}
+    ${footer?`<div style="font-size:16px;color:#888;white-space:nowrap">${footer}</div>`:''}
+  </div>`;
 }
 function _lblFilterTable(){
   const q=($('lblSearch')||{value:''}).value.toLowerCase();
@@ -7574,7 +7661,7 @@ function _lblSelectAll(state){
   document.querySelectorAll('.lbl-chk:not(:disabled)').forEach(c=>{
     if(c.closest('tr').style.display!=='none') c.checked=state;
   });
-  _lblUpdateCount();
+  _lblUpdateCount();_lblUpdatePreview();
 }
 function _lblUpdateCount(){
   const n=document.querySelectorAll('.lbl-chk:checked').length;
@@ -7583,17 +7670,21 @@ function _lblUpdateCount(){
 function generateLabelSheet(){
   const selected=[...document.querySelectorAll('.lbl-chk:checked')].map(c=>c.value);
   if(!selected.length){toast('কমপক্ষে একটি পণ্য সিলেক্ট করুন','warn');return;}
-  const sizeKey=($('lblSize')||{value:'medium'}).value;
-  const showShop=($('lblShowShop')||{value:'1'}).value==='1';
-  const showPrice=($('lblShowPrice')||{value:'1'}).value==='1';
-  const sz=LABEL_SIZES[sizeKey]||LABEL_SIZES.medium;
+  _lblSavePrefs();
+  const sz=_lblCurrentSize();
+  const format=($('lblFormat')||{value:'CODE128'}).value;
+  const showShop=($('lblShowShop')||{checked:true}).checked;
+  const showPrice=($('lblShowPrice')||{checked:true}).checked;
+  const showCode=($('lblShowCode')||{checked:true}).checked;
+  const footer=($('lblFooter')||{value:''}).value;
   const shopName=DB.settings.name||'SuperShop';
-  let labelsHtml='',totalLabels=0;
+  let labelsHtml='',totalLabels=0,skipped=0;
   selected.forEach(pid=>{
     const p=DB.products.find(x=>x.id===pid);if(!p||!p.barcode)return;
+    if(format==='EAN13'&&!/^\d{12,13}$/.test(p.barcode)){skipped++;return;}
     const qtyInput=document.querySelector(`.lbl-qty[data-pid="${pid}"]`);
     const qty=Math.max(1,Math.min(200,parseInt(qtyInput?.value)||1));
-    const barcodeSvg=_renderBarcodeSVG(p.barcode,{height:Math.round(sz.h*0.85),width:1.5,fontSize:Math.max(7,sz.fs-1)});
+    const barcodeSvg=_renderBarcodeSVG(p.barcode,{format,height:Math.round(sz.h*0.8),width:1.5,fontSize:Math.max(7,sz.fs-1),displayValue:showCode});
     for(let i=0;i<qty;i++){
       totalLabels++;
       labelsHtml+=`<div class="lbl-item" style="width:${sz.w}mm;height:${sz.h}mm">
@@ -7601,10 +7692,11 @@ function generateLabelSheet(){
         <div class="lbl-name">${p.name}</div>
         <div class="lbl-barcode">${barcodeSvg}</div>
         ${showPrice?`<div class="lbl-price">${fmt(p.price)}</div>`:''}
+        ${footer?`<div class="lbl-footer">${footer}</div>`:''}
       </div>`;
     }
   });
-  if(!totalLabels){toast('বৈধ বারকোডসহ কোনো পণ্য পাওয়া যায়নি','warn');return;}
+  if(!totalLabels){toast(skipped?'সিলেক্ট করা পণ্যের বারকোড EAN-13 ফরম্যাটের সাথে মেলেনি':'বৈধ বারকোডসহ কোনো পণ্য পাওয়া যায়নি','warn');return;}
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Labels — ${today()}</title>
   <style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -7615,6 +7707,7 @@ function generateLabelSheet(){
   .lbl-name{font-size:${sz.fs}px;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:1.15;color:#111}
   .lbl-barcode svg{max-width:100%;height:auto}
   .lbl-price{font-size:${sz.fs+1}px;font-weight:900;margin-top:0.5mm;color:#111}
+  .lbl-footer{font-size:${Math.max(6,sz.fs-2)}px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   @media print{.lbl-item{border:none}}
   </style></head>
   <body>${labelsHtml}
@@ -7628,7 +7721,7 @@ function generateLabelSheet(){
     document.body.appendChild(a);a.click();
     setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},2000);
     closeModal();
-    toast(`🏷️ ${totalLabels}টি লেবেল খুলছে — প্রিন্ট ডায়ালগ ব্যবহার করুন`);
+    toast(`🏷️ ${totalLabels}টি লেবেল খুলছে${skipped?` (${skipped}টি বাদ গেছে — EAN-13 অমিল)`:''} — প্রিন্ট ডায়ালগ ব্যবহার করুন`);
     logActivity('🏷️','লেবেল প্রিন্ট',`${selected.length}টি পণ্যের মোট ${totalLabels}টি লেবেল`);
   }catch(e){
     toast('লেবেল তৈরি করতে সমস্যা হয়েছে: '+e.message,'danger');
