@@ -1905,11 +1905,12 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <div class="page" id="page-categories">
       <div class="page-header"><h2>🏷️ ক্যাটাগরি</h2><p>পণ্যের বিভাগ ব্যবস্থাপনা</p></div>
       <div class="toolbar">
+        <input type="text" id="catSearch" placeholder="🔍 ক্যাটাগরি খুঁজুন..." oninput="renderCats()">
         <div class="spacer"></div>
         <button class="btn btn-primary" onclick="openCatModal()">➕ নতুন ক্যাটাগরি</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>ক্যাটাগরির নাম</th><th>আইকন</th><th>মোট পণ্য</th><th>একশন</th></tr></thead>
+        <thead><tr><th style="width:70px">ক্রম</th><th>ক্যাটাগরির নাম</th><th>আইকন</th><th>রঙ</th><th>মোট পণ্য</th><th>একশন</th></tr></thead>
         <tbody id="catsBody"></tbody>
       </table></div>
     </div>
@@ -1924,9 +1925,23 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <option value="">সব স্ট্যাটাস</option>
           <option>Pending</option><option>Confirmed</option><option>Delivered</option><option>Cancelled</option>
         </select>
+        <input type="date" id="ordFrom" onchange="renderOrders()" title="শুরুর তারিখ">
+        <input type="date" id="ordTo" onchange="renderOrders()" title="শেষ তারিখ">
+        <div class="spacer"></div>
+        <button class="btn btn-success btn-sm" onclick="exportOrdersCSV()">📥 CSV এক্সপোর্ট</button>
+      </div>
+      <div id="ordBulkBar" style="display:none;align-items:center;gap:10px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px">
+        <span id="ordBulkCount">০টি অর্ডার সিলেক্ট করা</span>
+        <select id="ordBulkStatus" style="padding:4px 8px;font-size:12px">
+          <option value="Confirmed">Confirmed করুন</option>
+          <option value="Delivered">Delivered করুন</option>
+          <option value="Cancelled">Cancelled করুন</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="applyBulkOrderStatus()">✅ প্রয়োগ করুন</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearOrderSelection()">✕ বাতিল</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>অর্ডার ID</th><th>কাস্টমার</th><th class="hide-xs">ফোন</th><th>মোট</th><th>স্ট্যাটাস</th><th class="hide-xs">সময়</th><th>একশন</th></tr></thead>
+        <thead><tr><th style="width:32px"><input type="checkbox" id="ordSelectAll" onchange="toggleAllOrderSelect(this)"></th><th>অর্ডার ID</th><th>কাস্টমার</th><th class="hide-xs">ফোন</th><th>মোট</th><th>স্ট্যাটাস</th><th class="hide-xs">সময়</th><th>একশন</th></tr></thead>
         <tbody id="ordersBody"></tbody>
       </table></div>
       <div class="pagination" id="ordersPagination"></div>
@@ -2264,8 +2279,22 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <input type="text" id="custSearch" placeholder="🔍 নাম বা ফোন..." oninput="renderCustomers()">
         <input type="number" id="custSpendMin" placeholder="ন্যূনতম খরচ ৳" style="width:130px" oninput="applyCustSpendFilter()">
         <input type="number" id="custSpendMax" placeholder="সর্বোচ্চ খরচ ৳" style="width:130px" oninput="applyCustSpendFilter()">
+        <select id="custTierFilter" onchange="renderCustomers()">
+          <option value="">🏆 সব টায়ার</option>
+          <option value="platinum">💎 প্লাটিনাম</option>
+          <option value="gold">🥇 গোল্ড</option>
+          <option value="silver">🥈 সিলভার</option>
+          <option value="bronze">🥉 ব্রোঞ্জ</option>
+        </select>
+        <select id="custSort" onchange="renderCustomers()">
+          <option value="spend_desc">খরচ (বেশি→কম)</option>
+          <option value="spend_asc">খরচ (কম→বেশি)</option>
+          <option value="name">নাম (A-Z)</option>
+          <option value="recent">সাম্প্রতিক অর্ডার</option>
+        </select>
         <button class="btn btn-ghost btn-sm" onclick="clearCustSpendFilter()" title="ফিল্টার মুছুন">✕</button>
         <div class="spacer"></div>
+        <button class="btn btn-success btn-sm" onclick="exportCustomersCSV()" title="CSV ডাউনলোড">📥 CSV</button>
         <button class="btn btn-ghost btn-sm" onclick="exportAllVCards()" title="সব কাস্টমার Contact ফাইল ডাউনলোড">📇 সব vCard</button>
         <div id="custStatsBadge" style="font-size:13px;color:var(--text2)"></div>
       </div>
@@ -3310,7 +3339,7 @@ function renderShop(){
       </div>
       <div class="product-info">
         <h3 title="${p.name}">${p.name}</h3>
-        <div class="cat">${c.icon||''} ${c.name||'অন্যান্য'}</div>
+        <div class="cat" style="${c.color?`color:${c.color}`:''}">${c.icon||''} ${c.name||'অন্যান্য'}</div>
         <div class="price">${fmt(p.price)} <small>/ ${p.unit||'পিস'}</small></div>
         <div style="cursor:pointer" onclick="openProductReviews('${p.id}')" title="রিভিউ দেখুন">${_starHtml(rt.avg)} <small style="color:var(--text2);font-size:11px">${rt.count?`(${rt.count})`:'রিভিউ দিন'}</small></div>
         ${inStock?`<button class="btn btn-primary btn-full" onclick="addToCart('${p.id}')">🛒 কার্টে যোগ</button>`
@@ -4331,10 +4360,17 @@ function deleteProduct(id){
 // ══════════════════════════════════════
 function renderCats(){
   const body=$('catsBody');
-  body.innerHTML=DB.cats.map((c,i)=>{
+  const q=($('catSearch')||{value:''}).value.toLowerCase();
+  const list=DB.cats.map((c,i)=>({...c,_idx:i})).filter(c=>!q||c.name.toLowerCase().includes(q));
+  body.innerHTML=list.map((c,vi)=>{
     const cnt=DB.products.filter(p=>p.cat===c.id).length;
     return`<tr>
-      <td>${i+1}</td><td>${c.name}</td><td style="font-size:20px">${c.icon||'🏷️'}</td>
+      <td style="display:flex;gap:2px;align-items:center">
+        <button class="btn btn-ghost btn-sm" style="padding:3px 7px" onclick="moveCat('${c.id}',-1)" ${c._idx===0?'disabled':''} title="উপরে">▲</button>
+        <button class="btn btn-ghost btn-sm" style="padding:3px 7px" onclick="moveCat('${c.id}',1)" ${c._idx===DB.cats.length-1?'disabled':''} title="নিচে">▼</button>
+      </td>
+      <td>${c.name}</td><td style="font-size:20px">${c.icon||'🏷️'}</td>
+      <td><span style="display:inline-block;width:18px;height:18px;border-radius:5px;background:${c.color||'#e94560'};border:1px solid var(--border);vertical-align:middle"></span></td>
       <td><span class="badge badge-info">${cnt}</span></td>
       <td style="display:flex;gap:6px">
         <button class="btn btn-warn btn-sm" onclick="openCatModal('${c.id}')">✏️</button>
@@ -4342,13 +4378,23 @@ function renderCats(){
       </td>
     </tr>`;
   }).join('');
+  if(!list.length) body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:16px">কোনো ক্যাটাগরি পাওয়া যায়নি</td></tr>';
 }
-
+function moveCat(id,dir){
+  const i=DB.cats.findIndex(c=>c.id===id);
+  const j=i+dir;
+  if(i<0||j<0||j>=DB.cats.length)return;
+  [DB.cats[i],DB.cats[j]]=[DB.cats[j],DB.cats[i]];
+  save(KEYS.cats,DB.cats);renderCats();populateCatFilters();
+}
 function openCatModal(id){
   const c=id?DB.cats.find(x=>x.id===id):{};
   openModal(id?'ক্যাটাগরি সম্পাদনা':'নতুন ক্যাটাগরি',`
     <div class="form-group"><label>ক্যাটাগরির নাম *</label><input id="mc_name" value="${c?.name||''}"></div>
-    <div class="form-group"><label>আইকন (ইমোজি)</label><input id="mc_icon" value="${c?.icon||'🏷️'}" style="font-size:18px"></div>
+    <div class="two-col">
+      <div class="form-group"><label>আইকন (ইমোজি)</label><input id="mc_icon" value="${c?.icon||'🏷️'}" style="font-size:18px"></div>
+      <div class="form-group"><label>রঙ (শপে দেখানোর জন্য)</label><input id="mc_color" type="color" value="${c?.color||'#e94560'}" style="height:40px;padding:2px;cursor:pointer"></div>
+    </div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
      <button class="btn btn-primary" onclick="saveCat('${id||''}')">💾 সেভ করুন</button>`);
 }
@@ -4356,16 +4402,25 @@ function openCatModal(id){
 function saveCat(id){
   const name=$('mc_name').value.trim();
   if(!name){toast('নাম দিন','warn');return;}
-  if(id){const c=DB.cats.find(x=>x.id===id);c.name=name;c.icon=$('mc_icon').value;}
-  else DB.cats.push({id:`c${uid()}`,name,icon:$('mc_icon').value});
+  const color=($('mc_color')||{value:'#e94560'}).value;
+  if(id){const c=DB.cats.find(x=>x.id===id);c.name=name;c.icon=$('mc_icon').value;c.color=color;}
+  else DB.cats.push({id:`c${uid()}`,name,icon:$('mc_icon').value,color});
   save(KEYS.cats,DB.cats);closeModal();renderCats();populateCatFilters();
   toast('ক্যাটাগরি সেভ হয়েছে');realtimeUpdate();
 }
 
 function deleteCat(id){
-  confirm2('এই ক্যাটাগরি মুছে ফেলবেন?',()=>{
+  const cnt=DB.products.filter(p=>p.cat===id).length;
+  const msg=cnt>0
+    ?`⚠️ এই ক্যাটাগরিতে <b>${cnt}টি পণ্য</b> আছে। ক্যাটাগরি মুছে ফেললে সেগুলো "অন্যান্য" ক্যাটাগরিতে চলে যাবে। আগে বাড়বেন?`
+    :'এই ক্যাটাগরি মুছে ফেলবেন?';
+  confirm2(msg,()=>{
     DB.cats=DB.cats.filter(x=>x.id!==id);
-    save(KEYS.cats,DB.cats);renderCats();populateCatFilters();
+    if(cnt>0){
+      DB.products.forEach(p=>{if(p.cat===id)p.cat='';});
+      save(KEYS.products,DB.products);
+    }
+    save(KEYS.cats,DB.cats);renderCats();populateCatFilters();renderProducts();
     toast('মুছে ফেলা হয়েছে','warn');realtimeUpdate();
   });
 }
@@ -4374,12 +4429,17 @@ function deleteCat(id){
 //  ORDERS
 // ══════════════════════════════════════
 let ordPage=1;
+let _ordSelected=new Set();
 function renderOrders(){
   const q=($('ordSearch')||{value:''}).value.toLowerCase();
   const st=($('ordStatus')||{value:''}).value;
+  const from=($('ordFrom')||{value:''}).value;
+  const to=($('ordTo')||{value:''}).value;
   const list=DB.orders.filter(o=>
     (!q||o.id.toLowerCase().includes(q)||o.custName.toLowerCase().includes(q)||(o.custPhone||'').includes(q))&&
-    (!st||o.status===st)
+    (!st||o.status===st)&&
+    (!from||o.time.slice(0,10)>=from)&&
+    (!to||o.time.slice(0,10)<=to)
   );
   // Live stats
   const pending=DB.orders.filter(o=>o.status==='Pending').length;
@@ -4397,6 +4457,7 @@ function renderOrders(){
   if(ordPage>pages)ordPage=1;
   const slice=list.slice((ordPage-1)*PERPAGE,ordPage*PERPAGE);
   $('ordersBody').innerHTML=slice.map(o=>`<tr>
+    <td><input type="checkbox" class="ord-chk" value="${o.id}" ${_ordSelected.has(o.id)?'checked':''} onchange="toggleOrderSelect('${o.id}',this)"></td>
     <td><code style="font-size:11px">${o.id}</code></td>
     <td>${o.custName}</td><td class="hide-xs">${o.custPhone||'—'}</td><td>${fmt(o.total)}</td>
     <td><select onchange="updateOrderStatus('${o.id}',this.value)" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px">
@@ -4413,8 +4474,70 @@ function renderOrders(){
       ${canDo('canDelete')?`<button class="btn btn-danger btn-sm" onclick="deleteOrder('${o.id}')">🗑️</button>`:''}
     </td>
   </tr>`).join('');
-  if(!slice.length) $('ordersBody').innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text2)">কোনো অর্ডার নেই</td></tr>';
+  if(!slice.length) $('ordersBody').innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text2)">কোনো অর্ডার নেই</td></tr>';
   renderPagination('ordersPagination',pages,ordPage,p=>{ordPage=p;renderOrders();});
+  updateOrderBulkBar();
+}
+function toggleOrderSelect(id,el){
+  if(el.checked) _ordSelected.add(id); else _ordSelected.delete(id);
+  updateOrderBulkBar();
+}
+function toggleAllOrderSelect(el){
+  document.querySelectorAll('.ord-chk').forEach(c=>{
+    c.checked=el.checked;
+    if(el.checked) _ordSelected.add(c.value); else _ordSelected.delete(c.value);
+  });
+  updateOrderBulkBar();
+}
+function clearOrderSelection(){
+  _ordSelected.clear();
+  document.querySelectorAll('.ord-chk').forEach(c=>c.checked=false);
+  const sa=$('ordSelectAll');if(sa)sa.checked=false;
+  updateOrderBulkBar();
+}
+function updateOrderBulkBar(){
+  const bar=$('ordBulkBar');if(!bar)return;
+  bar.style.display=_ordSelected.size?'flex':'none';
+  const cnt=$('ordBulkCount');if(cnt)cnt.textContent=`${_ordSelected.size}টি অর্ডার সিলেক্ট করা`;
+}
+function applyBulkOrderStatus(){
+  if(!_ordSelected.size){toast('কোনো অর্ডার সিলেক্ট করা নেই','warn');return;}
+  const status=($('ordBulkStatus')||{value:'Confirmed'}).value;
+  confirm2(`${_ordSelected.size}টি অর্ডারের স্ট্যাটাস "${status}" করবেন?`,()=>{
+    _ordSelected.forEach(id=>{
+      const o=DB.orders.find(x=>x.id===id);
+      if(o){
+        o.status=status;
+        if(status==='Delivered'&&!DB.sales.find(s=>s.id===id)) DB.sales.push({...o,payment:'Online'});
+      }
+    });
+    save(KEYS.orders,DB.orders);save(KEYS.sales,DB.sales);
+    toast(`✅ ${_ordSelected.size}টি অর্ডার আপডেট হয়েছে`,'success');
+    logActivity('📋','বাল্ক অর্ডার স্ট্যাটাস',`${_ordSelected.size}টি অর্ডার → ${status}`);
+    clearOrderSelection();
+    renderOrders();realtimeUpdate();
+  });
+}
+function exportOrdersCSV(){
+  const q=($('ordSearch')||{value:''}).value.toLowerCase();
+  const st=($('ordStatus')||{value:''}).value;
+  const from=($('ordFrom')||{value:''}).value;
+  const to=($('ordTo')||{value:''}).value;
+  const list=DB.orders.filter(o=>
+    (!q||o.id.toLowerCase().includes(q)||o.custName.toLowerCase().includes(q)||(o.custPhone||'').includes(q))&&
+    (!st||o.status===st)&&(!from||o.time.slice(0,10)>=from)&&(!to||o.time.slice(0,10)<=to)
+  );
+  if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
+  const rows=[['অর্ডার ID','কাস্টমার','ফোন','মোট','স্ট্যাটাস','তারিখ']];
+  list.forEach(o=>rows.push([o.id,o.custName,o.custPhone||'',o.total.toFixed(2),o.status,o.time.slice(0,10)]));
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`Orders-${today()}.csv`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  toast('📥 CSV ডাউনলোড হচ্ছে...','success');
 }
 
 function deleteOrder(id){
@@ -5322,9 +5445,20 @@ function renderCustomers(){
       const{min,max}=window._custSpendFilter;
       if(c.spent<min||c.spent>max) return false;
     }
+    const tierFilter=($('custTierFilter')||{value:''}).value;
+    if(tierFilter){
+      const tKey={'প্লাটিনাম':'platinum','গোল্ড':'gold','সিলভার':'silver','ব্রোঞ্জ':'bronze'};
+      const custTierName=getCustomerTier(c.spent).name;
+      const custTierKey=Object.keys(tKey).find(k=>tKey[k]===tierFilter&&k===custTierName);
+      if(!custTierKey) return false;
+    }
     return true;
   });
-  window._custList.sort((a,b)=>b.spent-a.spent);
+  const sortBy=($('custSort')||{value:'spend_desc'}).value;
+  if(sortBy==='spend_asc') window._custList.sort((a,b)=>a.spent-b.spent);
+  else if(sortBy==='name') window._custList.sort((a,b)=>a.name.localeCompare(b.name));
+  else if(sortBy==='recent') window._custList.sort((a,b)=>(b.last||'').localeCompare(a.last||''));
+  else window._custList.sort((a,b)=>b.spent-a.spent);
   // Compute segment thresholds dynamically based on data spread
   const spends=window._custList.map(c=>c.spent).filter(s=>s>0).sort((a,b)=>b-a);
   const vipThreshold=spends.length?spends[Math.max(0,Math.floor(spends.length*0.1)-1)]:0; // top 10%
@@ -9586,6 +9720,20 @@ function exportCustVCard(idx){
   setTimeout(()=>URL.revokeObjectURL(url),2000);
   toast(`📇 ${c.name} এর contact ডাউনলোড হচ্ছে`);
   logActivity('📇','vCard এক্সপোর্ট',c.name);
+}
+function exportCustomersCSV(){
+  const list=window._custList||[];
+  if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
+  const rows=[['নাম','ফোন','ইমেইল','মোট অর্ডার','মোট খরচ','টায়ার','শেষ অর্ডার']];
+  list.forEach(c=>rows.push([c.name,c.phone||'',c.email||'',c.orders,c.spent.toFixed(2),getCustomerTier(c.spent).name,c.last?c.last.slice(0,10):'']));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`Customers-${today()}.csv`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  toast('📥 CSV ডাউনলোড হচ্ছে...','success');
 }
 function exportAllVCards(){
   const list=(window._custList||[]).filter(c=>c.phone);
