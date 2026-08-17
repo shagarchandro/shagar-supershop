@@ -1919,6 +1919,12 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <div class="page" id="page-orders">
       <div class="page-header"><h2>📋 অনলাইন অর্ডার</h2><p>কাস্টমার অর্ডার পরিচালনা</p></div>
       <div id="ordStatsBar" style="display:flex;gap:16px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:13px"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn btn-ghost btn-sm" onclick="_ordQuickFilter('today')">📅 আজকের অর্ডার</button>
+        <button class="btn btn-ghost btn-sm" onclick="_ordQuickFilter('week')">🗓️ এই সপ্তাহ</button>
+        <button class="btn btn-warn btn-sm" onclick="_ordQuickFilter('pending')">⏳ শুধু Pending</button>
+        <button class="btn btn-ghost btn-sm" onclick="_ordQuickFilter('clear')">✕ ফিল্টার মুছুন</button>
+      </div>
       <div class="toolbar">
         <input type="text" id="ordSearch" placeholder="🔍 অর্ডার বা কাস্টমার..." oninput="renderOrders()">
         <select id="ordStatus" onchange="renderOrders()">
@@ -2255,6 +2261,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       <div class="page-header"><h2>💰 বিক্রয় ইতিহাস</h2><p>সকল বিক্রয়ের সম্পূর্ণ রেকর্ড</p></div>
       <div class="stat-grid" id="salesStats"></div>
       <div class="toolbar">
+        <input type="text" id="salesSearch" placeholder="🔍 বিল ID বা কাস্টমার..." oninput="renderSales()">
         <input type="date" id="salesFrom" onchange="renderSales()">
         <input type="date" id="salesTo" onchange="renderSales()">
         <select id="salesType" onchange="renderSales()"><option value="">সব ধরন</option><option value="online">অনলাইন</option><option value="offline">অফলাইন</option></select>
@@ -2399,6 +2406,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <input type="date" id="attTo" onchange="renderAttendance()">
         <select id="attStaffFilter" onchange="renderAttendance()"><option value="">সব স্টাফ</option></select>
         <div class="spacer"></div>
+        <button class="btn btn-warn btn-sm" onclick="openManualAttendanceModal()">➕ ম্যানুয়াল এন্ট্রি</button>
         <button class="btn btn-success btn-sm" onclick="exportAttendanceCSV()">📥 CSV ডাউনলোড</button>
       </div>
       <div class="table-wrap"><table>
@@ -2665,6 +2673,12 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         </div><!-- end stab-promo -->
 
         <div class="settings-tab-content" id="stab-staff" style="display:none">
+        <div class="section-title" style="margin-top:24px">🕒 হাজিরা নিয়ম</div>
+        <div class="two-col">
+          <div class="form-group"><label>অফিস শুরুর সময়</label><input id="setExpectedCheckIn" type="time" value="09:00"></div>
+          <div class="form-group"><label>দেরি ধরার আগে গ্রেস টাইম (মিনিট)</label><input id="setLateGrace" type="number" min="0" max="120" value="15"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveAttendanceRules()" style="margin-bottom:8px">💾 সেভ করুন</button>
         <div class="section-title" style="margin-top:24px">👥 স্টাফ লগইন ব্যবস্থাপনা</div>
         <div class="toolbar" style="margin-bottom:10px">
           <div class="spacer"></div>
@@ -4435,6 +4449,14 @@ function deleteCat(id){
 // ══════════════════════════════════════
 let ordPage=1;
 let _ordSelected=new Set();
+function _ordQuickFilter(kind){
+  const from=$('ordFrom'),to=$('ordTo'),st=$('ordStatus'),q=$('ordSearch');
+  if(kind==='clear'){from.value='';to.value='';st.value='';q.value='';}
+  else if(kind==='today'){const t=today();from.value=t;to.value=t;st.value='';}
+  else if(kind==='week'){const d=new Date();const day=d.getDay();const monday=new Date(d);monday.setDate(d.getDate()-((day+6)%7));from.value=monday.toISOString().slice(0,10);to.value=today();st.value='';}
+  else if(kind==='pending'){from.value='';to.value='';st.value='Pending';}
+  renderOrders();
+}
 function renderOrders(){
   const q=($('ordSearch')||{value:''}).value.toLowerCase();
   const st=($('ordStatus')||{value:''}).value;
@@ -4451,19 +4473,23 @@ function renderOrders(){
   const confirmed=DB.orders.filter(o=>o.status==='Confirmed').length;
   const delivered=DB.orders.filter(o=>o.status==='Delivered').length;
   const cancelled=DB.orders.filter(o=>o.status==='Cancelled').length;
+  const oldPending=DB.orders.filter(o=>o.status==='Pending'&&(Date.now()-new Date(o.time).getTime())>24*3600000).length;
   const ob=$('ordStatsBar');
   if(ob) ob.innerHTML=`
     <span style="color:var(--warning)">⏳ Pending: <b>${pending}</b></span>
     <span style="color:var(--info)">✅ Confirmed: <b>${confirmed}</b></span>
     <span style="color:var(--success)">📦 Delivered: <b>${delivered}</b></span>
     <span style="color:var(--danger)">❌ Cancelled: <b>${cancelled}</b></span>
-    <span style="color:var(--text2)">📋 Total: <b>${DB.orders.length}</b></span>`;
+    <span style="color:var(--text2)">📋 Total: <b>${DB.orders.length}</b></span>
+    ${oldPending?`<span style="color:var(--warning);font-weight:700">⚠️ ২৪ ঘণ্টার বেশি পুরনো Pending: <b>${oldPending}</b></span>`:''}`;
   const pages=Math.max(1,Math.ceil(list.length/PERPAGE));
   if(ordPage>pages)ordPage=1;
   const slice=list.slice((ordPage-1)*PERPAGE,ordPage*PERPAGE);
-  $('ordersBody').innerHTML=slice.map(o=>`<tr>
+  $('ordersBody').innerHTML=slice.map(o=>{
+    const isOldPending=o.status==='Pending'&&(Date.now()-new Date(o.time).getTime())>24*3600000;
+    return `<tr style="${isOldPending?'background:rgba(255,209,102,.06)':''}">
     <td><input type="checkbox" class="ord-chk" value="${o.id}" ${_ordSelected.has(o.id)?'checked':''} onchange="toggleOrderSelect('${o.id}',this)"></td>
-    <td><code style="font-size:11px">${o.id}</code></td>
+    <td><code style="font-size:11px">${o.id}</code>${isOldPending?' <span class="badge badge-warn" style="font-size:9px" title="২৪ ঘণ্টার বেশি সময় ধরে Pending">⚠️ পুরনো</span>':''}</td>
     <td>${o.custName}</td><td class="hide-xs">${o.custPhone||'—'}</td><td>${fmt(o.total)}</td>
     <td><select onchange="updateOrderStatus('${o.id}',this.value)" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px">
       ${['Pending','Confirmed','Delivered','Cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}
@@ -4478,7 +4504,8 @@ function renderOrders(){
       <button class="btn btn-warn btn-sm" title="PDF ডাউনলোড" onclick="pdfOrderById('${o.id}')">📥</button>
       ${canDo('canDelete')?`<button class="btn btn-danger btn-sm" onclick="deleteOrder('${o.id}')">🗑️</button>`:''}
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
   if(!slice.length) $('ordersBody').innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text2)">কোনো অর্ডার নেই</td></tr>';
   renderPagination('ordersPagination',pages,ordPage,p=>{ordPage=p;renderOrders();});
   updateOrderBulkBar();
@@ -5096,6 +5123,7 @@ function generateBillA4(){
 // ══════════════════════════════════════
 let salePage=1;
 function renderSales(){
+  const q=($('salesSearch')||{value:''}).value.toLowerCase();
   const from=($('salesFrom')||{value:''}).value;
   const to=($('salesTo')||{value:''}).value;
   const type=($('salesType')||{value:''}).value;
@@ -5110,6 +5138,7 @@ function renderSales(){
     }
   }
   const list=DB.sales.filter(s=>
+    (!q||s.id.toLowerCase().includes(q)||(s.custName||'').toLowerCase().includes(q)||(s.custPhone||'').includes(q))&&
     (!from||s.time.slice(0,10)>=from)&&
     (!to||s.time.slice(0,10)<=to)&&
     (!type||s.type===type)&&
@@ -5119,8 +5148,23 @@ function renderSales(){
   const totalRev=list.reduce((s,x)=>s+x.total,0);
   const onlineRev=list.filter(x=>x.type==='online').reduce((s,x)=>s+x.total,0);
   const offlineRev=list.filter(x=>x.type==='offline').reduce((s,x)=>s+x.total,0);
+  // Growth vs previous equal-length period (only when a date range is explicitly set)
+  let growthHtml='';
+  if(from&&to){
+    const d1=new Date(from),d2=new Date(to);
+    const days=Math.max(1,Math.round((d2-d1)/86400000)+1);
+    const prevTo=new Date(d1.getTime()-86400000);
+    const prevFrom=new Date(prevTo.getTime()-(days-1)*86400000);
+    const prevFromStr=prevFrom.toISOString().slice(0,10), prevToStr=prevTo.toISOString().slice(0,10);
+    const prevRev=DB.sales.filter(s=>s.time.slice(0,10)>=prevFromStr&&s.time.slice(0,10)<=prevToStr).reduce((s,x)=>s+x.total,0);
+    if(prevRev>0){
+      const growth=((totalRev-prevRev)/prevRev*100);
+      const up=growth>=0;
+      growthHtml=`<span style="font-size:11px;color:${up?'var(--success)':'var(--danger)'}">${up?'▲':'▼'} ${Math.abs(growth).toFixed(1)}% আগের সমপরিমাণ সময়ের তুলনায়</span>`;
+    }
+  }
   $('salesStats').innerHTML=`
-    <div class="stat-card s1"><div class="icon">💰</div><div class="value">${fmt(totalRev)}</div><div class="label">মোট রাজস্ব</div></div>
+    <div class="stat-card s1"><div class="icon">💰</div><div class="value">${fmt(totalRev)}</div><div class="label">মোট রাজস্ব</div>${growthHtml?`<div style="margin-top:4px">${growthHtml}</div>`:''}</div>
     <div class="stat-card s2"><div class="icon">🌐</div><div class="value">${fmt(onlineRev)}</div><div class="label">অনলাইন বিক্রয়</div></div>
     <div class="stat-card s3"><div class="icon">🏪</div><div class="value">${fmt(offlineRev)}</div><div class="label">অফলাইন বিক্রয়</div></div>
     <div class="stat-card s4"><div class="icon">📊</div><div class="value">${list.length}</div><div class="label">মোট বিক্রয়</div></div>
@@ -5366,12 +5410,14 @@ tbody tr:nth-child(even){background:#f8fafc}
 }
 
 function _getFilteredSalesList(){
+  const q=($('salesSearch')||{value:''}).value.toLowerCase();
   const from=($('salesFrom')||{value:''}).value;
   const to=($('salesTo')||{value:''}).value;
   const type=($('salesType')||{value:''}).value;
   const pay=($('salesPayment')||{value:''}).value;
   const branch=($('salesBranch')||{value:''}).value;
   return DB.sales.filter(s=>
+    (!q||s.id.toLowerCase().includes(q)||(s.custName||'').toLowerCase().includes(q)||(s.custPhone||'').includes(q))&&
     (!from||s.time.slice(0,10)>=from)&&
     (!to||s.time.slice(0,10)<=to)&&
     (!type||s.type===type)&&
@@ -5671,6 +5717,8 @@ function loadSettings(){
   const mt=$('setMonthlyTarget');if(mt) mt.value=s.monthlyTarget||'';
   const rf=$('setReceiptFooter');if(rf) rf.value=s.receiptFooter||'';
   const al=$('setAutoLogout');if(al) al.value=s.autoLogoutMinutes||0;
+  const eci=$('setExpectedCheckIn');if(eci) eci.value=s.expectedCheckIn||'09:00';
+  const lg=$('setLateGrace');if(lg) lg.value=s.lateGraceMinutes??15;
   // Contact & social
   const fields=['Email','Website','Facebook','Instagram','Whatsapp','Hours','FooterDesc','QuickLink1','QuickLink2'];
   fields.forEach(f=>{const el=$('set'+f);if(el) el.value=s[f.toLowerCase()]||'';});
@@ -7190,6 +7238,66 @@ function _attFmtDur(inIso,outIso){
   const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000);
   return `${h} ঘণ্টা ${m} মিনিট`;
 }
+function saveAttendanceRules(){
+  DB.settings.expectedCheckIn=($('setExpectedCheckIn')||{value:'09:00'}).value;
+  DB.settings.lateGraceMinutes=parseInt(($('setLateGrace')||{value:15}).value)||15;
+  save(KEYS.settings,DB.settings);
+  toast('🕒 হাজিরা নিয়ম সেভ হয়েছে');
+}
+function _attIsLate(checkInIso){
+  const exp=DB.settings.expectedCheckIn||'09:00';
+  const grace=DB.settings.lateGraceMinutes??15;
+  const [eh,em]=exp.split(':').map(Number);
+  const d=new Date(checkInIso);
+  const limitMinutes=eh*60+em+grace;
+  const actualMinutes=d.getHours()*60+d.getMinutes();
+  return actualMinutes>limitMinutes;
+}
+function openManualAttendanceModal(id){
+  const rec=id?(DB.attendance||[]).find(a=>a.id===id):null;
+  const staffOptions=[{id:'owner',name:DB.adminUser||'Owner'},...(DB.staff||[]).map(s=>({id:s.id,name:s.name}))];
+  const dateVal=rec?rec.date:_attTodayKey();
+  const inTimeVal=rec?.checkIn?new Date(rec.checkIn).toTimeString().slice(0,5):'09:00';
+  const outTimeVal=rec?.checkOut?new Date(rec.checkOut).toTimeString().slice(0,5):'';
+  openModal(id?'✏️ হাজিরা এডিট করুন':'➕ ম্যানুয়াল হাজিরা এন্ট্রি',`
+    <div class="form-group"><label>স্টাফ *</label>
+      <select id="ma_staff" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%" ${id?'disabled':''}>
+        ${staffOptions.map(s=>`<option value="${s.id}" ${rec?.staffId===s.id?'selected':''}>${s.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>তারিখ *</label><input id="ma_date" type="date" value="${dateVal}"></div>
+    <div class="two-col">
+      <div class="form-group"><label>চেক-ইন সময়</label><input id="ma_in" type="time" value="${inTimeVal}"></div>
+      <div class="form-group"><label>চেক-আউট সময় (ঐচ্ছিক)</label><input id="ma_out" type="time" value="${outTimeVal}"></div>
+    </div>
+    <div class="form-group"><label>নোট (ঐচ্ছিক)</label><input id="ma_note" value="${rec?.note||''}" placeholder="যেমন: ম্যানুয়াল এন্ট্রি — নেট সমস্যার কারণে"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveManualAttendance('${id||''}')">💾 সেভ করুন</button>`);
+}
+function saveManualAttendance(id){
+  const staffId=($('ma_staff')||{value:'owner'}).value;
+  const staffOptions=[{id:'owner',name:DB.adminUser||'Owner'},...(DB.staff||[]).map(s=>({id:s.id,name:s.name}))];
+  const staffName=staffOptions.find(s=>s.id===staffId)?.name||'Unknown';
+  const date=($('ma_date')||{value:''}).value;
+  const inTime=($('ma_in')||{value:''}).value;
+  const outTime=($('ma_out')||{value:''}).value;
+  const note=($('ma_note')||{value:''}).value.trim();
+  if(!date||!inTime){toast('তারিখ ও চেক-ইন সময় দিন','warn');return;}
+  const checkIn=new Date(`${date}T${inTime}:00`).toISOString();
+  const checkOut=outTime?new Date(`${date}T${outTime}:00`).toISOString():null;
+  if(!DB.attendance) DB.attendance=[];
+  if(id){
+    const rec=DB.attendance.find(a=>a.id===id);
+    if(rec){rec.date=date;rec.checkIn=checkIn;rec.checkOut=checkOut;rec.note=note;}
+  }else{
+    const dup=DB.attendance.find(a=>a.staffId===staffId&&a.date===date);
+    if(dup){toast('এই স্টাফের ওই তারিখে ইতিমধ্যে রেকর্ড আছে, এডিট করুন','warn');return;}
+    DB.attendance.push({id:`att${uid()}`,staffId,staffName,date,checkIn,checkOut,note:note||'ম্যানুয়াল এন্ট্রি'});
+  }
+  save(KEYS.attendance,DB.attendance);
+  closeModal();renderAttendance();
+  toast(id?'✅ হাজিরা আপডেট হয়েছে':'✅ ম্যানুয়াল হাজিরা যোগ হয়েছে','success');
+}
 function staffCheckIn(){
   const who=_attWhoAmI();
   const today=_attTodayKey();
@@ -7266,10 +7374,12 @@ function renderAttendance(){
   if(statsEl){
     const presentToday=DB.attendance.filter(a=>a.date===today).length;
     const totalStaff=(DB.staff||[]).filter(s=>s.active!==false).length+1; // +1 owner
+    const lateToday=DB.attendance.filter(a=>a.date===today&&a.checkIn&&_attIsLate(a.checkIn)).length;
     let totalHoursMs=0;
     list.forEach(a=>{if(a.checkIn&&a.checkOut) totalHoursMs+=(new Date(a.checkOut)-new Date(a.checkIn));});
     statsEl.innerHTML=`
       <div class="stat-card"><div style="font-size:22px;font-weight:800">${presentToday}/${totalStaff}</div><div style="font-size:12px;color:var(--text2)">আজ উপস্থিত</div></div>
+      <div class="stat-card"><div style="font-size:22px;font-weight:800;color:${lateToday?'var(--warning)':'inherit'}">${lateToday}</div><div style="font-size:12px;color:var(--text2)">আজ দেরিতে এসেছেন</div></div>
       <div class="stat-card"><div style="font-size:22px;font-weight:800">${list.length}</div><div style="font-size:12px;color:var(--text2)">মোট রেকর্ড (ফিল্টার অনুযায়ী)</div></div>
       <div class="stat-card"><div style="font-size:22px;font-weight:800">${Math.round(totalHoursMs/3600000)} ঘণ্টা</div><div style="font-size:12px;color:var(--text2)">মোট কর্মঘণ্টা</div></div>
     `;
@@ -7278,15 +7388,21 @@ function renderAttendance(){
   // Table
   const tb=$('attendanceBody');
   if(!tb) return;
-  tb.innerHTML=list.length?list.map(a=>`<tr>
+  tb.innerHTML=list.length?list.map(a=>{
+    const late=a.checkIn&&_attIsLate(a.checkIn);
+    return `<tr>
     <td style="font-weight:600">${a.staffName}</td>
     <td>${a.date}</td>
-    <td>${_attFmtTime(a.checkIn)}</td>
+    <td>${_attFmtTime(a.checkIn)}${late?' <span class="badge badge-warn" style="font-size:9px">দেরি</span>':''}</td>
     <td>${a.checkOut?_attFmtTime(a.checkOut):'<span class="badge badge-warn">চলমান</span>'}</td>
     <td>${_attFmtDur(a.checkIn,a.checkOut)}</td>
     <td class="hide-xs" style="font-size:11px;color:var(--text2)">${a.note||'—'}</td>
-    <td><button class="btn btn-danger btn-sm" onclick="deleteAttendance('${a.id}')">🗑️</button></td>
-  </tr>`).join('')
+    <td style="display:flex;gap:4px">
+      <button class="btn btn-warn btn-sm" onclick="openManualAttendanceModal('${a.id}')">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteAttendance('${a.id}')">🗑️</button>
+    </td>
+  </tr>`;
+  }).join('')
   :'<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:16px">কোনো হাজিরা রেকর্ড নেই</td></tr>';
 }
 function exportAttendanceCSV(){
@@ -7319,13 +7435,109 @@ function generatePayrollForMonth(){
     if(!s.salary) return; // বেতন সেট করা না থাকলে স্কিপ
     const exists=DB.payroll.find(p=>p.staffId===s.id&&p.month===month);
     if(!exists){
-      DB.payroll.push({id:`pr${uid()}`,staffId:s.id,staffName:s.name,month,amount:s.salary,status:'due',paidDate:null});
+      DB.payroll.push({id:`pr${uid()}`,staffId:s.id,staffName:s.name,month,baseAmount:s.salary,bonus:0,deduction:0,amount:s.salary,status:'due',paidDate:null});
       added++;
     }
   });
   save(KEYS.payroll,DB.payroll);
   toast(added?`✅ ${added} জন স্টাফের বেতন এন্ট্রি তৈরি হয়েছে`:'এই মাসের এন্ট্রি ইতিমধ্যে আছে','success');
   renderPayroll();
+}
+function openAdjustPayrollModal(id){
+  const p=(DB.payroll||[]).find(x=>x.id===id);if(!p)return;
+  const base=p.baseAmount??p.amount;
+  openModal(`⚙️ বেতন সমন্বয় — ${p.staffName} (${p.month})`,`
+    <div class="form-group"><label>মূল বেতন</label><input id="pa_base" type="number" value="${base}" min="0"></div>
+    <div class="two-col">
+      <div class="form-group"><label>➕ বোনাস (৳)</label><input id="pa_bonus" type="number" value="${p.bonus||0}" min="0"></div>
+      <div class="form-group"><label>➖ কর্তন (৳)</label><input id="pa_deduction" type="number" value="${p.deduction||0}" min="0"></div>
+    </div>
+    <div style="background:var(--card2);border-radius:8px;padding:10px 12px;font-size:13px;margin-top:6px">
+      নিট বেতন: <b id="pa_net_preview" style="color:var(--accent)">${fmt(base+(p.bonus||0)-(p.deduction||0))}</b>
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveAdjustedPayroll('${id}')">💾 সেভ করুন</button>`);
+  ['pa_base','pa_bonus','pa_deduction'].forEach(fid=>{
+    $(fid).addEventListener('input',()=>{
+      const b=parseFloat($('pa_base').value)||0, bo=parseFloat($('pa_bonus').value)||0, d=parseFloat($('pa_deduction').value)||0;
+      $('pa_net_preview').textContent=fmt(b+bo-d);
+    });
+  });
+}
+function saveAdjustedPayroll(id){
+  const p=(DB.payroll||[]).find(x=>x.id===id);if(!p)return;
+  const base=parseFloat($('pa_base').value)||0;
+  const bonus=parseFloat($('pa_bonus').value)||0;
+  const deduction=parseFloat($('pa_deduction').value)||0;
+  p.baseAmount=base;p.bonus=bonus;p.deduction=deduction;p.amount=Math.max(0,base+bonus-deduction);
+  save(KEYS.payroll,DB.payroll);
+  closeModal();renderPayroll();
+  toast('✅ বেতন সমন্বয় সেভ হয়েছে','success');
+}
+function printPayslip(id){
+  const p=(DB.payroll||[]).find(x=>x.id===id);if(!p)return;
+  const s=DB.settings;
+  const base=p.baseAmount??p.amount;
+  const bonus=p.bonus||0, deduction=p.deduction||0;
+  const [y,m]=p.month.split('-').map(Number);
+  const monthStart=`${p.month}-01`, monthEnd=`${p.month}-31`;
+  const daysPresent=(DB.attendance||[]).filter(a=>a.staffId===p.staffId&&a.date>=monthStart&&a.date<=monthEnd).length;
+  const monthNames=['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+  const monthLabel=`${monthNames[m-1]} ${y}`;
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Payslip — ${p.staffName} — ${p.month}</title>
+  <style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  @page{size:A4;margin:15mm}
+  body{font-family:Arial,sans-serif;font-size:13px;color:#1a2639;padding:10px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #e94560;padding-bottom:14px;margin-bottom:18px}
+  .shop-name{font-size:22px;font-weight:900;color:#e94560}
+  .shop-info{font-size:11px;color:#666;margin-top:4px}
+  .payslip-label{font-size:20px;font-weight:900;text-align:right}
+  .payslip-sub{font-size:11px;color:#888;text-align:right;margin-top:4px}
+  .info-box{background:#f8fafc;border:1px solid #e2eaf4;border-radius:8px;padding:14px;margin-bottom:18px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .info-item span{color:#888;font-size:11px;display:block}
+  .info-item b{font-size:13px}
+  table{width:100%;border-collapse:collapse;margin-bottom:18px}
+  th{background:#1a2639;color:#fff;padding:9px;text-align:left;font-size:11px}
+  td{padding:9px;border-bottom:1px solid #eee;font-size:13px}
+  .net-row td{font-weight:900;font-size:16px;border-top:2px solid #1a2639;color:#e94560}
+  .sign-row{display:flex;justify-content:space-between;margin-top:60px}
+  .sign-line{border-top:1px solid #999;width:160px;text-align:center;padding-top:6px;font-size:11px;color:#666}
+  </style></head><body>
+  <div class="top">
+    <div><div class="shop-name">${s.name||'SuperShop'}</div><div class="shop-info">${s.addr||''}<br>📞 ${s.phone||''}</div></div>
+    <div><div class="payslip-label">বেতন স্লিপ / PAYSLIP</div><div class="payslip-sub">মাস: ${monthLabel}<br>তৈরি: ${new Date().toLocaleDateString('bn-BD')}</div></div>
+  </div>
+  <div class="info-box">
+    <div class="info-item"><span>স্টাফের নাম</span><b>${p.staffName}</b></div>
+    <div class="info-item"><span>মাস</span><b>${monthLabel}</b></div>
+    <div class="info-item"><span>উপস্থিতি (এই মাসে)</span><b>${daysPresent} দিন</b></div>
+    <div class="info-item"><span>স্ট্যাটাস</span><b>${p.status==='paid'?'পরিশোধিত ✓':'বাকি'}</b></div>
+  </div>
+  <table>
+    <thead><tr><th>বিবরণ</th><th style="text-align:right">পরিমাণ</th></tr></thead>
+    <tbody>
+      <tr><td>মূল বেতন</td><td style="text-align:right">${fmt(base)}</td></tr>
+      ${bonus>0?`<tr><td>➕ বোনাস</td><td style="text-align:right;color:#00b48c">+${fmt(bonus)}</td></tr>`:''}
+      ${deduction>0?`<tr><td>➖ কর্তন</td><td style="text-align:right;color:#e94560">-${fmt(deduction)}</td></tr>`:''}
+      <tr class="net-row"><td>নিট বেতন (Net Pay)</td><td style="text-align:right">${fmt(p.amount)}</td></tr>
+    </tbody>
+  </table>
+  <div class="sign-row">
+    <div class="sign-line">স্টাফের স্বাক্ষর</div>
+    <div class="sign-line">কর্তৃপক্ষের স্বাক্ষর</div>
+  </div>
+  <script>window.addEventListener("load",()=>{window.print();});<\/script>
+  </body></html>`;
+  try{
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.target='_blank';a.rel='noopener';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},2000);
+    toast('🧾 পেস্লিপ খুলছে — প্রিন্ট ডায়ালগ ব্যবহার করুন');
+  }catch(e){toast('পেস্লিপ তৈরি করতে সমস্যা হয়েছে','danger');}
 }
 function markPayrollPaid(id){
   const p=(DB.payroll||[]).find(x=>x.id===id);if(!p)return;
@@ -7360,25 +7572,32 @@ function renderPayroll(){
     const total=list.reduce((s,p)=>s+p.amount,0);
     const paid=list.filter(p=>p.status==='paid').reduce((s,p)=>s+p.amount,0);
     const due=total-paid;
+    const bonusTotal=list.reduce((s,p)=>s+(p.bonus||0),0);
     statsEl.innerHTML=`
       <div class="stat-card"><div style="font-size:22px;font-weight:800">${fmt(total)}</div><div style="font-size:12px;color:var(--text2)">এই মাসের মোট বেতন</div></div>
       <div class="stat-card"><div style="font-size:22px;font-weight:800;color:var(--success)">${fmt(paid)}</div><div style="font-size:12px;color:var(--text2)">পরিশোধিত</div></div>
       <div class="stat-card"><div style="font-size:22px;font-weight:800;color:var(--danger)">${fmt(due)}</div><div style="font-size:12px;color:var(--text2)">বাকি</div></div>
+      <div class="stat-card"><div style="font-size:22px;font-weight:800;color:var(--info)">${fmt(bonusTotal)}</div><div style="font-size:12px;color:var(--text2)">মোট বোনাস</div></div>
     `;
   }
   const tb=$('payrollBody');
   if(!tb) return;
-  tb.innerHTML=list.length?list.map(p=>`<tr>
+  tb.innerHTML=list.length?list.map(p=>{
+    const hasBonusDeduction=(p.bonus||0)>0||(p.deduction||0)>0;
+    return `<tr>
     <td style="font-weight:600">${p.staffName}</td>
     <td>${p.month}</td>
-    <td>${fmt(p.amount)}</td>
+    <td>${fmt(p.amount)}${hasBonusDeduction?`<div style="font-size:10px;color:var(--text2)">${p.bonus?`+${fmt(p.bonus)} বোনাস `:''}${p.deduction?`-${fmt(p.deduction)} কর্তন`:''}</div>`:''}</td>
     <td>${p.status==='paid'?'<span class="badge badge-success">পরিশোধিত</span>':'<span class="badge badge-warn">বাকি</span>'}</td>
     <td class="hide-xs" style="font-size:11px;color:var(--text2)">${p.paidDate?new Date(p.paidDate).toLocaleDateString('bn-BD'):'—'}</td>
-    <td style="display:flex;gap:6px">
+    <td style="display:flex;gap:6px;flex-wrap:wrap">
+      ${p.status!=='paid'?`<button class="btn btn-warn btn-sm" onclick="openAdjustPayrollModal('${p.id}')" title="বোনাস/কর্তন যোগ করুন">⚙️</button>`:''}
+      <button class="btn btn-info btn-sm" onclick="printPayslip('${p.id}')" title="পেস্লিপ প্রিন্ট">🧾</button>
       ${p.status!=='paid'?`<button class="btn btn-success btn-sm" onclick="markPayrollPaid('${p.id}')">✅ পরিশোধ করুন</button>`:''}
       <button class="btn btn-danger btn-sm" onclick="deletePayrollEntry('${p.id}')">🗑️</button>
     </td>
-  </tr>`).join('')
+  </tr>`;
+  }).join('')
   :'<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:16px">এই মাসের কোনো বেতন এন্ট্রি নেই — "এই মাসের বেতন তৈরি করুন" চাপুন</td></tr>';
 }
 function exportPayrollCSV(){
