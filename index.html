@@ -1850,6 +1850,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       <!-- Revenue Breakdown Widget -->
       <div class="chart-box" id="revenueBreakdownWidget" style="margin-bottom:16px"></div>
 
+      <!-- Upcoming Birthdays Widget -->
+      <div id="dashBirthdayWidget" style="display:none;margin-bottom:16px"></div>
+
       <!-- Bottom Row: Recent Orders + Top Products -->
       <div style="display:grid;grid-template-columns:1fr 300px;gap:16px" id="dashBottom">
         <div>
@@ -2323,9 +2326,10 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <option value="cleared">✅ পরিশোধিত</option>
           <option value="all">সব</option>
         </select>
+        <button class="btn btn-success btn-sm" onclick="exportDueCSV()">📥 CSV</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>বিল আইডি</th><th>কাস্টমার</th><th>ফোন</th><th>মোট বিল</th><th>জমা</th><th>বাকি</th><th>একশন</th></tr></thead>
+        <thead><tr><th>বিল আইডি</th><th>কাস্টমার</th><th class="hide-xs">ফোন</th><th>মোট বিল</th><th class="hide-xs">জমা</th><th>বাকি</th><th>বয়স</th><th>একশন</th></tr></thead>
         <tbody id="dueTableBody"></tbody>
       </table></div>
     </div>
@@ -2334,12 +2338,21 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <div class="page" id="page-expenses">
       <div class="page-header"><h2>💸 খরচের হিসাব</h2><p>মাসিক ব্যয়ের রেকর্ড</p></div>
       <div class="toolbar">
+        <input type="text" id="expSearch" placeholder="🔍 শিরোনাম/নোট..." oninput="renderExp()">
+        <select id="expCatFilter" onchange="renderExp()">
+          <option value="">সব ক্যাটাগরি</option>
+          <option value="Rent">🏠 Rent</option><option value="Salary">👷 Salary</option>
+          <option value="Utilities">⚡ Utilities</option><option value="Other">📌 Other</option>
+        </select>
+        <input type="date" id="expFrom" onchange="renderExp()" title="শুরুর তারিখ">
+        <input type="date" id="expTo" onchange="renderExp()" title="শেষ তারিখ">
         <div class="spacer"></div>
+        <button class="btn btn-success btn-sm" onclick="exportExpensesCSV()">📥 CSV</button>
         <button class="btn btn-primary" onclick="openExpModal()">➕ খরচ যোগ</button>
       </div>
       <div class="stat-grid" id="expStats"></div>
       <div class="table-wrap"><table>
-        <thead><tr><th>শিরোনাম</th><th>ক্যাটাগরি</th><th>পরিমাণ</th><th>তারিখ</th><th>নোট</th><th>একশন</th></tr></thead>
+        <thead><tr><th>শিরোনাম</th><th>ক্যাটাগরি</th><th>পরিমাণ</th><th class="hide-xs">তারিখ</th><th class="hide-xs">নোট</th><th>একশন</th></tr></thead>
         <tbody id="expBody"></tbody>
       </table></div>
     </div>
@@ -2349,18 +2362,23 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       <div class="page-header"><h2>💸 ক্যাশবুক</h2><p>দৈনিক নগদ আয়-ব্যয়ের হিসাব</p></div>
       <div class="stat-grid" id="cashbookStats"></div>
       <div class="toolbar">
+        <button class="btn btn-ghost btn-sm" onclick="cbShiftDate(-1)" title="আগের দিন">◀</button>
         <input type="date" id="cbDate" onchange="renderCashbook()">
+        <button class="btn btn-ghost btn-sm" onclick="cbShiftDate(1)" title="পরের দিন">▶</button>
+        <button class="btn btn-ghost btn-sm" onclick="$('cbDate').value=today();renderCashbook()">আজ</button>
+        <input type="text" id="cbSearch" placeholder="🔍 বিবরণ খুঁজুন..." oninput="renderCashbook()" style="min-width:140px">
         <select id="cbFilter" onchange="renderCashbook()" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:inherit">
           <option value="all">সব</option>
           <option value="in">আয় (Income)</option>
           <option value="out">ব্যয় (Expense)</option>
         </select>
         <div class="spacer"></div>
+        <button class="btn btn-ghost btn-sm" onclick="openCashbookMonthlySummary()">📊 মাসিক সারাংশ</button>
         <button class="btn btn-primary" onclick="openCashbookEntryModal()">➕ এন্ট্রি যোগ করুন</button>
         <button class="btn btn-ghost btn-sm" onclick="exportCashbookCSV()">📥 CSV</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>সময়</th><th>বিবরণ</th><th>ধরন</th><th>পরিমাণ</th><th>ব্যালেন্স</th><th>একশন</th></tr></thead>
+        <thead><tr><th>সময়</th><th>বিবরণ</th><th>ধরন</th><th>পরিমাণ</th><th class="hide-xs">ব্যালেন্স</th><th>একশন</th></tr></thead>
         <tbody id="cashbookBody"></tbody>
       </table></div>
     </div>
@@ -2521,6 +2539,8 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <div class="form-group"><label>ঠিকানা</label><input id="setAddr" placeholder="ঢাকা, বাংলাদেশ"></div>
         <div class="form-group"><label>ফোন</label><input id="setPhone" placeholder="01XXXXXXXXX"></div>
         <div class="form-group"><label>ট্যাক্স হার (%)</label><input id="setTax" type="number" value="5" min="0" max="30"></div>
+        <div class="form-group"><label>⚠️ কম স্টক সতর্কতার থ্রেশহোল্ড (ডিফল্ট)</label><input id="setLowStockThreshold" type="number" min="1" max="1000" value="5"></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:-4px">ℹ️ কোনো পণ্যের স্টক এই সংখ্যার নিচে/সমান নামলেই "কম স্টক" সতর্কতা দেখাবে। কোনো নির্দিষ্ট পণ্যে আলাদা থ্রেশহোল্ড চাইলে সেই পণ্যের এডিট ফর্মে "রিঅর্ডার লেভেল" সেট করুন — সেটাই অগ্রাধিকার পাবে।</div>
         <div class="form-group"><label>🧾 ট্যাক্স মোড</label>
           <select id="setTaxMode" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%;font-family:inherit">
             <option value="exclusive">যোগ করা হবে (Exclusive) — দামের উপর আলাদা ট্যাক্স</option>
@@ -2901,6 +2921,11 @@ const cur = ()=>DB.settings.currency||'৳';
 const taxRate = ()=>parseFloat(DB.settings.tax)||5;
 const fmt = n=>`${cur()}${(+n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 const uid = ()=>`${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+// ── Unified low-stock threshold logic ──
+// প্রতিটা পণ্যের নিজস্ব reorderLevel থাকলে সেটাই ব্যবহার হবে, নাহলে সেটিংসের গ্লোবাল থ্রেশহোল্ড (ডিফল্ট ৫)
+function _lowStockThreshold(p){ return (p.reorderLevel>0)?p.reorderLevel:(DB.settings.lowStockThreshold||5); }
+function isLowStock(p){ return p.stock>0 && p.stock<=_lowStockThreshold(p); } // কম আছে কিন্তু শেষ হয়নি
+function isLowOrOutStock(p){ return p.stock<=_lowStockThreshold(p); } // কম অথবা একদম শেষ
 const today = ()=>new Date().toISOString().slice(0,10);
 
 function togglePass(id,btn){
@@ -3825,7 +3850,7 @@ function loadDash(){
   const monthRev=monthSales.reduce((s,x)=>s+x.total,0);
   const todayOrders=DB.orders.filter(o=>o.time.slice(0,10)===todayStr).length;
   const pendingOrders=DB.orders.filter(o=>o.status==='Pending').length;
-  const lowStock=DB.products.filter(p=>p.stock<5).length;
+  const lowStock=DB.products.filter(p=>isLowOrOutStock(p)).length;
   const totalCusts=DB.custUsers.length+new Set([...DB.orders,...DB.sales].map(o=>o.custPhone).filter(Boolean)).size;
 
   // Welcome with username
@@ -3982,7 +4007,7 @@ function loadDash(){
   }
 
   // Stock alert
-  const lowItems=DB.products.filter(p=>p.stock<5);
+  const lowItems=DB.products.filter(p=>isLowOrOutStock(p));
   const sab=$('stockAlertBar');
   if(sab){
     if(lowItems.length){
@@ -4005,6 +4030,28 @@ function loadDash(){
   renderMonthlyTarget(monthRev);
   renderRevenueBreakdown();
   renderStickyNotes();
+  renderBirthdayWidget();
+}
+function renderBirthdayWidget(){
+  const el=$('dashBirthdayWidget');if(!el)return;
+  const upcoming=getUpcomingBirthdays(7);
+  if(!upcoming.length){el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML=`
+    <div class="chart-box">
+      <h3 style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">🎂 আসন্ন জন্মদিন (৭ দিনের মধ্যে)</h3>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${upcoming.map(c=>`
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;min-width:200px">
+            <div style="font-size:24px">${c.diffDays===0?'🎉':'🎂'}</div>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:13px">${c.name}</div>
+              <div style="font-size:11px;color:var(--text2)">${c.diffDays===0?'আজকে!':c.diffDays===1?'আগামীকাল':`${c.diffDays} দিন পর`}</div>
+            </div>
+            ${c.phone?`<button class="btn btn-whatsapp btn-sm" onclick="sendWhatsAppToCustomer('${c.phone}','${c.name}','birthday')" title="শুভেচ্ছা পাঠান">📱</button>`:''}
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 function renderMonthlyTarget(monthRev){
@@ -4206,7 +4253,7 @@ function renderProducts(){
   const body=$('productsBody');
   body.innerHTML=slice.map((p,i)=>{
     const c=DB.cats.find(x=>x.id===p.cat)||{};
-    const low=p.stock<5;
+    const low=isLowOrOutStock(p);
     const expInfo=getExpiryStatus(p.expiryDate);
     const reorderAlert=p.reorderLevel>0&&p.stock<=p.reorderLevel;
     return`<tr class="${low?'low-stock':''}">
@@ -4708,7 +4755,7 @@ function renderPOS(){
     dl.innerHTML=names.map(n=>`<option value="${n}">`).join('');
   }
   // Update status bar (lightweight)
-  const lowStockCount=DB.products.filter(p=>p.stock>0&&p.stock<5).length;
+  const lowStockCount=DB.products.filter(p=>isLowStock(p)).length;
   const totalAvail=DB.products.filter(p=>p.stock>0).length;
   const billCount=posBill.reduce((s,i)=>s+i.qty,0);
   const ps=$('psTotal');if(ps) ps.textContent=totalAvail;
@@ -4741,7 +4788,7 @@ function renderPOS(){
     const added=inBill.has(p.id);
     const qty=added?posBill.find(x=>x.productId===p.id).qty:0;
     const outOfStock=p.stock<1;
-    const lowStock=p.stock>0&&p.stock<5;
+    const lowStock=isLowStock(p);
     const isPopular=_showPopular&&popIdsSet.has(p.id)&&idx<3;
     const isFav=favIds.includes(p.id);
     return`<div class="pos-card${added?' added':''}${outOfStock?' pos-card-out':''}"
@@ -5237,22 +5284,50 @@ function renderDuePage(){
     <div class="stat-card s1"><div class="icon">💰</div><div class="value" style="color:var(--success)">${fmt(totalCollected)}</div><div class="label">আদায়কৃত (সর্বমোট)</div></div>
   `;
 
-  $('dueTableBody').innerHTML=list.length?list.map(s=>`
+  $('dueTableBody').innerHTML=list.length?list.map(s=>{
+    const ageDays=Math.floor((Date.now()-new Date(s.time).getTime())/86400000);
+    const ageColor=ageDays>30?'var(--danger)':ageDays>14?'var(--warning)':'var(--text2)';
+    return `
     <tr>
       <td><code style="font-size:11px;color:var(--text2)">${s.id.slice(-8)}</code></td>
       <td style="font-weight:600">${s.custName}</td>
-      <td>${s.custPhone||'—'}</td>
+      <td class="hide-xs">${s.custPhone||'—'}</td>
       <td>${fmt(s.total)}</td>
-      <td style="color:var(--success)">${fmt(s.paidAmount)}</td>
+      <td class="hide-xs" style="color:var(--success)">${fmt(s.paidAmount)}</td>
       <td style="color:${s.dueAmount>0?'var(--danger)':'var(--text2)'};font-weight:700">${fmt(s.dueAmount)}</td>
-      <td style="display:flex;gap:4px">
+      <td>${s.dueAmount>0?`<span style="color:${ageColor};font-size:11px;font-weight:600">${ageDays} দিন</span>`:'—'}</td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap">
         ${s.dueAmount>0?`<button class="btn btn-success btn-sm" onclick="openCollectDueModal('${s.id}')">💰 আদায়</button>`:'<span class="badge badge-success" style="font-size:10px">✅ পরিশোধিত</span>'}
+        ${s.dueAmount>0&&s.custPhone?`<button class="btn btn-whatsapp btn-sm" onclick="sendWhatsAppToCustomer('${s.custPhone}','${s.custName}','due')" title="বাকি পরিশোধের রিমাইন্ডার পাঠান">📱</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick="viewDueHistory('${s.id}')" title="ইতিহাস">📋</button>
       </td>
-    </tr>`).join('')
-  :'<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:24px">কোনো বাকি বিক্রয় নেই ✅</td></tr>';
+    </tr>`;
+  }).join('')
+  :'<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:24px">কোনো বাকি বিক্রয় নেই ✅</td></tr>';
 
   updateDueSidebarBadge();
+}
+function exportDueCSV(){
+  const q=($('dueSearch')||{value:''}).value.toLowerCase();
+  const filter=($('dueFilterStatus')||{value:'pending'}).value;
+  let list=DB.sales.filter(s=>typeof s.dueAmount==='number'&&s.dueAmount>=0&&s.paidAmount!==undefined&&s.dueHistory);
+  if(filter==='pending') list=list.filter(s=>s.dueAmount>0);
+  else if(filter==='cleared') list=list.filter(s=>s.dueAmount===0&&s.paidAmount<s.total);
+  if(q) list=list.filter(s=>(s.custName||'').toLowerCase().includes(q)||(s.custPhone||'').includes(q));
+  if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
+  const rows=[['বিল ID','কাস্টমার','ফোন','মোট বিল','জমা','বাকি','বয়স (দিন)']];
+  list.forEach(s=>{
+    const ageDays=Math.floor((Date.now()-new Date(s.time).getTime())/86400000);
+    rows.push([s.id,s.custName,s.custPhone||'',s.total.toFixed(2),s.paidAmount.toFixed(2),s.dueAmount.toFixed(2),s.dueAmount>0?ageDays:'']);
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`Due-${today()}.csv`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  toast('📥 CSV ডাউনলোড হচ্ছে...','success');
 }
 
 function openCollectDueModal(saleId){
@@ -5556,11 +5631,13 @@ function renderCustomers(){
 function editCustomer(idx){
   const c=(window._custList||[])[idx];
   if(!c){toast('তথ্য পাওয়া যায়নি','danger');return;}
+  const bday=getCustBirthday(c.phone,c.name);
   openModal('✏️ কাস্টমার সম্পাদনা',`
     <div class="form-group"><label>নাম *</label><input id="ec_name" value="${c.name}"></div>
     <div class="form-group"><label>ফোন</label><input id="ec_phone" value="${c.phone||''}"></div>
     <div class="form-group"><label>ইমেইল</label><input id="ec_email" value="${c.email||''}"></div>
     <div class="form-group"><label>ঠিকানা</label><input id="ec_addr" value="${c.addr||''}"></div>
+    <div class="form-group"><label>🎂 জন্মদিন (ঐচ্ছিক)</label><input id="ec_bday" type="date" value="${bday}"></div>
     ${c.userId?`<div class="form-group"><label>নতুন পাসওয়ার্ড (ঐচ্ছিক)</label>
       <div class="pass-wrap"><input id="ec_pass" type="password" placeholder="পরিবর্তন না করলে খালি রাখুন">
       <button class="pass-eye" type="button" onclick="togglePass('ec_pass',this)">👁️</button></div>
@@ -5579,6 +5656,8 @@ function saveCustomerEdit(idx){
   const newPhone=$('ec_phone').value.trim()||c.phone;
   const newEmail=$('ec_email').value.trim();
   const newAddr=$('ec_addr').value.trim();
+  const newBday=($('ec_bday')||{value:''}).value;
+  saveCustBirthday(newPhone,newName,newBday);
   // Update registered user if exists
   if(c.userId){
     const u=DB.custUsers.find(x=>x.id===c.userId);
@@ -5626,24 +5705,41 @@ function deleteCustomer(idx){
 //  EXPENSES
 // ══════════════════════════════════════
 function renderExp(){
+  const q=($('expSearch')||{value:''}).value.toLowerCase();
+  const cat=($('expCatFilter')||{value:''}).value;
+  const from=($('expFrom')||{value:''}).value;
+  const to=($('expTo')||{value:''}).value;
+  const list=DB.expenses.filter(e=>
+    (!q||e.title.toLowerCase().includes(q)||(e.note||'').toLowerCase().includes(q))&&
+    (!cat||e.cat===cat)&&(!from||e.date>=from)&&(!to||e.date<=to)
+  );
   const thisMonth=today().slice(0,7);
+  const lastMonthDate=new Date();lastMonthDate.setMonth(lastMonthDate.getMonth()-1);
+  const lastMonth=lastMonthDate.toISOString().slice(0,7);
   const monthly=DB.expenses.filter(e=>e.date.slice(0,7)===thisMonth).reduce((s,e)=>s+e.amount,0);
+  const lastMonthly=DB.expenses.filter(e=>e.date.slice(0,7)===lastMonth).reduce((s,e)=>s+e.amount,0);
   const total=DB.expenses.reduce((s,e)=>s+e.amount,0);
   const profit=DB.sales.reduce((s,x)=>s+x.total,0)-total;
+  let monthCompareHtml='';
+  if(lastMonthly>0){
+    const diff=((monthly-lastMonthly)/lastMonthly*100);
+    const up=diff>=0;
+    monthCompareHtml=`<div class="sub" style="font-size:11px;color:${up?'var(--danger)':'var(--success)'};margin-top:2px">${up?'▲':'▼'} ${Math.abs(diff).toFixed(1)}% গত মাসের তুলনায়</div>`;
+  }
   $('expStats').innerHTML=`
-    <div class="stat-card s1"><div class="icon">📅</div><div class="value">${fmt(monthly)}</div><div class="label">এই মাসের খরচ</div></div>
+    <div class="stat-card s1"><div class="icon">📅</div><div class="value">${fmt(monthly)}</div><div class="label">এই মাসের খরচ</div>${monthCompareHtml}</div>
     <div class="stat-card s4"><div class="icon">💸</div><div class="value">${fmt(total)}</div><div class="label">মোট খরচ</div></div>
     <div class="stat-card s2"><div class="icon">💰</div><div class="value">${fmt(profit)}</div><div class="label">নিট মুনাফা</div></div>
-    <div class="stat-card s3"><div class="icon">📝</div><div class="value">${DB.expenses.length}</div><div class="label">মোট এন্ট্রি</div></div>
+    <div class="stat-card s3"><div class="icon">📝</div><div class="value">${list.length}</div><div class="label">ফিল্টার অনুযায়ী এন্ট্রি</div></div>
   `;
   const icons={Rent:'🏠',Salary:'👷',Utilities:'⚡',Other:'📌'};
   const cls={Rent:'cat-rent',Salary:'cat-salary',Utilities:'cat-util',Other:'cat-other'};
-  $('expBody').innerHTML=DB.expenses.map(e=>`<tr>
+  $('expBody').innerHTML=list.map(e=>`<tr>
     <td style="font-weight:500">${e.title}</td>
     <td><span class="badge ${cls[e.cat]||'cat-other'}">${icons[e.cat]||'📌'} ${e.cat}</span></td>
     <td style="color:var(--danger);font-weight:700">${fmt(e.amount)}</td>
-    <td style="font-size:12px;color:var(--text2)">${e.date}</td>
-    <td style="font-size:12px;color:var(--text2)">${e.note||'—'}</td>
+    <td class="hide-xs" style="font-size:12px;color:var(--text2)">${e.date}</td>
+    <td class="hide-xs" style="font-size:12px;color:var(--text2)">${e.note||'—'}</td>
     <td style="display:flex;gap:4px">
       <button class="btn btn-warn btn-sm" onclick="openExpModal('${e.id}')">✏️</button>
       <button class="btn btn-danger btn-sm" onclick="deleteExp('${e.id}')">🗑️</button>
@@ -5651,6 +5747,27 @@ function renderExp(){
   </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text2)">কোনো খরচ নেই</td></tr>';
 }
 
+function exportExpensesCSV(){
+  const q=($('expSearch')||{value:''}).value.toLowerCase();
+  const cat=($('expCatFilter')||{value:''}).value;
+  const from=($('expFrom')||{value:''}).value;
+  const to=($('expTo')||{value:''}).value;
+  const list=DB.expenses.filter(e=>
+    (!q||e.title.toLowerCase().includes(q)||(e.note||'').toLowerCase().includes(q))&&
+    (!cat||e.cat===cat)&&(!from||e.date>=from)&&(!to||e.date<=to)
+  );
+  if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
+  const rows=[['শিরোনাম','ক্যাটাগরি','পরিমাণ','তারিখ','নোট']];
+  list.forEach(e=>rows.push([e.title,e.cat,e.amount.toFixed(2),e.date,e.note||'']));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`Expenses-${today()}.csv`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  toast('📥 CSV ডাউনলোড হচ্ছে...','success');
+}
 function openExpModal(id){
   const e=id?DB.expenses.find(x=>x.id===id):{};
   openModal(id?'✏️ খরচ সম্পাদনা':'➕ নতুন খরচ যোগ',`
@@ -5718,6 +5835,7 @@ function loadSettings(){
   const rf=$('setReceiptFooter');if(rf) rf.value=s.receiptFooter||'';
   const al=$('setAutoLogout');if(al) al.value=s.autoLogoutMinutes||0;
   const eci=$('setExpectedCheckIn');if(eci) eci.value=s.expectedCheckIn||'09:00';
+  const lst=$('setLowStockThreshold');if(lst) lst.value=s.lowStockThreshold||5;
   const lg=$('setLateGrace');if(lg) lg.value=s.lateGraceMinutes??15;
   // Contact & social
   const fields=['Email','Website','Facebook','Instagram','Whatsapp','Hours','FooterDesc','QuickLink1','QuickLink2'];
@@ -5819,7 +5937,8 @@ function saveSettings(){
     quicklink1:($('setQuickLink1')||{value:''}).value,
     quicklink2:($('setQuickLink2')||{value:''}).value,
     receiptFooter:($('setReceiptFooter')||{value:''}).value,
-    autoLogoutMinutes:parseInt(($('setAutoLogout')||{value:0}).value)||0
+    autoLogoutMinutes:parseInt(($('setAutoLogout')||{value:0}).value)||0,
+    lowStockThreshold:parseInt(($('setLowStockThreshold')||{value:5}).value)||5
   };
   save(KEYS.settings,DB.settings);
 
@@ -6486,10 +6605,10 @@ const realtimeUpdate=()=>{Object.keys(_dbHash).forEach(k=>delete _dbHash[k]);rea
 // Low stock auto-notify — track last notified count to avoid spam
 let _lastLowStockCount=-1;
 function checkLowStockNotif(){
-  const low=DB.products.filter(p=>p.stock>0&&p.stock<5);
+  const low=DB.products.filter(p=>isLowStock(p));
   if(low.length>0&&low.length!==_lastLowStockCount){
     _lastLowStockCount=low.length;
-    addNotif('⚠️ কম স্টক সতর্কতা',`${low.length}টি পণ্যের স্টক ৫-এর নিচে: ${low.slice(0,3).map(p=>p.name).join(', ')}${low.length>3?'...':''}`,'warn');
+    addNotif('⚠️ কম স্টক সতর্কতা',`${low.length}টি পণ্যের স্টক থ্রেশহোল্ডের নিচে: ${low.slice(0,3).map(p=>p.name).join(', ')}${low.length>3?'...':''}`,'warn');
   }
   if(low.length===0) _lastLowStockCount=0;
 }
@@ -6740,7 +6859,7 @@ function updateAdminQuickBar(){
   const todayStr=today();
   const todayOrders=DB.orders.filter(o=>o.time.slice(0,10)===todayStr).length;
   const todaySales=DB.sales.filter(s=>s.time.slice(0,10)===todayStr).reduce((s,x)=>s+x.total,0);
-  const lowStock=DB.products.filter(p=>p.stock<5).length;
+  const lowStock=DB.products.filter(p=>isLowOrOutStock(p)).length;
   const qbP=$('qbProducts');if(qbP) qbP.textContent=DB.products.length;
   const qbO=$('qbOrders');if(qbO) qbO.textContent=todayOrders;
   const qbS=$('qbSales');if(qbS) qbS.textContent=fmt(todaySales);
@@ -6755,12 +6874,12 @@ function updateAdminQuickBar(){
   if(lowStock>0){
     const sab=$('stockAlertBar');
     if(sab){
-      const lowItems=DB.products.filter(p=>p.stock<5).map(p=>`${p.name}(${p.stock})`).join(', ');
+      const lowItems=DB.products.filter(p=>isLowOrOutStock(p)).map(p=>`${p.name}(${p.stock})`).join(', ');
       sab.innerHTML=`⚠️ <b>${lowStock}টি পণ্যের স্টক কম:</b> ${lowItems}`;
       sab.classList.add('show');
     }
     // Send notification if new
-    if(lowStock>0) addNotif('⚠️ কম স্টক সতর্কতা',`${lowStock}টি পণ্যের স্টক ৫-এর নিচে নেমেছে`,'warn');
+    if(lowStock>0) addNotif('⚠️ কম স্টক সতর্কতা',`${lowStock}টি পণ্যের স্টক থ্রেশহোল্ডের নিচে নেমেছে`,'warn');
   }
 }
 
@@ -8790,6 +8909,47 @@ function getCustNote(phone,name){
   const notes=JSON.parse(localStorage.getItem('ss_cust_notes')||'{}');
   return notes[phone||name]||'';
 }
+function getCustBirthday(phone,name){
+  const cu=DB.custUsers.find(u=>u.phone===phone);
+  if(cu?.birthday) return cu.birthday;
+  const bdays=JSON.parse(localStorage.getItem('ss_cust_birthdays')||'{}');
+  return bdays[phone||name]||'';
+}
+function saveCustBirthday(phone,name,value){
+  const cu=DB.custUsers.find(u=>u.phone===phone);
+  if(cu){cu.birthday=value;save(KEYS.custUsers,DB.custUsers);}
+  else{
+    const bdays=JSON.parse(localStorage.getItem('ss_cust_birthdays')||'{}');
+    bdays[phone||name]=value;
+    localStorage.setItem('ss_cust_birthdays',JSON.stringify(bdays));
+  }
+}
+function getUpcomingBirthdays(daysAhead=7){
+  // Build a lightweight customer map (name+phone) independent of the Customers page render state
+  const map={};
+  [...DB.orders,...DB.sales].forEach(o=>{
+    if(!o.custName||o.custName==='সাধারণ কাস্টমার')return;
+    const k=(o.custPhone||o.custName).trim();
+    if(!map[k]) map[k]={name:o.custName,phone:o.custPhone||''};
+  });
+  DB.custUsers.forEach(u=>{
+    const k=(u.phone||u.name).trim();
+    map[k]={name:u.name,phone:u.phone||''};
+  });
+  const now=new Date();now.setHours(0,0,0,0);
+  const results=[];
+  Object.values(map).forEach(c=>{
+    const bday=getCustBirthday(c.phone,c.name);
+    if(!bday) return;
+    const [,mo,da]=bday.split('-').map(Number);
+    if(!mo||!da) return;
+    let next=new Date(now.getFullYear(),mo-1,da);
+    if(next<now) next=new Date(now.getFullYear()+1,mo-1,da);
+    const diffDays=Math.round((next-now)/86400000);
+    if(diffDays<=daysAhead) results.push({...c,bday,diffDays});
+  });
+  return results.sort((a,b)=>a.diffDays-b.diffDays);
+}
 
 // ══════════════════════════════════════
 //  🏆 TOP CUSTOMER LEADERBOARD
@@ -8998,7 +9158,7 @@ function runAdvancedSearch(){
     if(cat&&p.cat!==cat) return false;
     if(p.price<minP||p.price>maxP) return false;
     if(stock==='instock'&&p.stock<1) return false;
-    if(stock==='low'&&(p.stock>=5||p.stock<1)) return false;
+    if(stock==='low'&&!isLowStock(p)) return false;
     if(stock==='out'&&p.stock>0) return false;
     return true;
   });
@@ -10330,7 +10490,7 @@ function printProductCatalog(){
       <td style="padding:7px 10px">${p.icon||'📦'} ${p.name}</td>
       <td style="padding:7px 10px;text-align:center">${p.unit||'পিস'}</td>
       <td style="padding:7px 10px;text-align:right;font-weight:600">${fmt(p.price)}</td>
-      <td style="padding:7px 10px;text-align:center;color:${p.stock<5?'#e94560':'#155724'}">${p.stock}</td>
+      <td style="padding:7px 10px;text-align:center;color:${isLowOrOutStock(p)?'#e94560':'#155724'}">${p.stock}</td>
     </tr>`).join('')}`).join('');
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>পণ্য তালিকা — ${s.name||'SuperShop'}</title>
 <style>
@@ -10480,12 +10640,57 @@ function getCashbookEntries(){
 function saveCashbookEntries(entries){
   localStorage.setItem(CB_KEY,JSON.stringify(entries));
 }
+function cbShiftDate(days){
+  const el=$('cbDate');
+  const cur=el.value||today();
+  const d=new Date(cur);d.setDate(d.getDate()+days);
+  el.value=d.toISOString().slice(0,10);
+  renderCashbook();
+}
+function openCashbookMonthlySummary(){
+  const monthKey=($('cbDate')||{value:today()}).value.slice(0,7);
+  const all=getCashbookEntries();
+  const daysInMonth=new Date(+monthKey.slice(0,4),+monthKey.slice(5,7),0).getDate();
+  let rows='',totalIn=0,totalOut=0;
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${monthKey}-${String(d).padStart(2,'0')}`;
+    const dayEntries=all.filter(e=>e.date===dateStr);
+    const posIncome=DB.sales.filter(s=>s.time.slice(0,10)===dateStr).reduce((s,x)=>s+(x.paidAmount||x.total),0);
+    const inAmt=dayEntries.filter(e=>e.type==='in').reduce((s,e)=>s+e.amount,0)+posIncome;
+    const outAmt=dayEntries.filter(e=>e.type==='out').reduce((s,e)=>s+e.amount,0);
+    if(inAmt===0&&outAmt===0) continue;
+    totalIn+=inAmt;totalOut+=outAmt;
+    const net=inAmt-outAmt;
+    rows+=`<tr>
+      <td>${dateStr}</td>
+      <td style="color:var(--success)">${fmt(inAmt)}</td>
+      <td style="color:var(--danger)">${fmt(outAmt)}</td>
+      <td style="font-weight:700;color:${net>=0?'var(--success)':'var(--danger)'}">${fmt(net)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="closeModal();$('cbDate').value='${dateStr}';renderCashbook()">👁️ দেখুন</button></td>
+    </tr>`;
+  }
+  const monthNames=['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+  const [y,m]=monthKey.split('-').map(Number);
+  openModal(`📊 মাসিক সারাংশ — ${monthNames[m-1]} ${y}`,`
+    <div style="background:var(--card2);border-radius:9px;padding:10px 12px;margin-bottom:12px;display:flex;justify-content:space-between;font-size:13px">
+      <span>মোট আয়: <b style="color:var(--success)">${fmt(totalIn)}</b></span>
+      <span>মোট ব্যয়: <b style="color:var(--danger)">${fmt(totalOut)}</b></span>
+      <span>নিট: <b style="color:${totalIn-totalOut>=0?'var(--success)':'var(--danger)'}">${fmt(totalIn-totalOut)}</b></span>
+    </div>
+    <div class="table-wrap" style="max-height:320px;overflow-y:auto"><table>
+      <thead><tr><th>তারিখ</th><th>আয়</th><th>ব্যয়</th><th>নিট</th><th></th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:16px">এই মাসে কোনো লেনদেন নেই</td></tr>'}</tbody>
+    </table></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ করুন</button>`);
+}
 function renderCashbook(){
   const dateFilter=($('cbDate')||{value:''}).value||today();
   const typeFilter=($('cbFilter')||{value:'all'}).value;
+  const q=($('cbSearch')||{value:''}).value.toLowerCase();
   const all=getCashbookEntries();
   let entries=all.filter(e=>e.date===dateFilter);
   if(typeFilter!=='all') entries=entries.filter(e=>e.type===typeFilter);
+  if(q) entries=entries.filter(e=>e.desc.toLowerCase().includes(q));
 
   // Stats
   const dayEntries=all.filter(e=>e.date===dateFilter);
@@ -10770,7 +10975,7 @@ async function askAI(q){
   const todaySales=DB.sales.filter(s=>s.time.slice(0,10)===todayStr);
   const thisMonth=todayStr.slice(0,7);
   const monthSales=DB.sales.filter(s=>s.time.slice(0,7)===thisMonth);
-  const lowStock=DB.products.filter(p=>p.stock>0&&p.stock<5);
+  const lowStock=DB.products.filter(p=>isLowStock(p));
   const outOfStock=DB.products.filter(p=>p.stock<1);
   const topProds=Object.entries(DB.sales.reduce((m,s)=>{
     (s.items||[]).forEach(i=>{m[i.name]=(m[i.name]||0)+i.qty;});return m;},{})
@@ -10935,7 +11140,7 @@ function realtimeTick(){
           if(badge) badge.textContent=isAdded?(posBill.find(x=>x.productId===pid2)?.qty||0):'';
           const stockEl=card.querySelector('.pos-stock-label');
           if(stockEl){
-            const out=p.stock<1,low=p.stock>0&&p.stock<5;
+            const out=p.stock<1,low=isLowStock(p);
             stockEl.innerHTML=out?'<span style="color:var(--danger)">স্টক শেষ</span>'
               :low?`<span style="color:var(--warning)">⚠️ ${p.stock} বাকি</span>`
               :`<span>স্টক: ${p.stock}</span>`;
@@ -11834,6 +12039,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <button class="calc-btn eq" onclick="calcInput('=')">=</button>
   </div>
 </div>
+
 
 </body>
 </html>
