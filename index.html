@@ -48,7 +48,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{font-family:'Poppins',system-ui,-apple-system,sans-serif;background:var(--primary);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{font-family:'Poppins',system-ui,-apple-system,sans-serif;background:var(--primary);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
@@ -1039,6 +1039,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     box-shadow:0 -8px 32px rgba(0,0,0,.5)!important;
     overflow-y:auto!important;
     backdrop-filter:blur(8px)!important;
+    padding-bottom:max(0px,env(safe-area-inset-bottom))!important;
   }
   .pos-right.collapsed{max-height:52px!important;overflow:hidden!important}
   .pos-right-toggle{display:flex}
@@ -1046,6 +1047,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
   .pos-card h4{font-size:11px}
   .pos-card .pos-img{height:56px}
   .pos-search-bar{padding:6px 8px}
+  .pos-scanner-btn{width:38px;height:38px;font-size:16px}
   /* Tables */
   .table-wrap{border-radius:10px}
   th,td{padding:8px 10px;font-size:12px}
@@ -1332,6 +1334,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
   .pos-card h4{font-size:10px}
   .pos-card .pos-price{font-size:11px}
   .pos-card .pos-stock-label{display:none}
+  .pos-scanner-btn{width:36px;height:36px;font-size:15px}
+  .pos-search-bar{gap:6px}
+  .pos-search-bar input{font-size:14px!important;padding:8px 10px!important}
   .pay-methods,.pay-methods-row2{grid-template-columns:repeat(3,1fr);gap:4px}
   .pay-method-btn{padding:6px 3px}
   .pay-method-btn .pm-icon{font-size:16px}
@@ -1379,6 +1384,35 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
   .admin-quick-bar{gap:10px;font-size:11px;padding:5px 12px}
   .toolbar{gap:6px}
   .toolbar input,.toolbar select{font-size:11px;padding:6px 8px}
+  .pos-scanner-btn{width:32px;height:32px;font-size:14px}
+  .pos-search-bar{gap:4px}
+  .pos-search-bar input{padding:7px 8px!important}
+}
+
+/* ── ULTRA NARROW / FOLDABLE COVER SCREENS (<320px) ── */
+@media(max-width:320px){
+  #topbar{padding:0 6px;gap:3px}
+  #topbar .logo{font-size:13px}
+  .pos-products{grid-template-columns:repeat(2,1fr);gap:4px}
+  .pos-card h4{font-size:9px}
+  .pos-card .pos-price{font-size:10px}
+  .stat-grid{grid-template-columns:1fr}
+  .pos-scanner-btn{width:30px;height:30px;font-size:13px}
+  .pos-search-bar input{font-size:12px!important;padding:6px 7px!important}
+  .pay-methods,.pay-methods-row2{grid-template-columns:1fr 1fr}
+  .btn{padding:5px 8px;font-size:10px}
+  .modal-body{padding:10px}
+  th,td{padding:5px 6px;font-size:10px}
+}
+
+/* ── LARGE DESKTOP / ULTRA-WIDE (>1440px): give POS bill panel more room ── */
+@media(min-width:1440px){
+  .pos-grid{grid-template-columns:1fr 440px}
+  .pos-products{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+}
+@media(min-width:1920px){
+  .pos-grid{grid-template-columns:1fr 480px}
+  .pos-products{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
 }
 
 /* ── Print improvements ── */
@@ -1787,7 +1821,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         </div>
       </div>
       <!-- Stock Alert -->
-      <div class="stock-alert-bar" id="stockAlertBar" onclick="showPage('products',document.querySelector('.sidebar-item[onclick*=products]'))" style="cursor:pointer"></div>
+      <div class="stock-alert-bar" id="stockAlertBar" onclick="showReorderSuggestions()" style="cursor:pointer" title="রিঅর্ডার সাজেশন দেখুন"></div>
       <div class="stock-alert-bar" id="expiryAlertBar" onclick="showExpiringProducts()" style="cursor:pointer;background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.3);color:var(--accent3)"></div>
 
       <!-- Date Range Filter -->
@@ -1805,6 +1839,9 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       <div class="stat-grid" id="dashStats"></div>
       <!-- Secondary Stats -->
       <div class="stat-grid" id="dashStats2" style="margin-top:-8px"></div>
+
+      <!-- Action Center: dues, pending leaves, today's shift -->
+      <div class="chart-box" id="dashActionCenter" style="margin-bottom:16px"></div>
 
       <!-- Monthly Target -->
       <div id="targetCard" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px"></div>
@@ -1889,6 +1926,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <select id="prodCatFilter" onchange="renderProducts()"><option value="">সব ক্যাটাগরি</option></select>
         <div class="spacer"></div>
         <button class="btn btn-ghost btn-sm" onclick="openAdvancedSearch()" title="Advanced Search (Ctrl+F)">🔍 Advanced</button>
+        <button class="btn btn-warn btn-sm" onclick="showReorderSuggestions()" title="কম স্টক পণ্যের জন্য রিঅর্ডার সাজেশন">📦 রিঅর্ডার সাজেশন</button>
         <button class="btn btn-ghost btn-sm" onclick="bulkBarcodeGenerate()" title="সব পণ্যে একসাথে বারকোড তৈরি">🔢 Bulk বারকোড</button>
         <button class="btn btn-warn btn-sm" onclick="openLabelPrintStudio()" title="বারকোড/লেবেল/স্টিকার প্রিন্ট করুন">🏷️ লেবেল প্রিন্ট</button>
         <button class="btn btn-ghost btn-sm" onclick="printProductCatalog()" title="সব পণ্যের printable তালিকা">📋 ক্যাটালগ</button>
@@ -1897,8 +1935,15 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <button class="btn btn-ghost btn-sm" onclick="exportProductsCSV()" title="CSV রপ্তানি">📤 রপ্তানি</button>
         <button class="btn btn-primary" onclick="openProductModal()">➕ নতুন পণ্য</button>
       </div>
+      <div id="prodBulkBar" style="display:none;align-items:center;gap:10px;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;flex-wrap:wrap">
+        <span id="prodBulkCount">০টি পণ্য সিলেক্ট করা</span>
+        <select id="prodBulkCat" style="padding:4px 8px;font-size:12px"><option value="">ক্যাটাগরি বদলান...</option></select>
+        <button class="btn btn-primary btn-sm" onclick="applyBulkProductCat()">✅ ক্যাটাগরি প্রয়োগ করুন</button>
+        <button class="btn btn-danger btn-sm" onclick="applyBulkProductDelete()">🗑️ সিলেক্টেড মুছুন</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearProductSelection()">✕ বাতিল</button>
+      </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>পণ্যের নাম</th><th class="hide-xs">ক্যাটাগরি</th><th class="hide-xs">বারকোড</th><th>দাম</th><th class="hide-xs">মার্জিন</th><th>স্টক</th><th>একশন</th></tr></thead>
+        <thead><tr><th style="width:32px"><input type="checkbox" id="prodSelectAll" onchange="toggleAllProductSelect(this)"></th><th>#</th><th>পণ্যের নাম</th><th class="hide-xs">ক্যাটাগরি</th><th class="hide-xs">বারকোড</th><th>দাম</th><th class="hide-xs">মার্জিন</th><th>স্টক</th><th>একশন</th></tr></thead>
         <tbody id="productsBody"></tbody>
       </table></div>
       <div class="pagination" id="productsPagination"></div>
@@ -1913,7 +1958,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <button class="btn btn-primary" onclick="openCatModal()">➕ নতুন ক্যাটাগরি</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th style="width:70px">ক্রম</th><th>ক্যাটাগরির নাম</th><th>আইকন</th><th>রঙ</th><th>মোট পণ্য</th><th>একশন</th></tr></thead>
+        <thead><tr><th style="width:70px">ক্রম</th><th>ক্যাটাগরির নাম</th><th>আইকন</th><th>রঙ</th><th>মোট পণ্য</th><th class="hide-xs">স্টক মূল্য</th><th>একশন</th></tr></thead>
         <tbody id="catsBody"></tbody>
       </table></div>
     </div>
@@ -1997,6 +2042,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
               oninput="renderPOS()" onkeydown="posSearchKeydown(event)"
               autocomplete="off">
             <button class="pos-scanner-btn" id="scannerBtn" onclick="openScanner()" title="বারকোড স্ক্যান (Ctrl+B)">📷</button>
+            <button class="pos-scanner-btn" id="voiceSearchBtn" onclick="toggleVoiceSearch()" title="ভয়েস সার্চ">🎤</button>
           </div>
 
           <!-- Status bar -->
@@ -2064,11 +2110,12 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
               <div class="pos-row">
                 <span style="display:flex;align-items:center;gap:4px;color:var(--text2)">
                   ছাড়
-                  <input class="pos-disc-input" id="discInput" type="number" min="0" value="0" oninput="updatePosTotals()">
+                  <input class="pos-disc-input" id="discInput" type="number" min="0" value="0" oninput="this.dataset.manual='1';updatePosTotals()">
                   <select class="pos-disc-type" id="discType" onchange="updatePosTotals()">
                     <option value="pct">%</option>
                     <option value="flat">৳</option>
                   </select>
+                  <span id="autoDiscBadge" style="display:none;font-size:10px;color:var(--success)" title="অটো ডিসকাউন্ট রুল প্রয়োগ হয়েছে">🤖</span>
                 </span>
                 <span id="posDisc" style="color:var(--success)">-৳0</span>
               </div>
@@ -2117,6 +2164,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
             <div id="cashTenderRow" class="pos-cash-row">
               <span style="font-size:11px;color:var(--text2);white-space:nowrap">💵 প্রদত্ত</span>
               <input type="number" id="cashTender" placeholder="0.00" oninput="calcChange()" onfocus="$('numpadWrap').style.display='block'" style="flex:1;min-width:60px">
+              <button onclick="setExactCash()" title="সঠিক পরিমাণ বসান (কোনো ফেরত থাকবে না)" style="background:rgba(0,212,168,.12);border:1px solid rgba(0,212,168,.4);color:var(--success);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0;font-weight:600">✓ সঠিক</button>
               <button onclick="$('numpadWrap').style.display=$('numpadWrap').style.display==='none'?'block':'none'" style="background:var(--card2);border:1px solid var(--border);color:var(--text2);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0">⌨️</button>
               <span style="font-size:11px;white-space:nowrap">ফেরত: <b id="changeAmt" style="color:var(--success);font-size:13px">৳0</b></span>
             </div>
@@ -2431,6 +2479,42 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <thead><tr><th>স্টাফ</th><th>তারিখ</th><th>চেক-ইন</th><th>চেক-আউট</th><th>মোট সময়</th><th class="hide-xs">নোট</th><th>একশন</th></tr></thead>
         <tbody id="attendanceBody"></tbody>
       </table></div>
+
+      <!-- LEAVE MANAGEMENT -->
+      <div class="section-title" style="margin-top:24px">🏖️ ছুটি ব্যবস্থাপনা (Leave Management)</div>
+      <div class="stat-grid" id="leaveStats" style="margin-bottom:12px"></div>
+      <div class="toolbar">
+        <select id="leaveStatusFilter" onchange="renderLeaveTable()">
+          <option value="">সব স্ট্যাটাস</option>
+          <option value="pending">⏳ অপেক্ষমাণ</option>
+          <option value="approved">✅ অনুমোদিত</option>
+          <option value="rejected">❌ বাতিল</option>
+        </select>
+        <select id="leaveStaffFilter" onchange="renderLeaveTable()"><option value="">সব স্টাফ</option></select>
+        <div class="spacer"></div>
+        <button class="btn btn-primary btn-sm" onclick="openLeaveModal()">➕ ছুটির আবেদন</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>স্টাফ</th><th>ধরন</th><th>থেকে</th><th>পর্যন্ত</th><th>দিন</th><th class="hide-xs">কারণ</th><th>স্ট্যাটাস</th><th>একশন</th></tr></thead>
+        <tbody id="leaveTableBody"></tbody>
+      </table></div>
+
+      <!-- SHIFT SCHEDULING -->
+      <div class="section-title" style="margin-top:24px">🗓️ শিফট শিডিউল (Shift Scheduling)</div>
+      <div class="toolbar">
+        <div class="spacer"></div>
+        <button class="btn btn-ghost btn-sm" onclick="openShiftTypeModal()">⚙️ শিফট টাইপ পরিচালনা</button>
+        <button class="btn btn-primary btn-sm" onclick="openShiftAssignModal()">➕ শিফট বরাদ্দ করুন</button>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-ghost btn-sm" onclick="changeShiftWeek(-1)">◀ আগের সপ্তাহ</button>
+        <span id="shiftWeekLabel" style="font-size:12px;color:var(--text2);align-self:center"></span>
+        <button class="btn btn-ghost btn-sm" onclick="changeShiftWeek(1)">পরের সপ্তাহ ▶</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr id="shiftTableHead"></tr></thead>
+        <tbody id="shiftTableBody"></tbody>
+      </table></div>
     </div>
 
     <!-- PAYROLL -->
@@ -2588,6 +2672,17 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <tbody id="branchTableBody"></tbody>
         </table></div>
 
+        <div class="section-title" style="margin-top:16px">🔄 স্টক ট্রান্সফার (শাখার মধ্যে)</div>
+        <p style="font-size:11px;color:var(--text2);margin-bottom:10px">শাখার মধ্যে পণ্য স্থানান্তরের রেকর্ড রাখুন। ⚠️ এটি শুধু ট্র্যাকিং লগ — মোট স্টক সংখ্যা অপরিবর্তিত থাকে (পণ্য ব্যবসার মধ্যেই থাকে, শুধু স্থান পরিবর্তন হয়)।</p>
+        <div class="toolbar" style="margin-bottom:10px">
+          <div class="spacer"></div>
+          <button class="btn btn-primary btn-sm" onclick="openStockTransferModal()">➕ নতুন ট্রান্সফার</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>পণ্য</th><th>পরিমাণ</th><th>থেকে</th><th>পর্যন্ত</th><th class="hide-xs">তারিখ</th><th>একশন</th></tr></thead>
+          <tbody id="stockTransferTableBody"></tbody>
+        </table></div>
+
         <div class="section-title" style="margin-top:16px">🎨 ব্র্যান্ড কালার</div>
         <div class="form-group">
           <label>প্রাইমারি কালার বেছে নিন</label>
@@ -2677,6 +2772,17 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <tbody id="couponTableBody"></tbody>
         </table></div>
 
+        <div class="section-title" style="margin-top:24px">📐 অটো ডিসকাউন্ট রুলস</div>
+        <p style="font-size:11px;color:var(--text2);margin-bottom:10px">বিলের সাবটোটাল একটি নির্দিষ্ট পরিমাণ ছাড়ালে POS-এ স্বয়ংক্রিয়ভাবে ছাড় প্রয়োগ হবে (ম্যানুয়াল ছাড় দিলে অটো রুল কাজ করবে না)।</p>
+        <div class="toolbar" style="margin-bottom:10px">
+          <div class="spacer"></div>
+          <button class="btn btn-primary btn-sm" onclick="openDiscountRuleModal()">➕ নতুন রুল</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>নাম</th><th>ন্যূনতম বিল</th><th>ছাড়</th><th>অবস্থা</th><th>একশন</th></tr></thead>
+          <tbody id="discRuleTableBody"></tbody>
+        </table></div>
+
         <div class="section-title" style="margin-top:24px">🖼️ শপ লোগো</div>
         <div style="display:flex;align-items:center;gap:14px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px">
           <div id="logoPreviewBox" style="width:64px;height:64px;border-radius:10px;background:var(--card);display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--border);flex-shrink:0">
@@ -2733,7 +2839,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <button class="btn btn-primary btn-sm" onclick="openSupplierModal()">➕ নতুন সাপ্লায়ার</button>
         </div>
         <div class="table-wrap"><table>
-          <thead><tr><th>নাম</th><th>ফোন</th><th class="hide-xs">ইমেইল</th><th class="hide-xs">পণ্য</th><th>একশন</th></tr></thead>
+          <thead><tr><th>নাম</th><th>ফোন</th><th class="hide-xs">ইমেইল</th><th class="hide-xs">পণ্য</th><th>বাকি</th><th>একশন</th></tr></thead>
           <tbody id="supplierTableBody"></tbody>
         </table></div>
 
@@ -2822,7 +2928,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 // ══════════════════════════════════════
 //  DATA STORE
 // ══════════════════════════════════════
-const KEYS = {products:'ss_products',cats:'ss_cats',orders:'ss_orders',sales:'ss_sales',expenses:'ss_expenses',settings:'ss_settings',adminPass:'ss_adminpass',custUsers:'ss_custusers',adminEmail:'ss_admin_email',adminUser:'ss_admin_user',actLog:'ss_activity_log',invSeq:'ss_inv_seq',staff:'ss_staff',voidPin:'ss_void_pin',loyalty:'ss_loyalty',attendance:'ss_attendance',reviews:'ss_reviews',payroll:'ss_payroll',wishlist:'ss_wishlist'};
+const KEYS = {products:'ss_products',cats:'ss_cats',orders:'ss_orders',sales:'ss_sales',expenses:'ss_expenses',settings:'ss_settings',adminPass:'ss_adminpass',custUsers:'ss_custusers',adminEmail:'ss_admin_email',adminUser:'ss_admin_user',actLog:'ss_activity_log',invSeq:'ss_inv_seq',staff:'ss_staff',voidPin:'ss_void_pin',loyalty:'ss_loyalty',attendance:'ss_attendance',reviews:'ss_reviews',payroll:'ss_payroll',wishlist:'ss_wishlist',leaves:'ss_leaves',supPayments:'ss_sup_payments'};
 const load = k => JSON.parse(localStorage.getItem(k)||'null');
 const save = (k,v) => localStorage.setItem(k,JSON.stringify(v));
 
@@ -2844,6 +2950,8 @@ let DB = {
   attendance: load(KEYS.attendance)||[],
   reviews: load(KEYS.reviews)||[],
   payroll: load(KEYS.payroll)||[],
+  leaves: load(KEYS.leaves)||[],
+  supPayments: load(KEYS.supPayments)||[],
   loyalty: load(KEYS.loyalty)||{points:{},rate:1,minRedeem:100,redeemValue:1} // rate: ৳X spent = 1 point
 };
 
@@ -3937,6 +4045,7 @@ function loadDash(){
   drawBarChart();
   drawPieChart();
   renderSalesTrendChart(_trendPeriod);
+  renderDashActionCenter();
 
   // Counter animations on stat cards
   setTimeout(()=>{
@@ -4032,6 +4141,49 @@ function loadDash(){
   renderStickyNotes();
   renderBirthdayWidget();
 }
+
+// ══════════════════════════════════════
+//  🔔 DASHBOARD ACTION CENTER
+//  (customer due, supplier payable, pending leave, today's shift)
+// ══════════════════════════════════════
+function renderDashActionCenter(){
+  const el=$('dashActionCenter');if(!el)return;
+  const custDue=(DB.sales||[]).filter(s=>s.dueAmount>0).reduce((s,x)=>s+x.dueAmount,0);
+  const custDueCount=(DB.sales||[]).filter(s=>s.dueAmount>0).length;
+  const supDue=(DB.settings.grns||[]).reduce((s,g)=>s+(typeof grnDue==='function'?grnDue(g):Math.max(0,(g.total||0)-(g.paid||0))),0);
+  const pendingLeaves=(DB.leaves||[]).filter(l=>l.status==='pending').length;
+  const todayKey=(typeof _attTodayKey==='function')?_attTodayKey():today();
+  const todayShifts=(DB.settings.shiftRoster||[]).filter(r=>r.date===todayKey);
+  const shiftTypes=DB.settings.shiftTypes||[];
+  const cards=[
+    {icon:'📒',label:'কাস্টমার বকেয়া',val:fmt(custDue),sub:`${custDueCount}টি বিল`,color:custDue>0?'var(--danger)':'var(--success)',onclick:"showPage('due',document.querySelector('.sidebar-item[onclick*=due]'))"},
+    {icon:'🏭',label:'সাপ্লায়ার বাকি',val:fmt(supDue),sub:'পরিশোধযোগ্য',color:supDue>0?'var(--warning)':'var(--success)',onclick:"showPage('settings',document.querySelector('.sidebar-item[onclick*=settings]'));setTimeout(function(){var b=document.querySelector('.settings-tab-btn[onclick*=promo]');if(b)switchSettingsTab('promo',b);},150)"},
+    {icon:'🏖️',label:'পেন্ডিং ছুটির আবেদন',val:pendingLeaves,sub:pendingLeaves>0?'অনুমোদনের অপেক্ষায়':'সব ঠিক আছে ✅',color:pendingLeaves>0?'var(--warning)':'var(--success)',onclick:"showPage('attendance',document.querySelector('.sidebar-item[onclick*=attendance]'))"},
+    {icon:'🗓️',label:'আজকের শিফটে',val:todayShifts.length,sub:'জন স্টাফ নিয়োজিত',color:'var(--info,#748ffc)',onclick:"showPage('attendance',document.querySelector('.sidebar-item[onclick*=attendance]'))"}
+  ];
+  el.innerHTML=`
+    <h3 style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">🔔 আজকের অ্যাকশন সেন্টার</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+      ${cards.map(c=>`
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.2s" onclick="${c.onclick}" onmouseover="this.style.borderColor='${c.color}'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:16px">${c.icon}</span>
+            <span style="font-size:11px;color:var(--text2)">${c.label}</span>
+          </div>
+          <div style="font-size:18px;font-weight:800;color:${c.color}">${c.val}</div>
+          <div style="font-size:10px;color:var(--text2)">${c.sub}</div>
+        </div>`).join('')}
+    </div>
+    ${todayShifts.length?`
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;color:var(--text2);font-weight:600">👥 আজ যারা কাজে আছেন:</span>
+      ${todayShifts.map(s=>{
+        const t=shiftTypes.find(x=>x.id===s.shiftTypeId);
+        return `<span style="font-size:10px;background:${t?.color||'#888'}22;border:1px solid ${t?.color||'#888'}55;color:${t?.color||'inherit'};padding:2px 8px;border-radius:99px;font-weight:600">${s.staffName} · ${t?.name||''}</span>`;
+      }).join('')}
+    </div>`:''}
+  `;
+}
 function renderBirthdayWidget(){
   const el=$('dashBirthdayWidget');if(!el)return;
   const upcoming=getUpcomingBirthdays(7);
@@ -4048,7 +4200,7 @@ function renderBirthdayWidget(){
               <div style="font-weight:600;font-size:13px">${c.name}</div>
               <div style="font-size:11px;color:var(--text2)">${c.diffDays===0?'আজকে!':c.diffDays===1?'আগামীকাল':`${c.diffDays} দিন পর`}</div>
             </div>
-            ${c.phone?`<button class="btn btn-whatsapp btn-sm" onclick="sendWhatsAppToCustomer('${c.phone}','${c.name}','birthday')" title="শুভেচ্ছা পাঠান">📱</button>`:''}
+            ${c.phone?`<button class="btn btn-whatsapp btn-sm" onclick="sendBirthdayCoupon('${c.phone}','${c.name}')" title="জন্মদিন কুপন পাঠান">🎟️</button>`:''}
           </div>`).join('')}
       </div>
     </div>`;
@@ -4242,6 +4394,45 @@ function showExpiringProducts(){
      <button class="btn btn-primary" onclick="closeModal();showPage('products',document.querySelector('.sidebar-item[onclick*=products]'))">পণ্য ব্যবস্থাপনায় যান</button>`);
 }
 
+// ══════════════════════════════════════
+//  📦 REORDER SUGGESTIONS (based on low stock + sales velocity)
+// ══════════════════════════════════════
+function getReorderSuggestions(){
+  const lowItems=DB.products.filter(p=>isLowOrOutStock(p));
+  const cutoff=new Date(Date.now()-30*86400000).toISOString();
+  return lowItems.map(p=>{
+    let sold=0;
+    (DB.sales||[]).forEach(s=>{
+      if(s.time>=cutoff){
+        const item=s.items.find(i=>i.productId===p.id);
+        if(item) sold+=item.qty;
+      }
+    });
+    const dailyAvg=sold/30;
+    const threshold=_lowStockThreshold(p);
+    const suggestedQty=Math.max(Math.ceil(dailyAvg*14),Math.ceil(threshold*2-p.stock),5);
+    return {...p,dailyAvg,suggestedQty};
+  }).sort((a,b)=>b.dailyAvg-a.dailyAvg);
+}
+function showReorderSuggestions(){
+  const list=getReorderSuggestions();
+  openModal('📦 রিঅর্ডার সাজেশন',`
+    <p style="font-size:11px;color:var(--text2);margin-bottom:10px">গত ৩০ দিনের বিক্রয়ের গড় হিসাব করে কম স্টকের পণ্যের জন্য পরিমাণ সাজেস্ট করা হয়েছে।</p>
+    ${list.length?list.map(p=>`
+      <div style="display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:7px">
+        <span style="font-size:22px">${p.icon||'📦'}</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+          <div style="font-size:11px;color:var(--text2)">বর্তমান স্টক: ${p.stock} ${p.unit||'পিস'} ${p.dailyAvg>0?`| দৈনিক গড় বিক্রয়: ${p.dailyAvg.toFixed(1)}`:'| বিক্রয়ের তথ্য নেই'}</div>
+          <div style="font-size:11px;color:var(--accent2);font-weight:600">সাজেস্টেড অর্ডার: ${p.suggestedQty} ${p.unit||'পিস'}</div>
+        </div>
+        <button class="btn btn-success btn-sm" onclick="closeModal();openGRNModal([{pid:'${p.id}',name:'${p.name.replace(/'/g,"\\'")}',qty:${p.suggestedQty},cost:${p.cost||0},unit:'${p.unit||'পিস'}'}])">📦 GRN তৈরি</button>
+      </div>`).join('')
+    :'<div style="text-align:center;color:var(--text2);padding:20px">এই মুহূর্তে কোনো পণ্যের রিঅর্ডার প্রয়োজন নেই ✅</div>'}
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
+}
+
+let _prodSelected=new Set();
 function renderProducts(){
   const q=($('prodSearch')||{value:''}).value.toLowerCase();
   const cat=($('prodCatFilter')||{value:''}).value;
@@ -4257,6 +4448,7 @@ function renderProducts(){
     const expInfo=getExpiryStatus(p.expiryDate);
     const reorderAlert=p.reorderLevel>0&&p.stock<=p.reorderLevel;
     return`<tr class="${low?'low-stock':''}">
+      <td><input type="checkbox" class="prod-chk" value="${p.id}" ${_prodSelected.has(p.id)?'checked':''} onchange="toggleProductSelect('${p.id}',this)"></td>
       <td>${(prodPage-1)*PERPAGE+i+1}</td>
       <td><span style="margin-right:6px">${p.icon||'📦'}</span>${p.name}${expInfo?`<span class="badge badge-${expInfo.level}" style="margin-left:6px;font-size:10px">${expInfo.label}</span>`:''}${reorderAlert?`<span class="reorder-badge" style="margin-left:6px">📦 রিঅর্ডার</span>`:''}</td>
       <td class="hide-xs">${c.icon||''} ${c.name||'—'}</td>
@@ -4280,8 +4472,63 @@ function renderProducts(){
       </td>
     </tr>`;
   }).join('');
-  if(!slice.length) body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text2)">কোনো পণ্য নেই</td></tr>';
+  if(!slice.length) body.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text2)">কোনো পণ্য নেই</td></tr>';
   renderPagination('productsPagination',pages,prodPage,p=>{prodPage=p;renderProducts();});
+  updateProductBulkBar();
+}
+function toggleProductSelect(id,el){
+  if(el.checked) _prodSelected.add(id); else _prodSelected.delete(id);
+  updateProductBulkBar();
+}
+function toggleAllProductSelect(el){
+  document.querySelectorAll('.prod-chk').forEach(c=>{
+    c.checked=el.checked;
+    if(el.checked) _prodSelected.add(c.value); else _prodSelected.delete(c.value);
+  });
+  updateProductBulkBar();
+}
+function clearProductSelection(){
+  _prodSelected.clear();
+  document.querySelectorAll('.prod-chk').forEach(c=>c.checked=false);
+  const sa=$('prodSelectAll');if(sa)sa.checked=false;
+  updateProductBulkBar();
+}
+function updateProductBulkBar(){
+  const bar=$('prodBulkBar');if(!bar)return;
+  bar.style.display=_prodSelected.size?'flex':'none';
+  const cnt=$('prodBulkCount');if(cnt)cnt.textContent=`${_prodSelected.size}টি পণ্য সিলেক্ট করা`;
+  const sel=$('prodBulkCat');
+  if(sel&&sel.options.length<=1){
+    sel.innerHTML='<option value="">ক্যাটাগরি বদলান...</option>'+DB.cats.map(c=>`<option value="${c.id}">${c.icon||''} ${c.name}</option>`).join('');
+  }
+}
+function applyBulkProductCat(){
+  if(!_prodSelected.size){toast('কোনো পণ্য সিলেক্ট করা নেই','warn');return;}
+  const catId=($('prodBulkCat')||{value:''}).value;
+  if(!catId){toast('একটি ক্যাটাগরি বেছে নিন','warn');return;}
+  const catName=DB.cats.find(c=>c.id===catId)?.name||'';
+  confirm2(`${_prodSelected.size}টি পণ্যের ক্যাটাগরি "${catName}" করবেন?`,()=>{
+    _prodSelected.forEach(id=>{
+      const p=DB.products.find(x=>x.id===id);
+      if(p) p.cat=catId;
+    });
+    save(KEYS.products,DB.products);
+    logActivity('📦','বাল্ক ক্যাটাগরি আপডেট',`${_prodSelected.size}টি পণ্য → ${catName}`);
+    clearProductSelection();renderProducts();
+    toast(`✅ ${_prodSelected.size}টি পণ্যের ক্যাটাগরি আপডেট হয়েছে`,'success');
+  });
+}
+function applyBulkProductDelete(){
+  if(!_prodSelected.size){toast('কোনো পণ্য সিলেক্ট করা নেই','warn');return;}
+  if(!canDo('canDelete')){toast('⛔ আপনার পণ্য মুছার অনুমতি নেই','warn');return;}
+  confirm2(`⚠️ ${_prodSelected.size}টি পণ্য স্থায়ীভাবে মুছে ফেলবেন? এটি ফিরিয়ে আনা যাবে না।`,()=>{
+    const count=_prodSelected.size;
+    DB.products=DB.products.filter(p=>!_prodSelected.has(p.id));
+    save(KEYS.products,DB.products);
+    logActivity('🗑️','বাল্ক পণ্য মুছে ফেলা',`${count}টি পণ্য মুছে ফেলা হয়েছে`);
+    clearProductSelection();renderProducts();
+    toast(`🗑️ ${count}টি পণ্য মুছে ফেলা হয়েছে`,'warn');
+  });
 }
 
 function openProductModal(id){
@@ -4429,7 +4676,9 @@ function renderCats(){
   const q=($('catSearch')||{value:''}).value.toLowerCase();
   const list=DB.cats.map((c,i)=>({...c,_idx:i})).filter(c=>!q||c.name.toLowerCase().includes(q));
   body.innerHTML=list.map((c,vi)=>{
-    const cnt=DB.products.filter(p=>p.cat===c.id).length;
+    const catProducts=DB.products.filter(p=>p.cat===c.id);
+    const cnt=catProducts.length;
+    const stockValue=catProducts.reduce((s,p)=>s+(p.price*p.stock),0);
     return`<tr>
       <td style="display:flex;gap:2px;align-items:center">
         <button class="btn btn-ghost btn-sm" style="padding:3px 7px" onclick="moveCat('${c.id}',-1)" ${c._idx===0?'disabled':''} title="উপরে">▲</button>
@@ -4438,13 +4687,14 @@ function renderCats(){
       <td>${c.name}</td><td style="font-size:20px">${c.icon||'🏷️'}</td>
       <td><span style="display:inline-block;width:18px;height:18px;border-radius:5px;background:${c.color||'#e94560'};border:1px solid var(--border);vertical-align:middle"></span></td>
       <td><span class="badge badge-info">${cnt}</span></td>
+      <td class="hide-xs" style="font-size:12px;font-weight:600;color:var(--accent2)">${stockValue>0?fmt(stockValue):'—'}</td>
       <td style="display:flex;gap:6px">
         <button class="btn btn-warn btn-sm" onclick="openCatModal('${c.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteCat('${c.id}')">🗑️</button>
       </td>
     </tr>`;
   }).join('');
-  if(!list.length) body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:16px">কোনো ক্যাটাগরি পাওয়া যায়নি</td></tr>';
+  if(!list.length) body.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:16px">কোনো ক্যাটাগরি পাওয়া যায়নি</td></tr>';
 }
 function moveCat(id,dir){
   const i=DB.cats.findIndex(c=>c.id===id);
@@ -4477,18 +4727,38 @@ function saveCat(id){
 
 function deleteCat(id){
   const cnt=DB.products.filter(p=>p.cat===id).length;
-  const msg=cnt>0
-    ?`⚠️ এই ক্যাটাগরিতে <b>${cnt}টি পণ্য</b> আছে। ক্যাটাগরি মুছে ফেললে সেগুলো "অন্যান্য" ক্যাটাগরিতে চলে যাবে। আগে বাড়বেন?`
-    :'এই ক্যাটাগরি মুছে ফেলবেন?';
-  confirm2(msg,()=>{
-    DB.cats=DB.cats.filter(x=>x.id!==id);
-    if(cnt>0){
-      DB.products.forEach(p=>{if(p.cat===id)p.cat='';});
-      save(KEYS.products,DB.products);
-    }
-    save(KEYS.cats,DB.cats);renderCats();populateCatFilters();renderProducts();
-    toast('মুছে ফেলা হয়েছে','warn');realtimeUpdate();
-  });
+  if(cnt===0){
+    confirm2('এই ক্যাটাগরি মুছে ফেলবেন?',()=>{
+      DB.cats=DB.cats.filter(x=>x.id!==id);
+      save(KEYS.cats,DB.cats);renderCats();populateCatFilters();
+      toast('মুছে ফেলা হয়েছে','warn');realtimeUpdate();
+    });
+    return;
+  }
+  const otherCats=DB.cats.filter(c=>c.id!==id);
+  openModal('⚠️ ক্যাটাগরি মুছুন',`
+    <p style="font-size:13px;color:var(--text);margin-bottom:12px">এই ক্যাটাগরিতে <b>${cnt}টি পণ্য</b> আছে। মুছে ফেলার আগে সেগুলো কোন ক্যাটাগরিতে সরাবেন?</p>
+    <div class="form-group"><label>পণ্যগুলো স্থানান্তর করুন</label>
+      <select id="dc_target" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+        <option value="">— অন্যান্য (কোনো ক্যাটাগরি নেই) —</option>
+        ${otherCats.map(c=>`<option value="${c.id}">${c.icon||''} ${c.name}</option>`).join('')}
+      </select>
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-danger" onclick="confirmDeleteCatWithReassign('${id}')">🗑️ মুছে ফেলুন</button>`);
+}
+function confirmDeleteCatWithReassign(id){
+  const targetCat=($('dc_target')||{value:''}).value;
+  const cnt=DB.products.filter(p=>p.cat===id).length;
+  DB.cats=DB.cats.filter(x=>x.id!==id);
+  DB.products.forEach(p=>{if(p.cat===id)p.cat=targetCat;});
+  save(KEYS.products,DB.products);
+  save(KEYS.cats,DB.cats);
+  closeModal();renderCats();populateCatFilters();renderProducts();
+  const targetName=targetCat?(DB.cats.find(c=>c.id===targetCat)?.name||''):'অন্যান্য';
+  toast(`🗑️ ক্যাটাগরি মুছে ফেলা হয়েছে, ${cnt}টি পণ্য "${targetName}"-এ সরানো হয়েছে`,'warn');
+  logActivity('🗑️','ক্যাটাগরি মুছে ফেলা',`${cnt}টি পণ্য → ${targetName}`);
+  realtimeUpdate();
 }
 
 // ══════════════════════════════════════
@@ -4849,6 +5119,11 @@ function calcChange(){
   const ca=$('changeAmt');
   if(ca){ca.textContent=fmt(Math.max(0,change));ca.style.color=change>=0?'var(--success)':'var(--danger)';}
 }
+function setExactCash(){
+  const total=parseFloat(($('posTotal')||{textContent:'0'}).textContent.replace(/[^\d.]/g,''))||0;
+  const ct=$('cashTender');
+  if(ct){ct.value=total.toFixed(2);calcChange();}
+}
 
 function calcDueRemaining(){
   const total=parseFloat(($('posTotal')||{textContent:'0'}).textContent.replace(/[^\d.]/g,''))||0;
@@ -4959,7 +5234,8 @@ function clearPOS(){
   const pi=$('posCust');if(pi)pi.value='';
   const pp=$('posCustPhone');if(pp)pp.value='';
   const pn=$('posNote');if(pn)pn.value='';
-  const di=$('discInput');if(di)di.value='0';
+  const di=$('discInput');if(di){di.value='0';di.dataset.manual='0';}
+  window._autoDiscRuleName=null;
   // FIX: Also reset discount type to default (% percent)
   const dt=$('discType');if(dt)dt.value='pct';
   const ct=$('cashTender');if(ct)ct.value='';
@@ -5030,6 +5306,7 @@ function _posLoyaltyDiscForTotal(afterDiscBeforeLoyalty){
 
 function updatePosTotals(){
   const sub=posBill.reduce((s,i)=>s+i.price*i.qty,0);
+  if(typeof applyAutoDiscountRule==='function') applyAutoDiscountRule(sub);
   const dv=parseFloat(($('discInput')||{value:0}).value)||0;
   const dt=($('discType')||{value:'pct'}).value;
   const baseDisc=dt==='pct'?sub*dv/100:Math.min(dv,sub);
@@ -5046,6 +5323,7 @@ function updatePosTotals(){
   if($('posTaxLabel')) $('posTaxLabel').textContent=isTaxInclusive()?`ভ্যাট অন্তর্ভুক্ত (${taxRate()}%)`:`ট্যাক্স (${taxRate()}%)`;
   if($('posTax')) $('posTax').textContent=fmt(tax);
   if($('posTotal')) $('posTotal').textContent=fmt(total);
+  const adb=$('autoDiscBadge');if(adb) adb.style.display=(window._autoDiscRuleName&&$('discInput')?.dataset.manual!=='1')?'inline':'none';
   calcChange();
   // Smart discount suggestion
   renderSmartDiscountHint();
@@ -5882,6 +6160,12 @@ function loadSettings(){
   // Branches
   if(!DB.settings.branches) DB.settings.branches=[];
   renderBranchTable();
+  // Stock transfers
+  if(!DB.settings.stockTransfers) DB.settings.stockTransfers=[];
+  renderStockTransfers();
+  // Discount rules
+  if(!DB.settings.discountRules) DB.settings.discountRules=[];
+  renderDiscountRules();
 }
 
 function renderVoidPinStatus(){
@@ -6267,6 +6551,44 @@ function switchScannerTab(tab){
     const si=$('scannerInput');
     if(si) setTimeout(()=>si.focus(),100);
   }
+}
+
+// ══════════════════════════════════════
+//  🎤 VOICE SEARCH (POS) — Web Speech API
+// ══════════════════════════════════════
+let _voiceRecognition=null;
+let _voiceListening=false;
+function toggleVoiceSearch(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('⚠️ আপনার ব্রাউজার ভয়েস সার্চ সাপোর্ট করে না (Chrome ব্যবহার করুন)','warn');return;}
+  const btn=$('voiceSearchBtn');
+  if(_voiceListening){
+    if(_voiceRecognition) _voiceRecognition.stop();
+    return;
+  }
+  _voiceRecognition=new SR();
+  _voiceRecognition.lang='bn-BD';
+  _voiceRecognition.continuous=false;
+  _voiceRecognition.interimResults=false;
+  _voiceRecognition.onstart=()=>{
+    _voiceListening=true;
+    if(btn){btn.classList.add('scanning');btn.title='শুনছি... (থামাতে ক্লিক করুন)';}
+    toast('🎤 বলুন...','info');
+  };
+  _voiceRecognition.onresult=(e)=>{
+    const text=e.results[0][0].transcript;
+    const si=$('posSearch');
+    if(si){si.value=text;renderPOS();}
+    toast(`🎤 "${text}" খোঁজা হচ্ছে`,'success');
+  };
+  _voiceRecognition.onerror=(e)=>{
+    if(e.error!=='no-speech') toast('⚠️ ভয়েস চিনতে সমস্যা হয়েছে, আবার চেষ্টা করুন','warn');
+  };
+  _voiceRecognition.onend=()=>{
+    _voiceListening=false;
+    if(btn){btn.classList.remove('scanning');btn.title='ভয়েস সার্চ';}
+  };
+  try{ _voiceRecognition.start(); }catch(err){ toast('ভয়েস সার্চ চালু করা যায়নি','warn'); }
 }
 
 async function openScanner(){
@@ -6981,6 +7303,103 @@ function applyCoupon(){
 }
 
 // ══════════════════════════════════════
+//  📐 AUTO DISCOUNT RULES (tiered, based on bill subtotal)
+// ══════════════════════════════════════
+if(!DB.settings.discountRules) DB.settings.discountRules=[];
+function renderDiscountRules(){
+  const tb=$('discRuleTableBody');if(!tb)return;
+  const list=DB.settings.discountRules||[];
+  tb.innerHTML=list.length?list.map((r,i)=>`<tr>
+    <td style="font-weight:600">${r.name}</td>
+    <td>${fmt(r.minAmount)}+</td>
+    <td>${r.discType==='pct'?r.discValue+'%':fmt(r.discValue)}</td>
+    <td>${r.active!==false?'<span class="badge badge-success">✓ চালু</span>':'<span class="badge badge-gray">বন্ধ</span>'}</td>
+    <td style="display:flex;gap:4px">
+      <button class="btn btn-warn btn-sm" onclick="openDiscountRuleModal(${i})">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteDiscountRule(${i})">🗑️</button>
+    </td>
+  </tr>`).join('')
+  :'<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:16px">কোনো অটো ডিসকাউন্ট রুল নেই</td></tr>';
+}
+function openDiscountRuleModal(idx){
+  const r=idx!=null&&idx!==undefined?(DB.settings.discountRules||[])[idx]:{};
+  openModal(idx!=null?'✏️ রুল সম্পাদনা':'➕ নতুন অটো ডিসকাউন্ট রুল',`
+    <div class="form-group"><label>রুলের নাম *</label><input id="dr_name" value="${r?.name||''}" placeholder="যেমন: বাল্ক ক্রয় ছাড়"></div>
+    <div class="two-col">
+      <div class="form-group"><label>ন্যূনতম বিল (৳) *</label><input id="dr_min" type="number" min="0" value="${r?.minAmount||''}"></div>
+      <div class="form-group"><label>অবস্থা</label>
+        <select id="dr_active"><option value="1" ${r?.active!==false?'selected':''}>✓ চালু</option><option value="0" ${r?.active===false?'selected':''}>বন্ধ</option></select>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label>ছাড়ের পরিমাণ *</label><input id="dr_value" type="number" min="0" value="${r?.discValue||''}"></div>
+      <div class="form-group"><label>ধরন</label>
+        <select id="dr_type"><option value="pct" ${r?.discType==='pct'?'selected':''}>শতাংশ (%)</option><option value="flat" ${r?.discType==='flat'?'selected':''}>নির্দিষ্ট টাকা (৳)</option></select>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text2);background:var(--card2);padding:8px 10px;border-radius:7px">
+      ℹ️ POS-এ বিলের সাবটোটাল ন্যূনতম পরিমাণ ছাড়ালে সবচেয়ে বেশি সুবিধাজনক রুলটি স্বয়ংক্রিয়ভাবে প্রয়োগ হবে (ক্যাশিয়ার ম্যানুয়ালি ছাড় না দিলে)।
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveDiscountRule(${idx!=null?idx:'null'})">💾 সেভ</button>`);
+}
+function saveDiscountRule(idx){
+  const name=($('dr_name')||{value:''}).value.trim();
+  const minAmount=parseFloat(($('dr_min')||{value:0}).value)||0;
+  const discValue=parseFloat(($('dr_value')||{value:0}).value)||0;
+  const discType=($('dr_type')||{value:'pct'}).value;
+  const active=($('dr_active')||{value:'1'}).value==='1';
+  if(!name||discValue<=0){toast('নাম ও ছাড়ের পরিমাণ দিন','warn');return;}
+  const entry={name,minAmount,discValue,discType,active};
+  if(!DB.settings.discountRules) DB.settings.discountRules=[];
+  if(idx!==null&&idx!==undefined&&idx!=='null') DB.settings.discountRules[idx]=entry;
+  else DB.settings.discountRules.push(entry);
+  save(KEYS.settings,DB.settings);
+  closeModal();renderDiscountRules();
+  toast('✅ ডিসকাউন্ট রুল সেভ হয়েছে');
+  logActivity('📐','ডিসকাউন্ট রুল আপডেট',name);
+}
+function deleteDiscountRule(idx){
+  confirm2('এই রুল মুছে ফেলবেন?',()=>{
+    DB.settings.discountRules.splice(idx,1);
+    save(KEYS.settings,DB.settings);renderDiscountRules();
+    toast('মুছে ফেলা হয়েছে','warn');
+  });
+}
+function getBestDiscountRule(subtotal){
+  const rules=(DB.settings.discountRules||[]).filter(r=>r.active!==false&&subtotal>=r.minAmount);
+  if(!rules.length) return null;
+  // Pick the rule giving the biggest actual discount amount
+  let best=null,bestAmt=0;
+  rules.forEach(r=>{
+    const amt=r.discType==='pct'?subtotal*r.discValue/100:r.discValue;
+    if(amt>bestAmt){bestAmt=amt;best=r;}
+  });
+  return best;
+}
+// Applies/removes the auto discount rule into discInput, without touching a manually-entered value.
+window._autoDiscRuleName=null;
+function applyAutoDiscountRule(subtotal){
+  const di=$('discInput'),dt=$('discType');
+  if(!di||!dt) return;
+  const manuallySet=di.dataset.manual==='1';
+  const rule=getBestDiscountRule(subtotal);
+  if(manuallySet){
+    // User is controlling the discount manually — don't override.
+    return;
+  }
+  if(rule){
+    di.value=rule.discValue;
+    dt.value=rule.discType;
+    window._autoDiscRuleName=rule.name;
+  }else if(window._autoDiscRuleName){
+    // Previously auto-applied but no longer qualifies
+    di.value='0';
+    window._autoDiscRuleName=null;
+  }
+}
+
+// ══════════════════════════════════════
 //  POS HOLD/RECALL BILL
 // ══════════════════════════════════════
 let _heldBills=JSON.parse(localStorage.getItem('ss_held_bills')||'[]');
@@ -7271,7 +7690,7 @@ function openStaffModal(id){
     </div>
     <div class="two-col">
       <div class="form-group"><label>মাসিক বেতন (৳)</label><input id="sf_salary" type="number" min="0" value="${s?.salary||''}" placeholder="যেমন: 15000"></div>
-      <div></div>
+      <div class="form-group"><label>বিক্রয় কমিশন (%) <span style="color:var(--text2);font-weight:400">(ঐচ্ছিক)</span></label><input id="sf_commission" type="number" min="0" max="100" step="0.1" value="${s?.commissionPct||''}" placeholder="যেমন: 2"></div>
     </div>
     <div class="two-col">
       <div class="form-group"><label>পাসওয়ার্ড ${id?'(পরিবর্তন না করলে খালি রাখুন)':'*'}</label>
@@ -7297,6 +7716,7 @@ function saveStaff(id){
   const username=$('sf_username').value.trim();
   const phone=$('sf_phone').value.trim();
   const salary=parseFloat($('sf_salary').value)||0;
+  const commissionPct=parseFloat($('sf_commission').value)||0;
   const pass=$('sf_pass').value;
   const role=$('sf_role').value;
   if(!name||!username){toast('নাম ও ইউজারনেম দিন','warn');return;}
@@ -7306,11 +7726,11 @@ function saveStaff(id){
   if(username==='admin'||username===DB.adminUser){toast('এই ইউজারনেম Owner-এর জন্য সংরক্ষিত','warn');return;}
   if(id){
     const s=DB.staff.find(x=>x.id===id);
-    Object.assign(s,{name,username,phone,role,salary});
+    Object.assign(s,{name,username,phone,role,salary,commissionPct});
     if(pass){if(pass.length<6){toast('পাসওয়ার্ড কমপক্ষে ৬ অক্ষর','warn');return;}s.password=pass;}
   }else{
     if(!pass||pass.length<6){toast('পাসওয়ার্ড কমপক্ষে ৬ অক্ষর দিন','warn');return;}
-    DB.staff.push({id:`st${uid()}`,name,username,phone,password:pass,role,salary,active:true,created:new Date().toISOString()});
+    DB.staff.push({id:`st${uid()}`,name,username,phone,password:pass,role,salary,commissionPct,active:true,created:new Date().toISOString()});
   }
   save(KEYS.staff,DB.staff);
   closeModal();renderStaffTable();
@@ -7523,6 +7943,9 @@ function renderAttendance(){
   </tr>`;
   }).join('')
   :'<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:16px">কোনো হাজিরা রেকর্ড নেই</td></tr>';
+
+  renderLeaveTable();
+  renderShiftTable();
 }
 function exportAttendanceCSV(){
   if(!DB.attendance||!DB.attendance.length){toast('কোনো ডেটা নেই','warn');return;}
@@ -7539,6 +7962,274 @@ function exportAttendanceCSV(){
 }
 
 // ══════════════════════════════════════
+//  STAFF LEAVE MANAGEMENT
+// ══════════════════════════════════════
+const LEAVE_TYPES={sick:'🤒 অসুস্থতাজনিত',casual:'🏠 নৈমিত্তিক',paid:'💰 পেইড লিভ',unpaid:'⛔ বিনা বেতনে',other:'📌 অন্যান্য'};
+function _leaveDaysBetween(from,to){
+  const a=new Date(from+'T00:00:00'), b=new Date(to+'T00:00:00');
+  const diff=Math.round((b-a)/86400000)+1;
+  return diff>0?diff:0;
+}
+function openLeaveModal(id){
+  if(!DB.leaves) DB.leaves=[];
+  const rec=id?DB.leaves.find(l=>l.id===id):null;
+  const who=_attWhoAmI();
+  const staffOptions=[{id:'owner',name:DB.adminUser||'Owner'},...(DB.staff||[]).map(s=>({id:s.id,name:s.name}))];
+  const isRestricted=currentStaff&&!['manager'].includes(currentStaff.role);
+  openModal(id?'✏️ ছুটির আবেদন এডিট':'🏖️ নতুন ছুটির আবেদন',`
+    <div class="form-group"><label>স্টাফ *</label>
+      <select id="lv_staff" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%" ${isRestricted?'disabled':''}>
+        ${staffOptions.map(s=>`<option value="${s.id}" ${(rec?rec.staffId===s.id:who.id===s.id)?'selected':''}>${s.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label>ছুটির ধরন *</label>
+        <select id="lv_type" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+          ${Object.entries(LEAVE_TYPES).map(([k,v])=>`<option value="${k}" ${rec?.type===k?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>স্ট্যাটাস</label>
+        <div style="padding:8px 0;font-size:12px;color:var(--text2)">${rec?leaveStatusBadge(rec.status):'⏳ নতুন আবেদন — অপেক্ষমাণ থাকবে'}</div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label>শুরুর তারিখ *</label><input id="lv_from" type="date" value="${rec?.from||_attTodayKey()}"></div>
+      <div class="form-group"><label>শেষ তারিখ *</label><input id="lv_to" type="date" value="${rec?.to||_attTodayKey()}"></div>
+    </div>
+    <div class="form-group"><label>কারণ</label><textarea id="lv_reason" rows="3" placeholder="ছুটির কারণ লিখুন...">${rec?.reason||''}</textarea></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveLeaveRequest('${id||''}')">💾 সেভ করুন</button>`);
+}
+function saveLeaveRequest(id){
+  const staffId=($('lv_staff')||{value:'owner'}).value;
+  const staffOptions=[{id:'owner',name:DB.adminUser||'Owner'},...(DB.staff||[]).map(s=>({id:s.id,name:s.name}))];
+  const staffName=staffOptions.find(s=>s.id===staffId)?.name||'Unknown';
+  const type=($('lv_type')||{value:'casual'}).value;
+  const from=($('lv_from')||{value:''}).value;
+  const to=($('lv_to')||{value:''}).value;
+  const reason=($('lv_reason')||{value:''}).value.trim();
+  if(!from||!to){toast('তারিখ দিন','warn');return;}
+  if(to<from){toast('শেষ তারিখ শুরুর তারিখের আগে হতে পারবে না','warn');return;}
+  const days=_leaveDaysBetween(from,to);
+  if(!DB.leaves) DB.leaves=[];
+  if(id){
+    const rec=DB.leaves.find(l=>l.id===id);
+    if(rec){Object.assign(rec,{staffId,staffName,type,from,to,days,reason});}
+  }else{
+    DB.leaves.unshift({id:`lv${uid()}`,staffId,staffName,type,from,to,days,reason,status:'pending',appliedDate:new Date().toISOString()});
+  }
+  save(KEYS.leaves,DB.leaves);
+  closeModal();renderLeaveTable();
+  toast(id?'✅ ছুটির আবেদন আপডেট হয়েছে':'✅ ছুটির আবেদন জমা হয়েছে','success');
+  logActivity('🏖️','ছুটির আবেদন',`${staffName} — ${LEAVE_TYPES[type]||type} — ${days} দিন`);
+}
+// ══════════════════════════════════════
+//  🗓️ SHIFT SCHEDULING
+// ══════════════════════════════════════
+if(!DB.settings.shiftTypes) DB.settings.shiftTypes=[
+  {id:'sh_morning',name:'সকাল',start:'09:00',end:'17:00',color:'#748ffc'},
+  {id:'sh_evening',name:'সন্ধ্যা',start:'17:00',end:'22:00',color:'#f7c948'}
+];
+if(!DB.settings.shiftRoster) DB.settings.shiftRoster=[];
+let _shiftWeekStart=(()=>{const d=new Date();d.setDate(d.getDate()-d.getDay());d.setHours(0,0,0,0);return d;})();
+function _shiftDateKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function changeShiftWeek(delta){
+  _shiftWeekStart=new Date(_shiftWeekStart.getFullYear(),_shiftWeekStart.getMonth(),_shiftWeekStart.getDate()+delta*7);
+  renderShiftTable();
+}
+function openShiftTypeModal(){
+  const types=DB.settings.shiftTypes||[];
+  openModal('⚙️ শিফট টাইপ পরিচালনা',`
+    <div id="shiftTypesList">
+      ${types.map((t,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:8px;padding:8px 10px;margin-bottom:6px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${t.color};flex-shrink:0"></span>
+          <span style="flex:1;font-size:12px;font-weight:600">${t.name} <span style="color:var(--text2);font-weight:400">(${t.start}–${t.end})</span></span>
+          <button class="btn btn-danger btn-sm" onclick="deleteShiftType('${t.id}')">🗑️</button>
+        </div>`).join('')||'<div style="text-align:center;color:var(--text2);font-size:12px;padding:8px">কোনো শিফট টাইপ নেই</div>'}
+    </div>
+    <div class="section-title" style="margin-top:14px;font-size:12px">➕ নতুন শিফট টাইপ</div>
+    <div class="form-group"><label>নাম *</label><input id="sht_name" placeholder="যেমন: নাইট শিফট"></div>
+    <div class="two-col">
+      <div class="form-group"><label>শুরু সময়</label><input id="sht_start" type="time" value="09:00"></div>
+      <div class="form-group"><label>শেষ সময়</label><input id="sht_end" type="time" value="17:00"></div>
+    </div>
+    <div class="form-group"><label>রঙ</label><input id="sht_color" type="color" value="#00d4a8" style="width:60px;height:34px;padding:2px;border-radius:6px;cursor:pointer"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
+     <button class="btn btn-primary" onclick="saveShiftType()">💾 যোগ করুন</button>`);
+}
+function saveShiftType(){
+  const name=($('sht_name')||{value:''}).value.trim();
+  const start=($('sht_start')||{value:'09:00'}).value;
+  const end=($('sht_end')||{value:'17:00'}).value;
+  const color=($('sht_color')||{value:'#00d4a8'}).value;
+  if(!name){toast('নাম দিন','warn');return;}
+  if(!DB.settings.shiftTypes) DB.settings.shiftTypes=[];
+  DB.settings.shiftTypes.push({id:`sh${uid()}`,name,start,end,color});
+  save(KEYS.settings,DB.settings);
+  closeModal();openShiftTypeModal();
+  toast('✅ শিফট টাইপ যোগ হয়েছে','success');
+}
+function deleteShiftType(id){
+  confirm2('এই শিফট টাইপ মুছে ফেলবেন? এর সাথে যুক্ত সব শিডিউলও মুছে যাবে।',()=>{
+    DB.settings.shiftTypes=(DB.settings.shiftTypes||[]).filter(t=>t.id!==id);
+    DB.settings.shiftRoster=(DB.settings.shiftRoster||[]).filter(r=>r.shiftTypeId!==id);
+    save(KEYS.settings,DB.settings);
+    closeModal();openShiftTypeModal();
+    renderShiftTable();
+  });
+}
+function openShiftAssignModal(presetStaffId,presetDate){
+  const staffOptions=[{id:'owner',name:DB.adminUser||'Owner'},...(DB.staff||[]).map(s=>({id:s.id,name:s.name}))];
+  const types=DB.settings.shiftTypes||[];
+  if(!types.length){toast('আগে একটি শিফট টাইপ যোগ করুন','warn');openShiftTypeModal();return;}
+  openModal('➕ শিফট বরাদ্দ করুন',`
+    <div class="form-group"><label>স্টাফ *</label>
+      <select id="sa_staff" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+        ${staffOptions.map(s=>`<option value="${s.id}" ${presetStaffId===s.id?'selected':''}>${s.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label>তারিখ *</label><input id="sa_date" type="date" value="${presetDate||_attTodayKey()}"></div>
+      <div class="form-group"><label>শিফট *</label>
+        <select id="sa_type" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+          ${types.map(t=>`<option value="${t.id}">${t.name} (${t.start}–${t.end})</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveShiftAssignment()">💾 বরাদ্দ করুন</button>`);
+}
+function saveShiftAssignment(){
+  const staffId=($('sa_staff')||{value:'owner'}).value;
+  const staffOptions=[{id:'owner',name:DB.adminUser||'Owner'},...(DB.staff||[]).map(s=>({id:s.id,name:s.name}))];
+  const staffName=staffOptions.find(s=>s.id===staffId)?.name||'Unknown';
+  const date=($('sa_date')||{value:''}).value;
+  const shiftTypeId=($('sa_type')||{value:''}).value;
+  if(!date||!shiftTypeId){toast('তারিখ ও শিফট নির্বাচন করুন','warn');return;}
+  if(!DB.settings.shiftRoster) DB.settings.shiftRoster=[];
+  const dup=DB.settings.shiftRoster.find(r=>r.staffId===staffId&&r.date===date&&r.shiftTypeId===shiftTypeId);
+  if(dup){toast('এই স্টাফের এই শিফট ইতিমধ্যে বরাদ্দ আছে','warn');return;}
+  DB.settings.shiftRoster.push({id:`sr${uid()}`,staffId,staffName,date,shiftTypeId});
+  save(KEYS.settings,DB.settings);
+  closeModal();renderShiftTable();
+  toast('✅ শিফট বরাদ্দ হয়েছে','success');
+  logActivity('🗓️','শিফট বরাদ্দ',`${staffName} — ${date}`);
+}
+function deleteShiftAssignment(id){
+  DB.settings.shiftRoster=(DB.settings.shiftRoster||[]).filter(r=>r.id!==id);
+  save(KEYS.settings,DB.settings);
+  renderShiftTable();
+  toast('শিফট বরাদ্দ মুছে ফেলা হয়েছে','warn');
+}
+function renderShiftTable(){
+  const head=$('shiftTableHead'),body=$('shiftTableBody');
+  if(!head||!body) return;
+  const days=[];
+  for(let i=0;i<7;i++){const d=new Date(_shiftWeekStart.getFullYear(),_shiftWeekStart.getMonth(),_shiftWeekStart.getDate()+i);days.push(d);}
+  const dows=['রবি','সোম','মঙ্গল','বুধ','বৃহ','শুক্র','শনি'];
+  const lbl=$('shiftWeekLabel');
+  if(lbl) lbl.textContent=`${days[0].toLocaleDateString('bn-BD')} — ${days[6].toLocaleDateString('bn-BD')}`;
+  head.innerHTML=`<th>স্টাফ</th>`+days.map((d,i)=>`<th style="font-size:10px">${dows[i]}<br>${d.getDate()}/${d.getMonth()+1}</th>`).join('');
+  const staffList=[{id:'owner',name:DB.adminUser||'Owner'},...(DB.staff||[]).filter(s=>s.active!==false).map(s=>({id:s.id,name:s.name}))];
+  const types=DB.settings.shiftTypes||[];
+  const roster=DB.settings.shiftRoster||[];
+  body.innerHTML=staffList.map(s=>{
+    const cells=days.map(d=>{
+      const dk=_shiftDateKey(d);
+      const assigns=roster.filter(r=>r.staffId===s.id&&r.date===dk);
+      const content=assigns.map(a=>{
+        const t=types.find(x=>x.id===a.shiftTypeId);
+        if(!t) return '';
+        return `<span style="display:inline-flex;align-items:center;gap:3px;background:${t.color}22;border:1px solid ${t.color}55;color:${t.color};font-size:9px;font-weight:700;padding:2px 5px;border-radius:6px;margin:1px;cursor:pointer" onclick="deleteShiftAssignment('${a.id}')" title="মুছতে ক্লিক করুন">${t.name}</span>`;
+      }).join('');
+      return `<td style="text-align:center;cursor:pointer;min-width:70px" onclick="openShiftAssignModal('${s.id}','${dk}')">${content||'<span style="color:var(--text2);font-size:14px">+</span>'}</td>`;
+    }).join('');
+    return `<tr><td style="font-weight:600;font-size:12px">${s.name}</td>${cells}</tr>`;
+  }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:16px">কোনো স্টাফ নেই</td></tr>';
+}
+function decideLeave(id,status){
+  if(currentStaff&&currentStaff.role!=='manager'){toast('⛔ শুধুমাত্র ম্যানেজার/মালিক ছুটি অনুমোদন করতে পারবেন','warn');return;}
+  const rec=(DB.leaves||[]).find(l=>l.id===id);if(!rec)return;
+  const who=_attWhoAmI();
+  rec.status=status;
+  rec.decidedBy=who.name;
+  rec.decidedDate=new Date().toISOString();
+  save(KEYS.leaves,DB.leaves);
+  renderLeaveTable();
+  toast(status==='approved'?'✅ ছুটি অনুমোদিত হয়েছে':'❌ ছুটি বাতিল করা হয়েছে',status==='approved'?'success':'warn');
+  logActivity('🏖️','ছুটি সিদ্ধান্ত',`${rec.staffName} — ${status==='approved'?'অনুমোদিত':'বাতিল'} (${who.name})`);
+  addNotif(status==='approved'?'✅ ছুটি অনুমোদিত':'❌ ছুটি বাতিল',`${rec.staffName}-এর ${rec.days} দিনের ছুটি ${status==='approved'?'অনুমোদন':'বাতিল'} করা হয়েছে`,status==='approved'?'success':'warn');
+}
+function deleteLeaveRequest(id){
+  confirm2('এই ছুটির আবেদন মুছে ফেলবেন?',()=>{
+    DB.leaves=(DB.leaves||[]).filter(l=>l.id!==id);
+    save(KEYS.leaves,DB.leaves);
+    renderLeaveTable();
+    toast('মুছে ফেলা হয়েছে','warn');
+  });
+}
+function leaveStatusBadge(status){
+  const m={pending:'<span class="badge badge-warn">⏳ অপেক্ষমাণ</span>',approved:'<span class="badge badge-success">✅ অনুমোদিত</span>',rejected:'<span class="badge badge-danger">❌ বাতিল</span>'};
+  return m[status]||m.pending;
+}
+function leaveBalanceThisYear(staffId){
+  const year=new Date().getFullYear();
+  return (DB.leaves||[]).filter(l=>l.staffId===staffId&&l.status==='approved'&&l.from&&l.from.startsWith(String(year))).reduce((s,l)=>s+l.days,0);
+}
+function renderLeaveTable(){
+  if(!DB.leaves) DB.leaves=[];
+  const who=_attWhoAmI();
+
+  // Staff filter dropdown
+  const sf=$('leaveStaffFilter');
+  if(sf&&sf.options.length<=1){
+    const names=[...new Map((DB.staff||[]).map(s=>[s.id,s.name])).entries()];
+    sf.innerHTML='<option value="">সব স্টাফ</option>'+names.map(([id,name])=>`<option value="${id}">${name}</option>`).join('')+'<option value="owner">Owner</option>';
+  }
+
+  const statusF=$('leaveStatusFilter')?.value, staffF=$('leaveStaffFilter')?.value;
+  let list=[...DB.leaves];
+  const isRestricted=currentStaff&&!['manager'].includes(currentStaff.role);
+  if(isRestricted) list=list.filter(l=>l.staffId===who.id);
+  if(statusF) list=list.filter(l=>l.status===statusF);
+  if(staffF) list=list.filter(l=>l.staffId===staffF);
+  list.sort((a,b)=>new Date(b.appliedDate)-new Date(a.appliedDate));
+
+  // Stats
+  const statsEl=$('leaveStats');
+  if(statsEl){
+    const pending=DB.leaves.filter(l=>l.status==='pending').length;
+    const approvedThisYear=DB.leaves.filter(l=>l.status==='approved'&&l.from&&l.from.startsWith(String(new Date().getFullYear()))).reduce((s,l)=>s+l.days,0);
+    const myBalance=leaveBalanceThisYear(who.id);
+    statsEl.innerHTML=`
+      <div class="stat-card"><div style="font-size:22px;font-weight:800;color:${pending?'var(--warning)':'inherit'}">${pending}</div><div style="font-size:12px;color:var(--text2)">অপেক্ষমাণ আবেদন</div></div>
+      <div class="stat-card"><div style="font-size:22px;font-weight:800">${approvedThisYear}</div><div style="font-size:12px;color:var(--text2)">এ বছর মোট অনুমোদিত ছুটি (দিন)</div></div>
+      <div class="stat-card"><div style="font-size:22px;font-weight:800">${myBalance}</div><div style="font-size:12px;color:var(--text2)">${who.name} — এ বছর নেওয়া ছুটি</div></div>
+    `;
+  }
+
+  const canDecide=!currentStaff||currentStaff.role==='manager';
+  const tb=$('leaveTableBody');
+  if(!tb) return;
+  tb.innerHTML=list.length?list.map(l=>`<tr>
+    <td style="font-weight:600">${l.staffName}</td>
+    <td style="font-size:12px">${LEAVE_TYPES[l.type]||l.type}</td>
+    <td>${l.from}</td>
+    <td>${l.to}</td>
+    <td style="text-align:center">${l.days}</td>
+    <td class="hide-xs" style="font-size:11px;color:var(--text2)">${l.reason||'—'}</td>
+    <td>${leaveStatusBadge(l.status)}</td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap">
+      ${l.status==='pending'&&canDecide?`<button class="btn btn-success btn-sm" onclick="decideLeave('${l.id}','approved')" title="অনুমোদন">✅</button><button class="btn btn-danger btn-sm" onclick="decideLeave('${l.id}','rejected')" title="বাতিল">❌</button>`:''}
+      ${l.status==='pending'?`<button class="btn btn-warn btn-sm" onclick="openLeaveModal('${l.id}')">✏️</button>`:''}
+      <button class="btn btn-danger btn-sm" onclick="deleteLeaveRequest('${l.id}')">🗑️</button>
+    </td>
+  </tr>`).join('')
+  :'<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:16px">কোনো ছুটির আবেদন নেই</td></tr>';
+}
+
+// ══════════════════════════════════════
 //  STAFF PAYROLL
 // ══════════════════════════════════════
 function _payrollCurMonth(){
@@ -7548,18 +8239,19 @@ function _payrollCurMonth(){
 function generatePayrollForMonth(){
   const month=($('payrollMonth')?.value)||_payrollCurMonth();
   if(!DB.payroll) DB.payroll=[];
-  const staffList=[...(DB.staff||[]).filter(s=>s.active!==false).map(s=>({id:s.id,name:s.name,salary:s.salary||0}))];
+  const staffList=[...(DB.staff||[]).filter(s=>s.active!==false).map(s=>({id:s.id,name:s.name,salary:s.salary||0,commissionPct:s.commissionPct||0}))];
   let added=0;
   staffList.forEach(s=>{
     if(!s.salary) return; // বেতন সেট করা না থাকলে স্কিপ
     const exists=DB.payroll.find(p=>p.staffId===s.id&&p.month===month);
     if(!exists){
-      DB.payroll.push({id:`pr${uid()}`,staffId:s.id,staffName:s.name,month,baseAmount:s.salary,bonus:0,deduction:0,amount:s.salary,status:'due',paidDate:null});
+      const commission=s.commissionPct>0?Math.round((DB.sales||[]).filter(x=>(x.staffId||'owner')===s.id&&x.time.slice(0,7)===month).reduce((sum,x)=>sum+x.total,0)*s.commissionPct/100):0;
+      DB.payroll.push({id:`pr${uid()}`,staffId:s.id,staffName:s.name,month,baseAmount:s.salary,bonus:commission,deduction:0,amount:s.salary+commission,status:'due',paidDate:null,commissionAmt:commission});
       added++;
     }
   });
   save(KEYS.payroll,DB.payroll);
-  toast(added?`✅ ${added} জন স্টাফের বেতন এন্ট্রি তৈরি হয়েছে`:'এই মাসের এন্ট্রি ইতিমধ্যে আছে','success');
+  toast(added?`✅ ${added} জন স্টাফের বেতন এন্ট্রি তৈরি হয়েছে (কমিশনসহ)`:'এই মাসের এন্ট্রি ইতিমধ্যে আছে','success');
   renderPayroll();
 }
 function openAdjustPayrollModal(id){
@@ -7637,7 +8329,7 @@ function printPayslip(id){
     <thead><tr><th>বিবরণ</th><th style="text-align:right">পরিমাণ</th></tr></thead>
     <tbody>
       <tr><td>মূল বেতন</td><td style="text-align:right">${fmt(base)}</td></tr>
-      ${bonus>0?`<tr><td>➕ বোনাস</td><td style="text-align:right;color:#00b48c">+${fmt(bonus)}</td></tr>`:''}
+      ${bonus>0?`<tr><td>➕ ${p.commissionAmt>0?'বিক্রয় কমিশন + বোনাস':'বোনাস'}</td><td style="text-align:right;color:#00b48c">+${fmt(bonus)}</td></tr>`:''}
       ${deduction>0?`<tr><td>➖ কর্তন</td><td style="text-align:right;color:#e94560">-${fmt(deduction)}</td></tr>`:''}
       <tr class="net-row"><td>নিট বেতন (Net Pay)</td><td style="text-align:right">${fmt(p.amount)}</td></tr>
     </tbody>
@@ -7793,6 +8485,9 @@ function exportAllData(){
     reviews:DB.reviews,
     payroll:DB.payroll,
     wishlist:wishlist,
+    leaves:DB.leaves,
+    supPayments:DB.supPayments,
+    labelSerials:DB.settings.labelSerials,
   };
   const json=JSON.stringify(backup,null,2);
   const blob=new Blob([json],{type:'application/json'});
@@ -7828,6 +8523,9 @@ function importAllData(input){
       if(data.reviews){DB.reviews=data.reviews;save(KEYS.reviews,DB.reviews);}
       if(data.payroll){DB.payroll=data.payroll;save(KEYS.payroll,DB.payroll);}
       if(data.wishlist){wishlist=data.wishlist;save(KEYS.wishlist,wishlist);}
+      if(data.leaves){DB.leaves=data.leaves;save(KEYS.leaves,DB.leaves);}
+      if(data.supPayments){DB.supPayments=data.supPayments;save(KEYS.supPayments,DB.supPayments);}
+      if(data.labelSerials){DB.settings.labelSerials=data.labelSerials;save(KEYS.settings,DB.settings);}
       if(data.adminUser){DB.adminUser=data.adminUser;save(KEYS.adminUser,DB.adminUser);}
       if(data.adminEmail){DB.adminEmail=data.adminEmail;save(KEYS.adminEmail,DB.adminEmail);}
       if(data.adminPass){DB.adminPass=data.adminPass;save(KEYS.adminPass,DB.adminPass);}
@@ -8000,6 +8698,25 @@ const BARCODE_FORMATS={
   EAN13:'EAN-13 (১৩ ডিজিট — রিটেইল স্ট্যান্ডার্ড)',
   CODE39:'CODE39 (ওয়্যারহাউজ/ইন্ডাস্ট্রি)',
 };
+// ── Unique per-label barcode generator (for serial/unit-level tracking) ──
+function _ean13CheckDigit(digits12){
+  let sum=0;
+  for(let i=0;i<12;i++){
+    sum+=parseInt(digits12[i])*(i%2===0?1:3);
+  }
+  return (10-(sum%10))%10;
+}
+function _genUniqueBarcodeCode(baseBarcode,format,seq){
+  if(format==='EAN13'){
+    // Build a valid, unique 13-digit EAN using base digits as prefix + sequence
+    const baseDigits=(baseBarcode||'').replace(/\D/g,'').padEnd(6,'0').slice(0,6);
+    const seqPart=String(seq).padStart(6,'0');
+    const digits12=(baseDigits+seqPart).slice(0,12);
+    return digits12+_ean13CheckDigit(digits12);
+  }
+  // CODE128 / CODE39: base barcode + zero-padded serial suffix
+  return `${baseBarcode}-${String(seq).padStart(4,'0')}`;
+}
 function _lblLoadPrefs(){
   try{return JSON.parse(localStorage.getItem('ss_label_prefs')||'{}');}catch(e){return{};}
 }
@@ -8013,6 +8730,7 @@ function _lblSavePrefs(){
     customW:($('lblCustomW')||{value:50}).value,
     customH:($('lblCustomH')||{value:30}).value,
     footer:($('lblFooter')||{value:''}).value,
+    unique:($('lblUnique')||{checked:false}).checked?'1':'0',
   };
   localStorage.setItem('ss_label_prefs',JSON.stringify(prefs));
 }
@@ -8065,6 +8783,10 @@ function openLabelPrintStudio(){
           <div style="font-size:10px;color:var(--text2);margin-top:3px">ℹ️ EAN-13 বাছলে বারকোড অবশ্যই ১৩ ডিজিটের হতে হবে, নাহলে সেই পণ্য বাদ যাবে</div>
         </div>
         <div class="form-group"><label>নিচে অতিরিক্ত লেখা (ঐচ্ছিক)</label><input id="lblFooter" placeholder="যেমন: Made in Bangladesh" value="${prefs.footer||''}" oninput="_lblUpdatePreview()"></div>
+        <div style="background:rgba(0,212,168,.08);border:1px solid rgba(0,212,168,.25);border-radius:8px;padding:8px 10px;margin-top:8px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;font-weight:600"><input type="checkbox" id="lblUnique" ${prefs.unique==='1'?'checked':''}> 🔢 প্রতিটি লেবেলে আলাদা ইউনিক বারকোড দিন (সিরিয়াল/ইউনিট ট্র্যাকিং)</label>
+          <div style="font-size:10px;color:var(--text2);margin-top:3px">চালু থাকলে একই পণ্যের প্রতিটি প্রিন্ট কপিতে ভিন্ন ভিন্ন বারকোড বসবে (যেমন উচ্চমূল্যের পণ্য যেগুলো আলাদাভাবে ট্র্যাক করতে চান — TV, ফ্রিজ, ওভেন ইত্যাদি)। বন্ধ থাকলে সবগুলো কপিতে পণ্যের মূল বারকোডই থাকবে (সাধারণ রিটেইল পণ্যের জন্য প্রযোজ্য)।</div>
+        </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="lblShowShop" onchange="_lblUpdatePreview()" ${prefs.showShop!=='0'?'checked':''}> দোকানের নাম</label>
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="lblShowPrice" onchange="_lblUpdatePreview()" ${prefs.showPrice!=='0'?'checked':''}> দাম</label>
@@ -8080,6 +8802,7 @@ function openLabelPrintStudio(){
     </div>
     <div style="font-size:12px;color:var(--text2);margin-top:10px" id="lblSelectedCount">০টি পণ্য সিলেক্ট করা আছে</div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-ghost" onclick="showLabelSerialHistory()">📜 সিরিয়াল ইতিহাস</button>
      <button class="btn btn-primary" onclick="generateLabelSheet()">🖨️ প্রিন্ট শিট তৈরি করুন</button>`);
   setTimeout(()=>{_lblUpdateCount();_lblUpdatePreview();document.querySelectorAll('.lbl-chk').forEach(c=>c.addEventListener('change',_lblUpdatePreview));},50);
 }
@@ -8154,26 +8877,41 @@ function generateLabelSheet(){
   const showPrice=($('lblShowPrice')||{checked:true}).checked;
   const showCode=($('lblShowCode')||{checked:true}).checked;
   const footer=($('lblFooter')||{value:''}).value;
+  const uniqueMode=($('lblUnique')||{checked:false}).checked;
   const shopName=DB.settings.name||'SuperShop';
   let labelsHtml='',totalLabels=0,skipped=0;
+  const printBatch=[];
+  const printTime=new Date().toISOString();
   selected.forEach(pid=>{
     const p=DB.products.find(x=>x.id===pid);if(!p||!p.barcode)return;
     if(format==='EAN13'&&!/^\d{12,13}$/.test(p.barcode)){skipped++;return;}
     const qtyInput=document.querySelector(`.lbl-qty[data-pid="${pid}"]`);
     const qty=Math.max(1,Math.min(200,parseInt(qtyInput?.value)||1));
-    const barcodeSvg=_renderBarcodeSVG(p.barcode,{format,height:Math.round(sz.h*0.8),width:1.5,fontSize:Math.max(7,sz.fs-1),displayValue:showCode});
+    const sharedSvg=uniqueMode?null:_renderBarcodeSVG(p.barcode,{format,height:Math.round(sz.h*0.8),width:1.5,fontSize:Math.max(7,sz.fs-1),displayValue:showCode});
     for(let i=0;i<qty;i++){
       totalLabels++;
+      let codeToShow=p.barcode,svgToUse=sharedSvg;
+      if(uniqueMode){
+        codeToShow=_genUniqueBarcodeCode(p.barcode,format,i+1);
+        svgToUse=_renderBarcodeSVG(codeToShow,{format,height:Math.round(sz.h*0.8),width:1.5,fontSize:Math.max(7,sz.fs-1),displayValue:showCode});
+        printBatch.push({productId:p.id,productName:p.name,code:codeToShow,seq:i+1});
+      }
       labelsHtml+=`<div class="lbl-item" style="width:${sz.w}mm;height:${sz.h}mm">
         ${showShop?`<div class="lbl-shop">${shopName}</div>`:''}
         <div class="lbl-name">${p.name}</div>
-        <div class="lbl-barcode">${barcodeSvg}</div>
+        <div class="lbl-barcode">${svgToUse}</div>
         ${showPrice?`<div class="lbl-price">${fmt(p.price)}</div>`:''}
         ${footer?`<div class="lbl-footer">${footer}</div>`:''}
       </div>`;
     }
   });
   if(!totalLabels){toast(skipped?'সিলেক্ট করা পণ্যের বারকোড EAN-13 ফরম্যাটের সাথে মেলেনি':'বৈধ বারকোডসহ কোনো পণ্য পাওয়া যায়নি','warn');return;}
+  if(uniqueMode&&printBatch.length){
+    if(!DB.settings.labelSerials) DB.settings.labelSerials=[];
+    DB.settings.labelSerials.unshift({id:`lb${uid()}`,date:printTime,items:printBatch});
+    if(DB.settings.labelSerials.length>50) DB.settings.labelSerials=DB.settings.labelSerials.slice(0,50);
+    save(KEYS.settings,DB.settings);
+  }
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Labels — ${today()}</title>
   <style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -8198,11 +8936,27 @@ function generateLabelSheet(){
     document.body.appendChild(a);a.click();
     setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},2000);
     closeModal();
-    toast(`🏷️ ${totalLabels}টি লেবেল খুলছে${skipped?` (${skipped}টি বাদ গেছে — EAN-13 অমিল)`:''} — প্রিন্ট ডায়ালগ ব্যবহার করুন`);
-    logActivity('🏷️','লেবেল প্রিন্ট',`${selected.length}টি পণ্যের মোট ${totalLabels}টি লেবেল`);
+    toast(`🏷️ ${totalLabels}টি লেবেল খুলছে${uniqueMode?' (প্রতিটি ইউনিক বারকোড সহ)':''}${skipped?` (${skipped}টি বাদ গেছে — EAN-13 অমিল)`:''} — প্রিন্ট ডায়ালগ ব্যবহার করুন`);
+    logActivity('🏷️','লেবেল প্রিন্ট',`${selected.length}টি পণ্যের মোট ${totalLabels}টি লেবেল${uniqueMode?' (ইউনিক বারকোড)':''}`);
   }catch(e){
     toast('লেবেল তৈরি করতে সমস্যা হয়েছে: '+e.message,'danger');
   }
+}
+function showLabelSerialHistory(){
+  const list=DB.settings.labelSerials||[];
+  openModal('📜 ইউনিক সিরিয়াল বারকোড ইতিহাস',`
+    <p style="font-size:11px;color:var(--text2);margin-bottom:10px">যেসব প্রিন্ট জবে ইউনিক বারকোড ব্যবহার হয়েছে তার তালিকা (সর্বশেষ ৫০টি জব)।</p>
+    ${list.length?list.map(batch=>`
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:6px">
+          <span>${new Date(batch.date).toLocaleString('bn-BD')}</span><span>${batch.items.length}টি লেবেল</span>
+        </div>
+        <div style="max-height:120px;overflow-y:auto;font-family:monospace;font-size:11px;color:var(--text)">
+          ${batch.items.map(it=>`<div>${it.productName} — <b style="color:var(--accent2)">${it.code}</b></div>`).join('')}
+        </div>
+      </div>`).join('')
+    :'<div style="text-align:center;color:var(--text2);padding:20px">এখনো কোনো ইউনিক বারকোড জেনারেট হয়নি</div>'}
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
 }
 
 // ══════════════════════════════════════
@@ -8466,18 +9220,21 @@ if(!DB.settings.suppliers) DB.settings.suppliers=[];
 function renderSuppliersTable(){
   const tb=$('supplierTableBody');if(!tb)return;
   const list=DB.settings.suppliers||[];
-  tb.innerHTML=list.length?list.map((s,i)=>`<tr>
+  tb.innerHTML=list.length?list.map((s,i)=>{
+    const due=(typeof supplierTotalDue==='function')?supplierTotalDue(s.name):0;
+    return `<tr>
     <td style="font-weight:600">${s.name}</td>
     <td>${s.phone||'—'}</td>
     <td class="hide-xs">${s.email||'—'}</td>
     <td class="hide-xs">${s.products||'—'}</td>
+    <td>${due>0?`<span class="badge badge-warn" title="সাপ্লায়ারকে মোট বাকি">৳${due.toLocaleString('bn-BD')}</span>`:'<span class="badge badge-success">✓ পরিশোধিত</span>'}</td>
     <td style="display:flex;gap:4px">
       <button class="btn btn-ghost btn-sm" onclick="sendSupplierWhatsApp(${i})" title="WhatsApp">📱</button>
       <button class="btn btn-warn btn-sm" onclick="openSupplierModal(${i})">✏️</button>
       <button class="btn btn-danger btn-sm" onclick="deleteSupplier(${i})">🗑️</button>
     </td>
-  </tr>`).join('')
-  :'<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:16px">কোনো সাপ্লায়ার নেই</td></tr>';
+  </tr>`;}).join('')
+  :'<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:16px">কোনো সাপ্লায়ার নেই</td></tr>';
 }
 
 function openSupplierModal(idx){
@@ -8824,10 +9581,30 @@ function openCustomerMessageModal(custName,custPhone){
         <button class="btn btn-whatsapp" onclick="closeModal();sendWhatsAppToCustomer('${custPhone}','${custName}','general')" style="padding:10px;font-size:12px">💬 সাধারণ বার্তা</button>
         <button class="btn btn-whatsapp" onclick="closeModal();sendWhatsAppToCustomer('${custPhone}','${custName}','due')" style="padding:10px;font-size:12px">📒 বাকি অনুরোধ</button>
         <button class="btn btn-whatsapp" onclick="closeModal();sendWhatsAppToCustomer('${custPhone}','${custName}','promo')" style="padding:10px;font-size:12px">🎉 প্রমো অফার</button>
-        <button class="btn btn-whatsapp" onclick="closeModal();sendWhatsAppToCustomer('${custPhone}','${custName}','birthday')" style="padding:10px;font-size:12px">🎂 জন্মদিন</button>
+        <button class="btn btn-whatsapp" onclick="closeModal();sendBirthdayCoupon('${custPhone}','${custName}')" style="padding:10px;font-size:12px">🎂 জন্মদিন কুপন</button>
       </div>
     </div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
+}
+
+// ══════════════════════════════════════
+//  🎂 BIRTHDAY AUTO-COUPON
+// ══════════════════════════════════════
+function sendBirthdayCoupon(phone,name){
+  if(!phone){toast('কাস্টমারের ফোন নম্বর নেই','warn');return;}
+  const code=`BDAY${(name||'CUST').replace(/[^A-Za-z]/g,'').toUpperCase().slice(0,4)||'CUST'}${Math.floor(Math.random()*900+100)}`;
+  const expiry=new Date();expiry.setDate(expiry.getDate()+7);
+  const expiryStr=expiry.toISOString().slice(0,10);
+  if(!DB.settings.coupons) DB.settings.coupons=[];
+  DB.settings.coupons.push({code,value:10,type:'pct',limit:1,expiry:expiryStr,used:0,note:`জন্মদিন কুপন — ${name||phone}`});
+  save(KEYS.settings,DB.settings);
+  renderCoupons();
+  const shop=DB.settings.name||'SuperShop';
+  const msg=`🎂 *${shop}* থেকে শুভেচ্ছা!\n\nপ্রিয় ${name||'কাস্টমার'},\nজন্মদিনের শুভেচ্ছা! 🎉\n\nআপনার জন্য বিশেষ ১০% ছাড়ের কুপন:\n🎟️ কোড: *${code}*\n📅 মেয়াদ: ${new Date(expiryStr).toLocaleDateString('bn-BD')} পর্যন্ত (১ বার ব্যবহারযোগ্য)\n\nআজই ভিজিট করুন!\n📞 ${DB.settings.phone||''}\n📍 ${DB.settings.addr||''}`;
+  const cleanPhone=phone.replace(/\D/g,'');
+  window.open(`https://wa.me/88${cleanPhone.replace(/^0/,'')}?text=${encodeURIComponent(msg)}`,'_blank');
+  logActivity('🎂','জন্মদিন কুপন পাঠানো',`${name||phone} — কোড: ${code}`);
+  toast(`✅ কুপন "${code}" তৈরি ও পাঠানো হয়েছে`,'success');
 }
 
 // ══════════════════════════════════════
@@ -9207,24 +9984,53 @@ function getStaffPerformance(){
   return Object.values(map).sort((a,b)=>b.total-a.total);
 }
 
+// ══════════════════════════════════════
+//  📝 EXTENDED STAFF PERFORMANCE (sales + target + attendance + leave)
+// ══════════════════════════════════════
+function getStaffPerformanceDetailed(){
+  const thisMonth=today().slice(0,7);
+  const targets=JSON.parse(localStorage.getItem('ss_staff_targets')||'{}');
+  const staffList=[{id:'owner',name:DB.adminUser||'Owner'},...(DB.staff||[]).filter(s=>s.active!==false).map(s=>({id:s.id,name:s.name}))];
+  return staffList.map(s=>{
+    const monthSales=DB.sales.filter(x=>(x.staffId||'owner')===s.id&&x.time.slice(0,7)===thisMonth);
+    const total=monthSales.reduce((a,x)=>a+x.total,0);
+    const count=monthSales.length;
+    const target=targets[s.id]||0;
+    const targetPct=target>0?Math.min(999,(total/target)*100):null;
+    const monthAtt=(DB.attendance||[]).filter(a=>a.staffId===s.id&&a.date.slice(0,7)===thisMonth);
+    const lateCount=monthAtt.filter(a=>a.checkIn&&_attIsLate(a.checkIn)).length;
+    const presentDays=monthAtt.length;
+    const punctualityPct=presentDays>0?Math.round(((presentDays-lateCount)/presentDays)*100):null;
+    const leaveDays=leaveBalanceThisYear(s.id);
+    return{id:s.id,name:s.name,total,count,target,targetPct,presentDays,lateCount,punctualityPct,leaveDays};
+  }).sort((a,b)=>b.total-a.total);
+}
 function showStaffPerformance(){
-  const perf=getStaffPerformance();
+  const perf=getStaffPerformanceDetailed();
   const maxTotal=Math.max(...perf.map(p=>p.total),1);
-  openModal('📝 স্টাফ পারফরম্যান্স রিপোর্ট',`
+  openModal('📝 স্টাফ পারফরম্যান্স রিপোর্ট (এই মাস)',`
     ${perf.length?perf.map((p,i)=>`
-      <div style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;font-weight:600;color:var(--text)">
             ${i===0?'🥇':i===1?'🥈':i===2?'🥉':'👤'} ${p.name}
           </span>
           <span style="font-size:12px;color:var(--text2)">${p.count}টি বিক্রয়</span>
         </div>
-        <div style="background:var(--card2);border-radius:99px;height:8px;overflow:hidden">
+        <div style="background:var(--card);border-radius:99px;height:8px;overflow:hidden;margin-bottom:8px">
           <div style="background:linear-gradient(90deg,var(--accent),var(--accent2));height:100%;width:${(p.total/maxTotal)*100}%;border-radius:99px"></div>
         </div>
-        <div style="text-align:right;font-size:13px;font-weight:700;color:var(--accent2);margin-top:2px">${fmt(p.total)}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:700;color:var(--accent2)">${fmt(p.total)}</span>
+          ${p.targetPct!=null?`<span style="font-size:11px;font-weight:600;color:${p.targetPct>=100?'var(--success)':'var(--warning)'}">🎯 ${p.targetPct.toFixed(0)}% টার্গেট</span>`:''}
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--text2);border-top:1px solid var(--border);padding-top:8px">
+          <span>🕒 উপস্থিতি: <b style="color:var(--text)">${p.presentDays} দিন</b></span>
+          ${p.punctualityPct!=null?`<span>⏱️ সময়ানুবর্তিতা: <b style="color:${p.punctualityPct>=90?'var(--success)':p.punctualityPct>=70?'var(--warning)':'var(--danger)'}">${p.punctualityPct}%</b></span>`:''}
+          <span>🏖️ ছুটি (এ বছর): <b style="color:var(--text)">${p.leaveDays} দিন</b></span>
+        </div>
       </div>`).join('')
-    :'<div style="text-align:center;color:var(--text2);padding:20px">কোনো বিক্রয় ডেটা নেই</div>'}
+    :'<div style="text-align:center;color:var(--text2);padding:20px">কোনো স্টাফ ডেটা নেই</div>'}
   `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
 }
 
@@ -9496,7 +10302,8 @@ setInterval(()=>{
 //  📦 GRN — GOODS RECEIVED NOTE
 // ══════════════════════════════════════
 if(!DB.settings.grns) DB.settings.grns=[];
-function openGRNModal(){
+function openGRNModal(prefillItems){
+  window._grnPrefill=prefillItems||null;
   if(!canDo('canGRN')){toast('⛔ আপনার GRN-এর অনুমতি নেই','warn');return;}
   const supOpts=`<option value="">সাপ্লায়ার নির্বাচন করুন</option>`+(DB.settings.suppliers||[]).map((s,i)=>`<option value="${i}">${s.name}</option>`).join('');
   const prodOpts=DB.products.map(p=>`<option value="${p.id}">${p.name} (${fmt(p.price)})</option>`).join('');
@@ -9518,9 +10325,10 @@ function openGRNModal(){
     </div>
     <div class="form-group"><label>নোট</label><input id="grn_note" placeholder="ঐচ্ছিক মন্তব্য"></div>
     <div id="grn_total" style="text-align:right;font-weight:700;font-size:14px;color:var(--accent2)"></div>
+    <div class="form-group"><label>💰 এখনই পরিশোধিত পরিমাণ (৳) — খালি রাখলে সম্পূর্ণ বাকি ধরা হবে</label><input id="grn_paid" type="number" min="0" placeholder="0.00"></div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
      <button class="btn btn-success" onclick="saveGRN()">📦 GRN সেভ ও স্টক আপডেট</button>`);
-  window._grnItems=[];
+  window._grnItems=window._grnPrefill||[];
   updateGRNItemsUI();
 }
 function addGRNItem(){
@@ -9564,20 +10372,60 @@ function saveGRN(){
   });
   save(KEYS.products,DB.products);
   // Save GRN record
+  const grnTotal=(window._grnItems||[]).reduce((s,i)=>s+i.cost*i.qty,0);
+  const paidNow=Math.min(parseFloat(($('grn_paid')||{value:''}).value)||0,grnTotal);
   if(!DB.settings.grns) DB.settings.grns=[];
-  DB.settings.grns.unshift({id:grnId,supplier:supName,invoice:invNo,items:[...window._grnItems],note,date:today(),total:(window._grnItems||[]).reduce((s,i)=>s+i.cost*i.qty,0)});
+  DB.settings.grns.unshift({id:grnId,supplier:supName,invoice:invNo,items:[...window._grnItems],note,date:today(),total:grnTotal,paid:paidNow});
   if(DB.settings.grns.length>100) DB.settings.grns=DB.settings.grns.slice(0,100);
   save(KEYS.settings,DB.settings);
+  if(paidNow>0) recordSupplierPayment(grnId,supName,paidNow,'GRN তৈরির সময় পরিশোধ');
   closeModal();renderProducts();
   logActivity('📦','GRN রেকর্ড',`${grnId} — ${supName} — ${window._grnItems.length}টি পণ্য`);
   addNotif('📦 পণ্য গ্রহণ',`${supName} থেকে ${window._grnItems.length}টি পণ্যের স্টক আপডেট হয়েছে`,'info');
-  toast(`✅ ${grnId} — স্টক আপডেট হয়েছে`);
+  const due=grnTotal-paidNow;
+  toast(due>0?`✅ ${grnId} — স্টক আপডেট হয়েছে (বাকি: ${fmt(due)})`:`✅ ${grnId} — স্টক আপডেট হয়েছে (সম্পূর্ণ পরিশোধিত)`);
   realtimeUpdate();
+}
+// ── Supplier due/payment tracking ──
+function grnDue(g){ return Math.max(0,(g.total||0)-(g.paid||0)); }
+function supplierTotalDue(supName){
+  return (DB.settings.grns||[]).filter(g=>g.supplier===supName).reduce((s,g)=>s+grnDue(g),0);
+}
+function recordSupplierPayment(grnId,supName,amount,note){
+  if(!DB.supPayments) DB.supPayments=[];
+  DB.supPayments.unshift({id:`sp${uid()}`,grnId,supplier:supName,amount,note:note||'',date:new Date().toISOString()});
+  save(KEYS.supPayments,DB.supPayments);
+}
+function openPaySupplierModal(grnId){
+  const g=(DB.settings.grns||[]).find(x=>x.id===grnId);if(!g)return;
+  const due=grnDue(g);
+  openModal(`💰 পরিশোধ — ${g.id}`,`
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">সাপ্লায়ার: <b style="color:var(--text)">${g.supplier}</b> &nbsp;|&nbsp; মোট: ${fmt(g.total)} &nbsp;|&nbsp; পরিশোধিত: ${fmt(g.paid||0)} &nbsp;|&nbsp; বাকি: <b style="color:var(--warning)">${fmt(due)}</b></div>
+    <div class="form-group"><label>পরিশোধের পরিমাণ (৳) *</label><input id="pay_amt" type="number" min="0" max="${due}" value="${due}"></div>
+    <div class="form-group"><label>নোট (ঐচ্ছিক)</label><input id="pay_note" placeholder="যেমন: নগদ পরিশোধ"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-success" onclick="submitSupplierPayment('${grnId}')">💾 পরিশোধ রেকর্ড করুন</button>`);
+}
+function submitSupplierPayment(grnId){
+  const g=(DB.settings.grns||[]).find(x=>x.id===grnId);if(!g)return;
+  const due=grnDue(g);
+  let amt=parseFloat(($('pay_amt')||{value:0}).value)||0;
+  if(amt<=0){toast('সঠিক পরিমাণ দিন','warn');return;}
+  if(amt>due) amt=due;
+  const note=($('pay_note')||{value:''}).value.trim();
+  g.paid=(g.paid||0)+amt;
+  save(KEYS.settings,DB.settings);
+  recordSupplierPayment(grnId,g.supplier,amt,note);
+  closeModal();showGRNHistory();renderSuppliersTable();
+  toast(`✅ ${fmt(amt)} পরিশোধ রেকর্ড হয়েছে`,'success');
+  logActivity('💰','সাপ্লায়ার পরিশোধ',`${g.supplier} — ${g.id} — ${fmt(amt)}`);
 }
 function showGRNHistory(){
   const list=DB.settings.grns||[];
   openModal('📦 GRN ইতিহাস',`
-    ${list.length?list.slice(0,15).map(g=>`
+    ${list.length?list.slice(0,15).map(g=>{
+      const due=grnDue(g);
+      return `
       <div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:7px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <span style="font-size:12px;font-weight:700;color:var(--text)">${g.id}</span>
@@ -9585,8 +10433,12 @@ function showGRNHistory(){
         </div>
         <div style="font-size:12px;color:var(--text2)">${g.supplier} ${g.invoice?'| '+g.invoice:''}</div>
         <div style="font-size:11px;color:var(--text2)">${g.items.map(i=>`${i.name}(${i.qty})`).join(', ')}</div>
-        ${g.total>0?`<div style="font-size:12px;font-weight:600;color:var(--accent2);margin-top:4px">মোট: ${fmt(g.total)}</div>`:''}
-      </div>`).join('')
+        ${g.total>0?`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--accent2)">মোট: ${fmt(g.total)} ${g.paid>0?`| পরিশোধিত: ${fmt(g.paid)}`:''}</div>
+          ${due>0?`<span class="badge badge-warn" style="font-size:10px">বাকি ${fmt(due)}</span>`:'<span class="badge badge-success" style="font-size:10px">✓ পরিশোধিত</span>'}
+        </div>`:''}
+        ${due>0?`<button class="btn btn-success btn-sm" style="margin-top:6px;width:100%" onclick="openPaySupplierModal('${g.id}')">💰 পরিশোধ করুন</button>`:''}
+      </div>`;}).join('')
     :'<div style="text-align:center;color:var(--text2);padding:20px">কোনো GRN নেই</div>'}
   `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
      <button class="btn btn-primary" onclick="closeModal();openGRNModal()">➕ নতুন GRN</button>`);
@@ -10062,6 +10914,75 @@ function updateBranchSelector(){
 function getCurrentBranchName(){
   const b=(DB.settings.branches||[]).find(x=>x.id===_currentBranchId);
   return b?b.name:'';
+}
+
+// ══════════════════════════════════════
+//  🔄 STOCK TRANSFER (between branches)
+// ══════════════════════════════════════
+if(!DB.settings.stockTransfers) DB.settings.stockTransfers=[];
+function openStockTransferModal(){
+  const branches=DB.settings.branches||[];
+  if(branches.length<2){toast('স্টক ট্রান্সফারের জন্য কমপক্ষে ২টি শাখা যোগ করুন','warn');return;}
+  const prodOpts=DB.products.map(p=>`<option value="${p.id}">${p.name} (স্টক: ${p.stock})</option>`).join('');
+  const branchOpts=branches.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+  openModal('🔄 নতুন স্টক ট্রান্সফার',`
+    <div class="form-group"><label>পণ্য *</label>
+      <select id="st_prod" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">${prodOpts}</select>
+    </div>
+    <div class="form-group"><label>পরিমাণ *</label><input id="st_qty" type="number" min="1" value="1"></div>
+    <div class="two-col">
+      <div class="form-group"><label>থেকে (শাখা) *</label>
+        <select id="st_from" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">${branchOpts}</select>
+      </div>
+      <div class="form-group"><label>পর্যন্ত (শাখা) *</label>
+        <select id="st_to" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">${branchOpts}</select>
+      </div>
+    </div>
+    <div class="form-group"><label>নোট (ঐচ্ছিক)</label><input id="st_note" placeholder="যেমন: স্টক ঘাটতি পূরণের জন্য"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveStockTransfer()">💾 ট্রান্সফার রেকর্ড করুন</button>`);
+}
+function saveStockTransfer(){
+  const pid=($('st_prod')||{value:''}).value;
+  const qty=parseInt(($('st_qty')||{value:1}).value)||0;
+  const from=($('st_from')||{value:''}).value;
+  const to=($('st_to')||{value:''}).value;
+  const note=($('st_note')||{value:''}).value.trim();
+  const p=DB.products.find(x=>x.id===pid);
+  if(!p||qty<=0){toast('সঠিক পণ্য ও পরিমাণ দিন','warn');return;}
+  if(from===to){toast('একই শাখায় ট্রান্সফার করা যাবে না','warn');return;}
+  if(qty>p.stock){toast('স্টকে এত পরিমাণ পণ্য নেই','warn');return;}
+  if(!DB.settings.stockTransfers) DB.settings.stockTransfers=[];
+  const rec={id:`ST-${Date.now().toString().slice(-8)}`,productId:pid,productName:p.name,qty,from,to,note,date:new Date().toISOString()};
+  DB.settings.stockTransfers.unshift(rec);
+  if(DB.settings.stockTransfers.length>100) DB.settings.stockTransfers=DB.settings.stockTransfers.slice(0,100);
+  logStockMovement(pid,'transfer',qty,`${from} → ${to}${note?' — '+note:''}`);
+  save(KEYS.products,DB.products);
+  save(KEYS.settings,DB.settings);
+  closeModal();renderStockTransfers();
+  toast(`✅ ${p.name} — ${qty} ইউনিট ${from} থেকে ${to} এ ট্রান্সফার রেকর্ড হয়েছে`,'success');
+  logActivity('🔄','স্টক ট্রান্সফার',`${p.name} × ${qty} — ${from} → ${to}`);
+}
+function deleteStockTransfer(id){
+  confirm2('এই ট্রান্সফার রেকর্ড মুছে ফেলবেন?',()=>{
+    DB.settings.stockTransfers=(DB.settings.stockTransfers||[]).filter(t=>t.id!==id);
+    save(KEYS.settings,DB.settings);
+    renderStockTransfers();
+    toast('মুছে ফেলা হয়েছে','warn');
+  });
+}
+function renderStockTransfers(){
+  const tb=$('stockTransferTableBody');if(!tb)return;
+  const list=DB.settings.stockTransfers||[];
+  tb.innerHTML=list.length?list.slice(0,50).map(t=>`<tr>
+    <td style="font-weight:600">${t.productName}</td>
+    <td style="text-align:center">${t.qty}</td>
+    <td>${t.from}</td>
+    <td>${t.to}</td>
+    <td class="hide-xs" style="font-size:11px;color:var(--text2)">${new Date(t.date).toLocaleDateString('bn-BD')}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteStockTransfer('${t.id}')">🗑️</button></td>
+  </tr>`).join('')
+  :'<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:16px">কোনো স্টক ট্রান্সফার নেই</td></tr>';
 }
 
 // ══════════════════════════════════════
@@ -11466,6 +12387,7 @@ function openQtyInputModal(pid){
   const p=DB.products.find(x=>x.id===pid);if(!p||p.stock<1) return;
   const existing=posBill.find(x=>x.productId===pid);
   const currentQty=existing?.qty||0;
+  const isWeighted=['কেজি','কেজি.','কে.জি','kg','Kg','লিটার','লি.','গ্রাম','গ্রা.'].some(u=>(p.unit||'').includes(u));
   openModal(`🔢 পরিমাণ — ${p.name}`,`
     <div style="text-align:center;padding:8px 0">
       <div style="font-size:28px;margin-bottom:8px">${p.img?`<img src="${p.img}" style="width:60px;height:60px;border-radius:10px;object-fit:cover">`:(p.icon||'📦')}</div>
@@ -11473,11 +12395,11 @@ function openQtyInputModal(pid){
       <div style="font-size:12px;color:var(--text2)">স্টক: ${p.stock} ${p.unit||'পিস'} | দাম: ${fmt(p.price)}</div>
     </div>
     <div class="form-group">
-      <label>পরিমাণ (সর্বোচ্চ ${p.stock})</label>
-      <input id="directQtyInput" type="number" min="0" max="${p.stock}" value="${currentQty||1}" style="text-align:center;font-size:28px;font-weight:800" autofocus>
+      <label>পরিমাণ (সর্বোচ্চ ${p.stock})${isWeighted?' — দশমিক চলবে (যেমন: ১.৫)':''}</label>
+      <input id="directQtyInput" type="number" min="0" max="${p.stock}" step="${isWeighted?'0.01':'1'}" value="${currentQty||1}" style="text-align:center;font-size:28px;font-weight:800" autofocus>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px">
-      ${[1,2,3,5,10,12,24,50].map(n=>`<button onclick="$('directQtyInput').value=Math.min(${p.stock},${n})" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">${n}</button>`).join('')}
+      ${(isWeighted?[0.25,0.5,0.75,1,1.5,2,2.5,5]:[1,2,3,5,10,12,24,50]).map(n=>`<button onclick="$('directQtyInput').value=Math.min(${p.stock},${n})" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">${n}</button>`).join('')}
     </div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
      <button class="btn btn-danger btn-sm" onclick="removePOS('${pid}');closeModal()" ${!currentQty?'style="display:none"':''}>🗑️ সরান</button>
@@ -11485,7 +12407,7 @@ function openQtyInputModal(pid){
   setTimeout(()=>{const di=$('directQtyInput');if(di){di.focus();di.select();}},150);
 }
 function setDirectQty(pid){
-  const qty=parseInt(($('directQtyInput')||{value:1}).value)||0;
+  const qty=parseFloat(($('directQtyInput')||{value:1}).value)||0;
   const p=DB.products.find(x=>x.id===pid);if(!p)return;
   if(qty<=0){removePOS(pid);closeModal();return;}
   if(qty>p.stock){toast(`সর্বোচ্চ স্টক ${p.stock}`,'warn');return;}
@@ -12039,7 +12961,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <button class="calc-btn eq" onclick="calcInput('=')">=</button>
   </div>
 </div>
-
 
 </body>
 </html>
