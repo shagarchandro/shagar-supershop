@@ -2466,6 +2466,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       </div>
 
       <div class="stat-grid" id="attStats"></div>
+      <div id="attStaffSummary"></div>
 
       <div class="toolbar">
         <input type="date" id="attFrom" onchange="renderAttendance()">
@@ -2527,11 +2528,20 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <input type="month" id="payrollMonth" onchange="renderPayroll()">
         <button class="btn btn-primary btn-sm" onclick="generatePayrollForMonth()">🔄 এই মাসের বেতন তৈরি করুন</button>
         <div class="spacer"></div>
+        <button class="btn btn-warn btn-sm" onclick="openAdvanceModal()">💰 অগ্রিম বেতন দিন</button>
+        <button class="btn btn-success btn-sm" onclick="bulkMarkPayrollPaid()">✅ সব বাকি পরিশোধ করুন</button>
         <button class="btn btn-success btn-sm" onclick="exportPayrollCSV()">📥 CSV ডাউনলোড</button>
       </div>
       <div class="table-wrap"><table>
         <thead><tr><th>স্টাফ</th><th>মাস</th><th>বেতন</th><th>স্ট্যাটাস</th><th class="hide-xs">পরিশোধের তারিখ</th><th>একশন</th></tr></thead>
         <tbody id="payrollBody"></tbody>
+      </table></div>
+
+      <div class="section-title" style="margin-top:24px">💰 অগ্রিম বেতন (Salary Advance)</div>
+      <p style="font-size:11px;color:var(--text2);margin-bottom:10px">স্টাফকে দেওয়া অগ্রিম বেতন এখানে ট্র্যাক হবে — পরবর্তী মাসের বেতন তৈরি করার সময় স্বয়ংক্রিয়ভাবে কর্তন হিসেবে যোগ হয়ে যাবে।</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>স্টাফ</th><th>পরিমাণ</th><th class="hide-xs">তারিখ</th><th class="hide-xs">নোট</th><th>অবস্থা</th><th>একশন</th></tr></thead>
+        <tbody id="advanceTableBody"></tbody>
       </table></div>
     </div>
 
@@ -3878,32 +3888,90 @@ ${s.receiptFooter?`<div style="text-align:center;font-size:11px;color:#666;margi
 function downloadInvoicePDF(sale){
   if(!sale){toast('ডেটা পাওয়া যায়নি','danger');return;}
   const html=buildInvoiceHTML(sale);
-  // Method 1: Blob download (direct — no popup)
+  exportHtmlToPDF(html,'Invoice-'+sale.id+'.pdf',{landscape:false});
+}
+
+// ══════════════════════════════════════
+//  📕 TRUE PDF EXPORT ENGINE (jsPDF + html2canvas, lazy-loaded via CDN)
+//  Converts any print-style HTML string into a real downloadable .pdf file.
+//  Falls back to opening printable HTML (old behavior) if libraries fail to load.
+// ══════════════════════════════════════
+function _loadPdfLibs(cb){
+  if(window.jspdf&&window.html2canvas){cb();return;}
+  let pending=0,failed=false;
+  function done(){pending--;if(pending<=0&&!failed)cb();}
+  function fail(){if(failed)return;failed=true;toast('⚠️ PDF লাইব্রেরি লোড হয়নি (ইন্টারনেট চেক করুন) — প্রিন্টেবল HTML খোলা হচ্ছে','warn');}
+  if(!window.jspdf){
+    pending++;
+    const s1=document.createElement('script');
+    s1.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s1.onload=done;s1.onerror=fail;
+    document.head.appendChild(s1);
+  }
+  if(!window.html2canvas){
+    pending++;
+    const s2=document.createElement('script');
+    s2.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    s2.onload=done;s2.onerror=fail;
+    document.head.appendChild(s2);
+  }
+  if(pending===0) cb();
+  window._pdfLibFail=fail;
+}
+function _fallbackOpenPrintableHTML(html){
   try{
     const blob=new Blob([html],{type:'text/html;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;
-    a.download='Invoice-'+sale.id+'.html';
-    a.style.display='none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},1500);
-    toast('📥 Invoice ডাউনলোড হচ্ছে...','success');
-  }catch(e){
-    // Method 2: data URI fallback
+    a.href=url;a.target='_blank';a.rel='noopener';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},2000);
+    toast('📄 প্রিন্টেবল ভার্সন খুলছে — প্রিন্ট ডায়ালগ থেকে "Save as PDF" বেছে নিন');
+  }catch(e){toast('খোলা যায়নি: '+e.message,'danger');}
+}
+function exportHtmlToPDF(html,filename,opts){
+  opts=opts||{};
+  const landscape=!!opts.landscape;
+  toast('📄 PDF তৈরি হচ্ছে, একটু অপেক্ষা করুন...','info');
+  _loadPdfLibs(()=>{
+    if(!window.jspdf||!window.html2canvas){_fallbackOpenPrintableHTML(html);return;}
     try{
-      const uri='data:text/html;charset=utf-8,'+encodeURIComponent(html);
-      const a=document.createElement('a');
-      a.href=uri;a.download='Invoice-'+sale.id+'.html';
-      a.style.display='none';
-      document.body.appendChild(a);a.click();
-      setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}},1000);
-      toast('📥 Invoice ডাউনলোড হচ্ছে...','success');
-    }catch(e2){
-      toast('ডাউনলোড হয়নি: '+e2.message,'danger');
+      const container=document.createElement('div');
+      container.style.cssText=`position:fixed;left:-99999px;top:0;width:${landscape?'1122px':'794px'};background:#fff;z-index:-1`;
+      const bodyMatch=html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      const styleBlocks=[...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map(m=>m[1]).join('\n');
+      container.innerHTML=`<style>${styleBlocks}</style><div style="width:100%">${bodyMatch?bodyMatch[1]:html}</div>`;
+      document.body.appendChild(container);
+      setTimeout(()=>{
+        window.html2canvas(container,{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:container.scrollWidth}).then(canvas=>{
+          try{document.body.removeChild(container);}catch(e){}
+          const {jsPDF}=window.jspdf;
+          const pdf=new jsPDF({orientation:landscape?'landscape':'portrait',unit:'mm',format:'a4'});
+          const pageW=pdf.internal.pageSize.getWidth();
+          const pageH=pdf.internal.pageSize.getHeight();
+          const imgW=pageW;
+          const imgH=canvas.height*imgW/canvas.width;
+          let heightLeft=imgH,position=0;
+          const imgData=canvas.toDataURL('image/jpeg',0.95);
+          pdf.addImage(imgData,'JPEG',0,position,imgW,imgH,undefined,'FAST');
+          heightLeft-=pageH;
+          while(heightLeft>0){
+            position=heightLeft-imgH;
+            pdf.addPage();
+            pdf.addImage(imgData,'JPEG',0,position,imgW,imgH,undefined,'FAST');
+            heightLeft-=pageH;
+          }
+          pdf.save(filename);
+          toast('✅ PDF ডাউনলোড হয়েছে','success');
+        }).catch(err=>{
+          try{document.body.removeChild(container);}catch(e){}
+          _fallbackOpenPrintableHTML(html);
+        });
+      },250);
+    }catch(e){
+      _fallbackOpenPrintableHTML(html);
     }
-  }
+  });
 }
 
 // A4 ইনভয়েস সরাসরি প্রিন্ট (ডাউনলোড না করে নতুন উইন্ডোতে প্রিন্ট ডায়ালগ খুলবে)
@@ -4867,6 +4935,21 @@ function applyBulkOrderStatus(){
     renderOrders();realtimeUpdate();
   });
 }
+// ══════════════════════════════════════
+//  📥 SHARED CSV DOWNLOAD HELPER
+//  Ensures proper UTF-8 BOM (Bangla shows correctly in Excel) + correct
+//  field escaping (commas/quotes in names won't break columns) + no data-URI
+//  length limits (uses Blob so large exports never get truncated).
+// ══════════════════════════════════════
+function _downloadCSV(rows,filename){
+  const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},1500);
+}
 function exportOrdersCSV(){
   const q=($('ordSearch')||{value:''}).value.toLowerCase();
   const st=($('ordStatus')||{value:''}).value;
@@ -5668,18 +5751,8 @@ function exportSalesPDF(){
   const list=_getFilteredSalesList();
   if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
   const html=buildSalesReportHTML(list);
-  try{
-    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;a.target='_blank';a.rel='noopener';
-    document.body.appendChild(a);a.click();
-    setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},2000);
-    toast('📕 রিপোর্ট খুলছে — প্রিন্ট ডায়ালগ থেকে "Save as PDF" বেছে নিন');
-    logActivity('📕','সেলস রিপোর্ট এক্সপোর্ট','PDF রিপোর্ট জেনারেট করা হয়েছে');
-  }catch(e){
-    toast('রিপোর্ট খোলা যায়নি: '+e.message,'danger');
-  }
+  exportHtmlToPDF(html,`Sales-Report-${today()}.pdf`,{landscape:true});
+  logActivity('📕','সেলস রিপোর্ট এক্সপোর্ট','PDF রিপোর্ট জেনারেট করা হয়েছে');
 }
 function buildSalesReportHTML(list){
   const s=DB.settings;
@@ -5780,11 +5853,10 @@ function _getFilteredSalesList(){
 }
 function exportCSV(){
   const list=_getFilteredSalesList();
+  if(!list.length){toast('কোনো ডেটা নেই','warn');return;}
   const rows=[['ID','কাস্টমার','পেমেন্ট','ধরন','মোট','তারিখ']];
   list.forEach(s=>rows.push([s.id,s.custName||'সাধারণ',s.payment||'',s.type,s.total.toFixed(2),s.time.slice(0,10)]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download=`sales_${today()}.csv`;a.click();
+  _downloadCSV(rows,`sales_${today()}.csv`);
   toast('CSV ডাউনলোড হচ্ছে 📥');
 }
 function exportSalesExcel(){
@@ -7488,30 +7560,60 @@ function bulkImportCSV(){
   },200);
 }
 
+// ── Robust CSV line parser (handles quoted fields with embedded commas) ──
+function _parseCSVLine(line){
+  const result=[];
+  let cur='',inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(inQuotes){
+      if(ch==='"'){
+        if(line[i+1]==='"'){cur+='"';i++;}
+        else inQuotes=false;
+      }else cur+=ch;
+    }else{
+      if(ch==='"') inQuotes=true;
+      else if(ch===','){result.push(cur);cur='';}
+      else cur+=ch;
+    }
+  }
+  result.push(cur);
+  return result.map(s=>s.trim());
+}
 function processCSVImport(){
   const fi=$('csvImportFile');
   if(!fi||!fi.files[0]){toast('ফাইল নির্বাচন করুন','warn');return;}
   const r=new FileReader();
   r.onload=e=>{
-    const lines=e.target.result.split('\n').filter(l=>l.trim());
-    let added=0,errors=0;
+    // Strip UTF-8 BOM if present (common when the CSV was exported from Excel/this app)
+    const raw=String(e.target.result).replace(/^\uFEFF/,'');
+    let lines=raw.split(/\r?\n/).filter(l=>l.trim());
+    // Auto-skip header row if it looks like our template header
+    if(lines.length&&/^["]?নাম["]?\s*,/.test(lines[0])) lines=lines.slice(1);
+    let added=0,errors=0,catsCreated=0;
     lines.forEach(line=>{
-      const cols=line.split(',').map(c=>c.trim());
+      const cols=_parseCSVLine(line);
       if(cols.length<3)return;
       const [name,catName,priceStr,costStr,stockStr,unit,barcode]=cols;
       const price=parseFloat(priceStr)||0;
       const cost=parseFloat(costStr)||0;
       const stock=parseInt(stockStr)||0;
       if(!name||!price){errors++;return;}
-      const cat=DB.cats.find(c=>c.name===catName)||DB.cats[0];
+      let cat=catName?DB.cats.find(c=>c.name.toLowerCase()===catName.toLowerCase()):null;
+      if(!cat&&catName){
+        cat={id:`c${uid()}`,name:catName,icon:'🏷️',color:'#e94560'};
+        DB.cats.push(cat);catsCreated++;
+      }
+      if(!cat) cat=DB.cats[0];
       if(!DB.products.find(p=>p.barcode===barcode&&barcode)){
         DB.products.push({id:`p${uid()}`,name,cat:cat?.id||'',price,cost,stock,unit:unit||'পিস',barcode:barcode||'',icon:'📦',img:null,desc:''});
         added++;
       }else{errors++;}
     });
+    if(catsCreated) save(KEYS.cats,DB.cats);
     save(KEYS.products,DB.products);
-    closeModal();renderProducts();renderShop();
-    toast(`✅ ${added}টি পণ্য আমদানি হয়েছে${errors>0?` (${errors}টি বাদ)`:''}` );
+    closeModal();renderProducts();renderCats();renderShop();
+    toast(`✅ ${added}টি পণ্য আমদানি হয়েছে${catsCreated?`, ${catsCreated}টি নতুন ক্যাটাগরি তৈরি হয়েছে`:''}${errors>0?` (${errors}টি বাদ — দাম/নাম/ডুপ্লিকেট বারকোড)`:''}`);
     logActivity('📥','CSV আমদানি',`${added}টি পণ্য যোগ হয়েছে`);
     realtimeUpdate();
   };
@@ -7519,15 +7621,13 @@ function processCSVImport(){
 }
 
 function exportProductsCSV(){
+  if(!DB.products.length){toast('কোনো পণ্য নেই','warn');return;}
   const rows=[['নাম','ক্যাটাগরি','বিক্রয়দাম','ক্রয়দাম','স্টক','একক','বারকোড']];
   DB.products.forEach(p=>{
     const cat=DB.cats.find(c=>c.id===p.cat);
     rows.push([p.name,cat?.name||'',p.price,p.cost||0,p.stock,p.unit||'পিস',p.barcode||'']);
   });
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download=`Products-${today()}.csv`;a.click();
+  _downloadCSV(rows,`Products-${today()}.csv`);
   toast('📤 CSV ডাউনলোড হচ্ছে');
 }
 
@@ -7924,6 +8024,34 @@ function renderAttendance(){
     `;
   }
 
+  // Per-staff summary (for the currently filtered date range) — managers/owner only
+  const summaryEl=$('attStaffSummary');
+  if(summaryEl){
+    if(isRestricted){
+      summaryEl.innerHTML='';
+    }else{
+      const byStaff={};
+      list.forEach(a=>{
+        if(!byStaff[a.staffId]) byStaff[a.staffId]={name:a.staffName,present:0,late:0,hoursMs:0};
+        byStaff[a.staffId].present++;
+        if(a.checkIn&&_attIsLate(a.checkIn)) byStaff[a.staffId].late++;
+        if(a.checkIn&&a.checkOut) byStaff[a.staffId].hoursMs+=(new Date(a.checkOut)-new Date(a.checkIn));
+      });
+      const rows=Object.values(byStaff).sort((a,b)=>b.present-a.present);
+      summaryEl.innerHTML=rows.length?`
+        <div class="section-title" style="margin-top:20px;font-size:13px">📊 স্টাফ-ভিত্তিক সারাংশ (নির্বাচিত সময়সীমা)</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:16px">
+          ${rows.map(r=>`
+            <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">${r.name}</div>
+              <div style="font-size:11px;color:var(--text2)">🗓️ উপস্থিত: <b style="color:var(--text)">${r.present} দিন</b></div>
+              <div style="font-size:11px;color:var(--text2)">⏰ দেরি: <b style="color:${r.late?'var(--warning)':'var(--text)'}">${r.late} দিন</b></div>
+              <div style="font-size:11px;color:var(--text2)">⌛ কর্মঘণ্টা: <b style="color:var(--text)">${Math.round(r.hoursMs/3600000)} ঘণ্টা</b></div>
+            </div>`).join('')}
+        </div>`:'';
+    }
+  }
+
   // Table
   const tb=$('attendanceBody');
   if(!tb) return;
@@ -8239,6 +8367,7 @@ function _payrollCurMonth(){
 function generatePayrollForMonth(){
   const month=($('payrollMonth')?.value)||_payrollCurMonth();
   if(!DB.payroll) DB.payroll=[];
+  if(!DB.settings.advances) DB.settings.advances=[];
   const staffList=[...(DB.staff||[]).filter(s=>s.active!==false).map(s=>({id:s.id,name:s.name,salary:s.salary||0,commissionPct:s.commissionPct||0}))];
   let added=0;
   staffList.forEach(s=>{
@@ -8246,13 +8375,92 @@ function generatePayrollForMonth(){
     const exists=DB.payroll.find(p=>p.staffId===s.id&&p.month===month);
     if(!exists){
       const commission=s.commissionPct>0?Math.round((DB.sales||[]).filter(x=>(x.staffId||'owner')===s.id&&x.time.slice(0,7)===month).reduce((sum,x)=>sum+x.total,0)*s.commissionPct/100):0;
-      DB.payroll.push({id:`pr${uid()}`,staffId:s.id,staffName:s.name,month,baseAmount:s.salary,bonus:commission,deduction:0,amount:s.salary+commission,status:'due',paidDate:null,commissionAmt:commission});
+      // Pending (undeducted) advances for this staff get auto-applied as deduction
+      const pendingAdv=DB.settings.advances.filter(a=>a.staffId===s.id&&!a.deducted);
+      const advTotal=pendingAdv.reduce((sum,a)=>sum+a.amount,0);
+      pendingAdv.forEach(a=>{a.deducted=true;a.deductedMonth=month;});
+      DB.payroll.push({id:`pr${uid()}`,staffId:s.id,staffName:s.name,month,baseAmount:s.salary,bonus:commission,deduction:advTotal,amount:Math.max(0,s.salary+commission-advTotal),status:'due',paidDate:null,commissionAmt:commission,advanceDeducted:advTotal});
       added++;
     }
   });
   save(KEYS.payroll,DB.payroll);
-  toast(added?`✅ ${added} জন স্টাফের বেতন এন্ট্রি তৈরি হয়েছে (কমিশনসহ)`:'এই মাসের এন্ট্রি ইতিমধ্যে আছে','success');
+  save(KEYS.settings,DB.settings);
+  toast(added?`✅ ${added} জন স্টাফের বেতন এন্ট্রি তৈরি হয়েছে (কমিশন ও অগ্রিম সমন্বয়সহ)`:'এই মাসের এন্ট্রি ইতিমধ্যে আছে','success');
   renderPayroll();
+}
+function bulkMarkPayrollPaid(){
+  const dueList=(DB.payroll||[]).filter(p=>p.status!=='paid');
+  if(!dueList.length){toast('কোনো বাকি বেতন নেই','warn');return;}
+  confirm2(`${dueList.length}টি বাকি বেতন এন্ট্রি একসাথে পরিশোধিত মার্ক করবেন? (মোট ${fmt(dueList.reduce((s,p)=>s+p.amount,0))})`,()=>{
+    dueList.forEach(p=>{
+      p.status='paid';p.paidDate=new Date().toISOString();
+      if(!DB.expenses) DB.expenses=[];
+      DB.expenses.push({id:`e${uid()}`,title:`বেতন — ${p.staffName} (${p.month})`,cat:'Salary',amount:p.amount,date:new Date().toISOString().slice(0,10)});
+    });
+    save(KEYS.payroll,DB.payroll);save(KEYS.expenses,DB.expenses);
+    logActivity('💵','বাল্ক বেতন পরিশোধ',`${dueList.length}টি এন্ট্রি পরিশোধিত`);
+    renderPayroll();
+    toast(`✅ ${dueList.length}টি বেতন পরিশোধিত মার্ক হয়েছে`,'success');
+  });
+}
+
+// ══════════════════════════════════════
+//  💰 SALARY ADVANCE / LOAN
+// ══════════════════════════════════════
+function openAdvanceModal(){
+  const staffOptions=(DB.staff||[]).filter(s=>s.active!==false).map(s=>({id:s.id,name:s.name}));
+  if(!staffOptions.length){toast('আগে স্টাফ যোগ করুন','warn');return;}
+  openModal('💰 অগ্রিম বেতন দিন',`
+    <div class="form-group"><label>স্টাফ *</label>
+      <select id="adv_staff" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+        ${staffOptions.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>পরিমাণ (৳) *</label><input id="adv_amt" type="number" min="1"></div>
+    <div class="form-group"><label>নোট (ঐচ্ছিক)</label><input id="adv_note" placeholder="যেমন: পারিবারিক প্রয়োজনে"></div>
+    <div style="font-size:11px;color:var(--text2);background:var(--card2);padding:8px 10px;border-radius:7px">
+      ℹ️ এই পরিমাণ পরবর্তী মাসের বেতন তৈরি করার সময় স্বয়ংক্রিয়ভাবে কর্তন হিসেবে যুক্ত হয়ে যাবে।
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="saveAdvance()">💾 দিন</button>`);
+}
+function saveAdvance(){
+  const staffId=($('adv_staff')||{value:''}).value;
+  const amount=parseFloat(($('adv_amt')||{value:0}).value)||0;
+  const note=($('adv_note')||{value:''}).value.trim();
+  const staffName=(DB.staff||[]).find(s=>s.id===staffId)?.name||'';
+  if(!staffId||amount<=0){toast('স্টাফ ও সঠিক পরিমাণ দিন','warn');return;}
+  if(!DB.settings.advances) DB.settings.advances=[];
+  DB.settings.advances.unshift({id:`adv${uid()}`,staffId,staffName,amount,note,date:new Date().toISOString(),deducted:false,deductedMonth:null});
+  save(KEYS.settings,DB.settings);
+  // Also log to expenses so cash-out is reflected immediately
+  if(!DB.expenses) DB.expenses=[];
+  DB.expenses.push({id:`e${uid()}`,title:`অগ্রিম বেতন — ${staffName}`,cat:'Salary Advance',amount,date:today()});
+  save(KEYS.expenses,DB.expenses);
+  closeModal();renderAdvanceTable();
+  toast(`✅ ${staffName}-কে ${fmt(amount)} অগ্রিম দেওয়া হয়েছে`,'success');
+  logActivity('💰','অগ্রিম বেতন',`${staffName} — ${fmt(amount)}`);
+}
+function deleteAdvance(id){
+  confirm2('এই অগ্রিম এন্ট্রি মুছে ফেলবেন?',()=>{
+    DB.settings.advances=(DB.settings.advances||[]).filter(a=>a.id!==id);
+    save(KEYS.settings,DB.settings);
+    renderAdvanceTable();
+    toast('মুছে ফেলা হয়েছে','warn');
+  });
+}
+function renderAdvanceTable(){
+  const tb=$('advanceTableBody');if(!tb)return;
+  const list=DB.settings.advances||[];
+  tb.innerHTML=list.length?list.map(a=>`<tr>
+    <td style="font-weight:600">${a.staffName}</td>
+    <td>${fmt(a.amount)}</td>
+    <td class="hide-xs" style="font-size:11px;color:var(--text2)">${new Date(a.date).toLocaleDateString('bn-BD')}</td>
+    <td class="hide-xs" style="font-size:11px;color:var(--text2)">${a.note||'—'}</td>
+    <td>${a.deducted?`<span class="badge badge-success">✓ কর্তিত (${a.deductedMonth})</span>`:'<span class="badge badge-warn">⏳ বকেয়া</span>'}</td>
+    <td>${!a.deducted?`<button class="btn btn-danger btn-sm" onclick="deleteAdvance('${a.id}')">🗑️</button>`:'—'}</td>
+  </tr>`).join('')
+  :'<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:16px">কোনো অগ্রিম বেতন এন্ট্রি নেই</td></tr>';
 }
 function openAdjustPayrollModal(id){
   const p=(DB.payroll||[]).find(x=>x.id===id);if(!p)return;
@@ -8285,8 +8493,7 @@ function saveAdjustedPayroll(id){
   closeModal();renderPayroll();
   toast('✅ বেতন সমন্বয় সেভ হয়েছে','success');
 }
-function printPayslip(id){
-  const p=(DB.payroll||[]).find(x=>x.id===id);if(!p)return;
+function _buildPayslipHTML(p){
   const s=DB.settings;
   const base=p.baseAmount??p.amount;
   const bonus=p.bonus||0, deduction=p.deduction||0;
@@ -8295,7 +8502,7 @@ function printPayslip(id){
   const daysPresent=(DB.attendance||[]).filter(a=>a.staffId===p.staffId&&a.date>=monthStart&&a.date<=monthEnd).length;
   const monthNames=['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
   const monthLabel=`${monthNames[m-1]} ${y}`;
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Payslip — ${p.staffName} — ${p.month}</title>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Payslip — ${p.staffName} — ${p.month}</title>
   <style>
   *{margin:0;padding:0;box-sizing:border-box}
   @page{size:A4;margin:15mm}
@@ -8330,7 +8537,7 @@ function printPayslip(id){
     <tbody>
       <tr><td>মূল বেতন</td><td style="text-align:right">${fmt(base)}</td></tr>
       ${bonus>0?`<tr><td>➕ ${p.commissionAmt>0?'বিক্রয় কমিশন + বোনাস':'বোনাস'}</td><td style="text-align:right;color:#00b48c">+${fmt(bonus)}</td></tr>`:''}
-      ${deduction>0?`<tr><td>➖ কর্তন</td><td style="text-align:right;color:#e94560">-${fmt(deduction)}</td></tr>`:''}
+      ${deduction>0?`<tr><td>➖ কর্তন${p.advanceDeducted>0?' (অগ্রিম বেতন সমন্বয়সহ)':''}</td><td style="text-align:right;color:#e94560">-${fmt(deduction)}</td></tr>`:''}
       <tr class="net-row"><td>নিট বেতন (Net Pay)</td><td style="text-align:right">${fmt(p.amount)}</td></tr>
     </tbody>
   </table>
@@ -8338,8 +8545,11 @@ function printPayslip(id){
     <div class="sign-line">স্টাফের স্বাক্ষর</div>
     <div class="sign-line">কর্তৃপক্ষের স্বাক্ষর</div>
   </div>
-  <script>window.addEventListener("load",()=>{window.print();});<\/script>
   </body></html>`;
+}
+function printPayslip(id){
+  const p=(DB.payroll||[]).find(x=>x.id===id);if(!p)return;
+  const html=_buildPayslipHTML(p).replace('</body></html>','<script>window.addEventListener("load",()=>{window.print();});<\/script></body></html>');
   try{
     const blob=new Blob([html],{type:'text/html;charset=utf-8'});
     const url=URL.createObjectURL(blob);
@@ -8349,6 +8559,11 @@ function printPayslip(id){
     setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},2000);
     toast('🧾 পেস্লিপ খুলছে — প্রিন্ট ডায়ালগ ব্যবহার করুন');
   }catch(e){toast('পেস্লিপ তৈরি করতে সমস্যা হয়েছে','danger');}
+}
+function downloadPayslipPDF(id){
+  const p=(DB.payroll||[]).find(x=>x.id===id);if(!p)return;
+  const html=_buildPayslipHTML(p);
+  exportHtmlToPDF(html,`Payslip-${p.staffName}-${p.month}.pdf`,{landscape:false});
 }
 function markPayrollPaid(id){
   const p=(DB.payroll||[]).find(x=>x.id===id);if(!p)return;
@@ -8404,12 +8619,14 @@ function renderPayroll(){
     <td style="display:flex;gap:6px;flex-wrap:wrap">
       ${p.status!=='paid'?`<button class="btn btn-warn btn-sm" onclick="openAdjustPayrollModal('${p.id}')" title="বোনাস/কর্তন যোগ করুন">⚙️</button>`:''}
       <button class="btn btn-info btn-sm" onclick="printPayslip('${p.id}')" title="পেস্লিপ প্রিন্ট">🧾</button>
+      <button class="btn btn-info btn-sm" onclick="downloadPayslipPDF('${p.id}')" title="PDF ডাউনলোড">📥</button>
       ${p.status!=='paid'?`<button class="btn btn-success btn-sm" onclick="markPayrollPaid('${p.id}')">✅ পরিশোধ করুন</button>`:''}
       <button class="btn btn-danger btn-sm" onclick="deletePayrollEntry('${p.id}')">🗑️</button>
     </td>
   </tr>`;
   }).join('')
   :'<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:16px">এই মাসের কোনো বেতন এন্ট্রি নেই — "এই মাসের বেতন তৈরি করুন" চাপুন</td></tr>';
+  renderAdvanceTable();
 }
 function exportPayrollCSV(){
   const month=$('payrollMonth')?.value||_payrollCurMonth();
@@ -8488,6 +8705,7 @@ function exportAllData(){
     leaves:DB.leaves,
     supPayments:DB.supPayments,
     labelSerials:DB.settings.labelSerials,
+    advances:DB.settings.advances,
   };
   const json=JSON.stringify(backup,null,2);
   const blob=new Blob([json],{type:'application/json'});
@@ -8526,6 +8744,7 @@ function importAllData(input){
       if(data.leaves){DB.leaves=data.leaves;save(KEYS.leaves,DB.leaves);}
       if(data.supPayments){DB.supPayments=data.supPayments;save(KEYS.supPayments,DB.supPayments);}
       if(data.labelSerials){DB.settings.labelSerials=data.labelSerials;save(KEYS.settings,DB.settings);}
+      if(data.advances){DB.settings.advances=data.advances;save(KEYS.settings,DB.settings);}
       if(data.adminUser){DB.adminUser=data.adminUser;save(KEYS.adminUser,DB.adminUser);}
       if(data.adminEmail){DB.adminEmail=data.adminEmail;save(KEYS.adminEmail,DB.adminEmail);}
       if(data.adminPass){DB.adminPass=data.adminPass;save(KEYS.adminPass,DB.adminPass);}
@@ -9090,15 +9309,13 @@ function showInventoryValuation(){
 }
 
 function exportInventoryValuationCSV(){
+  if(!DB.products.length){toast('কোনো পণ্য নেই','warn');return;}
   const rows=[['পণ্য','ক্যাটাগরি','স্টক','ক্রয়দাম','বিক্রয়দাম','মোট ক্রয়মূল্য','মোট বিক্রয়মূল্য']];
   DB.products.forEach(p=>{
     const cat=DB.cats.find(c=>c.id===p.cat)?.name||'';
     rows.push([p.name,cat,p.stock||0,p.cost||0,p.price||0,((p.stock||0)*(p.cost||0)).toFixed(2),((p.stock||0)*(p.price||0)).toFixed(2)]);
   });
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download=`Inventory-Valuation-${today()}.csv`;a.click();
+  _downloadCSV(rows,`Inventory-Valuation-${today()}.csv`);
   toast('📥 রিপোর্ট ডাউনলোড হচ্ছে');
 }
 
@@ -9471,10 +9688,7 @@ function exportPLCSV(){
     }));
     rows.push([label,rev.toFixed(2),cogs.toFixed(2),(rev-cogs).toFixed(2),exp.toFixed(2),(rev-cogs-exp).toFixed(2)]);
   }
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download=`ProfitLoss-${today()}.csv`;a.click();
+  _downloadCSV(rows,`ProfitLoss-${today()}.csv`);
   toast('📥 P&L রিপোর্ট ডাউনলোড হচ্ছে');
 }
 
@@ -10125,12 +10339,11 @@ function printDayClose(){
 function exportDayCloseCSV(){
   const todayStr=today();
   const todaySales=DB.sales.filter(s=>s.time.slice(0,10)===todayStr);
+  if(!todaySales.length){toast('আজ কোনো বিক্রয় নেই','warn');return;}
   const rows=[['ID','কাস্টমার','পেমেন্ট','মোট','সময়']];
   todaySales.forEach(s=>rows.push([s.id,s.custName||'সাধারণ',s.payment||'',s.total.toFixed(2),s.time]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download=`DayClose-${todayStr}.csv`;a.click();
+  _downloadCSV(rows,`DayClose-${todayStr}.csv`);
+  toast('📥 ডে-ক্লোজ CSV ডাউনলোড হচ্ছে');
 }
 
 // ══════════════════════════════════════
@@ -11700,10 +11913,8 @@ function exportCashbookCSV(){
   const rows=[['সময়','বিবরণ','ধরন','পরিমাণ'],...all.map(e=>[
     new Date(e.time).toLocaleTimeString('bn-BD'),e.desc,e.type==='in'?'আয়':'ব্যয়',e.amount
   ])];
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download=`Cashbook-${dateFilter}.csv`;a.click();
+  if(!all.length){toast('এই তারিখে কোনো লেনদেন নেই','warn');return;}
+  _downloadCSV(rows,`Cashbook-${dateFilter}.csv`);
   toast('📥 ক্যাশবুক CSV ডাউনলোড হচ্ছে');
 }
 
@@ -12270,9 +12481,9 @@ function exportCatMarginCSV(){
     const margin=d.rev>0?((profit/d.rev)*100).toFixed(1):'0';
     rows.push([name,d.rev.toFixed(2),d.cogs.toFixed(2),profit.toFixed(2),margin,d.qty]);
   });
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download=`CategoryMargin-${today()}.csv`;a.click();
+  if(!Object.keys(catData).length){toast('কোনো বিক্রয় ডেটা নেই','warn');return;}
+  _downloadCSV(rows,`CategoryMargin-${today()}.csv`);
+  toast('📥 ক্যাটাগরি মার্জিন CSV ডাউনলোড হচ্ছে');
 }
 
 // ══════════════════════════════════════
