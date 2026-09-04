@@ -3827,10 +3827,12 @@ function buildInvoiceHTML(sale){
   if(!sale) return null;
   const s=DB.settings;
   const cur=s.currency||'৳';
+  const brand=s.brandColor||'#e94560';
+  const isPaid=!(sale.dueAmount>0);
   const itemRows=sale.items.map(i=>`
     <tr>
       <td style="padding:9px 8px;border-bottom:1px solid #eee;font-size:13px">${i.name}</td>
-      <td style="padding:9px 8px;border-bottom:1px solid #eee;text-align:center">${i.qty}</td>
+      <td style="padding:9px 8px;border-bottom:1px solid #eee;text-align:center">${i.qty}<span style="color:#999;font-size:10px"> ${i.unit||'পিস'}</span></td>
       <td style="padding:9px 8px;border-bottom:1px solid #eee;text-align:right">${cur}${(+i.price).toLocaleString('en-IN')}</td>
       <td style="padding:9px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:700">${cur}${(+(i.price*i.qty)).toLocaleString('en-IN')}</td>
     </tr>`).join('');
@@ -3839,12 +3841,15 @@ function buildInvoiceHTML(sale){
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 @page{size:A4;margin:14mm}
-body{font-family:Arial,sans-serif;font-size:13px;color:#1a2639;padding:36px;background:#fff}
-.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid #e94560}
-.shop-name{font-size:26px;font-weight:900;color:#e94560}
+body{font-family:Arial,sans-serif;font-size:13px;color:#1a2639;padding:36px;background:#fff;position:relative}
+.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid ${brand}}
+.shop-name{font-size:26px;font-weight:900;color:${brand}}
 .shop-info{font-size:12px;color:#666;margin-top:5px;line-height:1.8}
 .inv-label{font-size:28px;font-weight:900;color:#1a2639;text-align:right}
 .inv-sub{font-size:12px;color:#888;text-align:right;margin-top:5px;line-height:1.8}
+.status-ribbon{display:inline-block;margin-top:6px;padding:4px 14px;border-radius:99px;font-size:11px;font-weight:800;letter-spacing:.5px}
+.status-paid{background:#d4f5ec;color:#00875a}
+.status-due{background:#ffe3e8;color:#c0223d}
 .info-row{display:flex;gap:16px;margin-bottom:20px}
 .info-box{flex:1;background:#f8fafc;border-radius:8px;padding:12px 14px;border:1px solid #e2eaf4}
 .info-lbl{font-size:10px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px}
@@ -3855,12 +3860,16 @@ thead tr{background:#1a2639}
 thead th{padding:10px 8px;text-align:left;font-size:11px;font-weight:700;color:#fff;letter-spacing:.4px}
 thead th:not(:first-child){text-align:right}
 tbody tr:nth-child(even){background:#f8fafc}
-.totals-wrap{display:flex;justify-content:flex-end;margin-bottom:24px}
+.totals-wrap{display:flex;justify-content:flex-end;margin-bottom:16px}
 .totals{width:280px;background:#f8fafc;border-radius:9px;padding:14px;border:1px solid #e2eaf4}
 .tot-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid #e2eaf4;color:#444}
 .tot-row:last-child{border:none}
-.tot-row.grand{font-size:17px;font-weight:900;color:#e94560;padding-top:10px;margin-top:4px;border-top:2px solid #1a2639}
+.tot-row.grand{font-size:17px;font-weight:900;color:${brand};padding-top:10px;margin-top:4px;border-top:2px solid #1a2639}
 .badge{padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:#d4edda;color:#155724}
+.split-box{background:#f0f4fd;border:1px solid #dbe4f7;border-radius:8px;padding:10px 12px;margin-bottom:16px;display:flex;gap:20px;justify-content:flex-end}
+.split-item{text-align:right}
+.split-item .lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px}
+.split-item .amt{font-size:14px;font-weight:800;color:#1a2639}
 .footer-note{text-align:center;margin-top:20px;padding-top:14px;border-top:1px dashed #ccc;font-size:11px;color:#aaa}
 </style></head><body>
 <div class="top">
@@ -3870,14 +3879,16 @@ tbody tr:nth-child(even){background:#f8fafc}
     <div class="shop-info">${s.addr||''}<br>📞 ${s.phone||''}</div></div>
   </div>
   <div><div class="inv-label">INVOICE</div>
-    <div class="inv-sub"><b>${sale.id}</b><br>${new Date(sale.time).toLocaleDateString('bn-BD')}</div></div>
+    <div class="inv-sub"><b>${sale.id}</b><br>${new Date(sale.time).toLocaleDateString('bn-BD')}</div>
+    <div style="text-align:right"><span class="status-ribbon ${isPaid?'status-paid':'status-due'}">${isPaid?'✓ পরিশোধিত':'⚠ বাকি আছে'}</span></div>
+  </div>
 </div>
 <div class="info-row">
   <div class="info-box"><div class="info-lbl">Bill To</div>
     <div class="info-val">${sale.custName||'সাধারণ কাস্টমার'}</div>
     <div class="info-val2">${sale.custPhone?'📞 '+sale.custPhone:''}</div></div>
   <div class="info-box"><div class="info-lbl">Payment</div>
-    <div class="info-val">${sale.payment||'Cash'}</div>
+    <div class="info-val">${sale.splitCash>0||sale.splitMobile>0?'💳 Split Payment':(sale.payment||'Cash')}</div>
     <div class="info-val2" style="margin-top:5px"><span class="badge">✓ ${sale.status||'Delivered'}</span></div></div>
   <div class="info-box"><div class="info-lbl">ধরন</div>
     <div class="info-val">${sale.type==='online'?'🌐 Online':'🏪 Offline'}</div>
@@ -3889,15 +3900,21 @@ tbody tr:nth-child(even){background:#f8fafc}
   <thead><tr><th>পণ্য</th><th style="text-align:center">পরিমাণ</th><th style="text-align:right">একক দাম</th><th style="text-align:right">মোট</th></tr></thead>
   <tbody>${itemRows}</tbody>
 </table>
+${(sale.splitCash>0||sale.splitMobile>0)?`
+<div class="split-box">
+  ${sale.splitCash>0?`<div class="split-item"><div class="lbl">💵 নগদ</div><div class="amt">${cur}${(+sale.splitCash).toFixed(2)}</div></div>`:''}
+  ${sale.splitMobile>0?`<div class="split-item"><div class="lbl">📱 মোবাইল ব্যাংকিং</div><div class="amt">${cur}${(+sale.splitMobile).toFixed(2)}</div></div>`:''}
+</div>`:''}
 <div class="totals-wrap"><div class="totals">
   <div class="tot-row"><span>সাবটোটাল</span><span>${cur}${(+sale.subtotal).toLocaleString('en-IN')}</span></div>
-  ${sale.discount&&sale.discount>0?`<div class="tot-row"><span>ছাড়</span><span style="color:#e94560">− ${cur}${(+sale.discount).toFixed(2)}</span></div>`:''}
+  ${sale.discount&&sale.discount>0?`<div class="tot-row"><span>ছাড়</span><span style="color:${brand}">− ${cur}${(+sale.discount).toFixed(2)}</span></div>`:''}
   <div class="tot-row"><span>ট্যাক্স (${taxRate()}%)</span><span>${cur}${(+sale.tax).toFixed(2)}</span></div>
   <div class="tot-row grand"><span>সর্বমোট</span><span>${cur}${(+sale.total).toFixed(2)}</span></div>
   ${sale.dueAmount>0?`
   <div class="tot-row"><span>জমা দিয়েছেন</span><span style="color:#00b48c">${cur}${(+sale.paidAmount).toFixed(2)}</span></div>
-  <div class="tot-row" style="font-weight:800;color:#e94560"><span>📒 বাকি</span><span>${cur}${(+sale.dueAmount).toFixed(2)}</span></div>`:''}
+  <div class="tot-row" style="font-weight:800;color:${brand}"><span>📒 বাকি</span><span>${cur}${(+sale.dueAmount).toFixed(2)}</span></div>`:''}
 </div></div>
+${sale.dueAmount>0?`<div style="text-align:center;font-size:11px;color:#c0223d;background:#ffe3e8;border-radius:8px;padding:8px;margin-bottom:16px">⚠️ অনুগ্রহ করে যত দ্রুত সম্ভব বাকি পরিশোধ করুন — ধন্যবাদ।</div>`:''}
 <div class="footer-note">ধন্যবাদ — ${s.name||'SuperShop'} | ${s.addr||''}</div>
 ${s.receiptFooter?`<div style="text-align:center;font-size:11px;color:#666;margin-top:6px;padding-top:6px;border-top:1px dashed #ccc">${s.receiptFooter}</div>`:''}
 </body></html>`;
