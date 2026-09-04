@@ -2366,6 +2366,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <div class="page" id="page-due">
       <div class="page-header"><h2>📒 বাকি / Due পেমেন্ট ব্যবস্থাপনা</h2><p>আংশিক পরিশোধিত বিক্রয়ের তালিকা ও আদায়</p></div>
       <div class="stat-grid" id="dueStats"></div>
+      <div id="dueAgingSummary" style="margin-bottom:16px"></div>
       <div class="toolbar">
         <input type="text" id="dueSearch" placeholder="🔍 কাস্টমার নাম বা ফোন..." oninput="renderDuePage()">
         <div class="spacer"></div>
@@ -2374,6 +2375,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <option value="cleared">✅ পরিশোধিত</option>
           <option value="all">সব</option>
         </select>
+        <button class="btn btn-whatsapp btn-sm" onclick="openDueReminderQueue()">📱 রিমাইন্ডার কিউ</button>
         <button class="btn btn-success btn-sm" onclick="exportDueCSV()">📥 CSV</button>
       </div>
       <div class="table-wrap"><table>
@@ -5645,6 +5647,34 @@ function renderDuePage(){
     <div class="stat-card s1"><div class="icon">💰</div><div class="value" style="color:var(--success)">${fmt(totalCollected)}</div><div class="label">আদায়কৃত (সর্বমোট)</div></div>
   `;
 
+  // Aging summary buckets (0-15 / 15-30 / 30+ days)
+  const agingEl=$('dueAgingSummary');
+  if(agingEl){
+    const dueList=getDueSales();
+    const buckets={fresh:0,mid:0,old:0};
+    dueList.forEach(s=>{
+      const ageDays=Math.floor((Date.now()-new Date(s.time).getTime())/86400000);
+      if(ageDays>30) buckets.old+=s.dueAmount;
+      else if(ageDays>15) buckets.mid+=s.dueAmount;
+      else buckets.fresh+=s.dueAmount;
+    });
+    agingEl.innerHTML=dueList.length?`
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+        <div style="background:var(--card2);border:1px solid var(--border);border-left:3px solid var(--success);border-radius:8px;padding:10px 12px">
+          <div style="font-size:11px;color:var(--text2)">০–১৫ দিন</div>
+          <div style="font-size:16px;font-weight:800;color:var(--success)">${fmt(buckets.fresh)}</div>
+        </div>
+        <div style="background:var(--card2);border:1px solid var(--border);border-left:3px solid var(--warning);border-radius:8px;padding:10px 12px">
+          <div style="font-size:11px;color:var(--text2)">১৫–৩০ দিন</div>
+          <div style="font-size:16px;font-weight:800;color:var(--warning)">${fmt(buckets.mid)}</div>
+        </div>
+        <div style="background:var(--card2);border:1px solid var(--border);border-left:3px solid var(--danger);border-radius:8px;padding:10px 12px">
+          <div style="font-size:11px;color:var(--text2)">৩০+ দিন (ঝুঁকিপূর্ণ)</div>
+          <div style="font-size:16px;font-weight:800;color:var(--danger)">${fmt(buckets.old)}</div>
+        </div>
+      </div>`:'';
+  }
+
   $('dueTableBody').innerHTML=list.length?list.map(s=>{
     const ageDays=Math.floor((Date.now()-new Date(s.time).getTime())/86400000);
     const ageColor=ageDays>30?'var(--danger)':ageDays>14?'var(--warning)':'var(--text2)';
@@ -5667,6 +5697,35 @@ function renderDuePage(){
   :'<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:24px">কোনো বাকি বিক্রয় নেই ✅</td></tr>';
 
   updateDueSidebarBadge();
+}
+// ══════════════════════════════════════
+//  📱 DUE REMINDER QUEUE — go through all overdue customers one by one
+// ══════════════════════════════════════
+function openDueReminderQueue(){
+  const dueList=getDueSales().filter(s=>s.custPhone);
+  if(!dueList.length){toast('বাকি আছে এমন কোনো কাস্টমারের ফোন নম্বর নেই','warn');return;}
+  // Group by phone so one customer with multiple due bills gets one combined entry
+  const byPhone={};
+  dueList.forEach(s=>{
+    if(!byPhone[s.custPhone]) byPhone[s.custPhone]={name:s.custName,phone:s.custPhone,total:0,count:0,sales:[]};
+    byPhone[s.custPhone].total+=s.dueAmount;
+    byPhone[s.custPhone].count++;
+    byPhone[s.custPhone].sales.push(s.id);
+  });
+  const rows=Object.values(byPhone).sort((a,b)=>b.total-a.total);
+  openModal(`📱 রিমাইন্ডার কিউ (${rows.length}জন বাকিদার)`,`
+    <p style="font-size:11px;color:var(--text2);margin-bottom:10px">একজন একজন করে WhatsApp রিমাইন্ডার পাঠান — প্রতিটায় ক্লিক করলে WhatsApp খুলবে, পাঠানোর পর তালিকা থেকে সরে যাবে।</p>
+    <div id="dueQueueList">
+      ${rows.map(r=>`
+        <div id="dq_${r.phone.replace(/\D/g,'')}" style="display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:7px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${r.name}</div>
+            <div style="font-size:11px;color:var(--text2)">${r.count}টি বিল — মোট বাকি: <b style="color:var(--danger)">${fmt(r.total)}</b></div>
+          </div>
+          <button class="btn btn-whatsapp btn-sm" onclick="sendWhatsAppToCustomer('${r.phone}','${r.name.replace(/'/g,"\\'")}','due');document.getElementById('dq_${r.phone.replace(/\D/g,'')}').style.opacity='0.35';document.getElementById('dq_${r.phone.replace(/\D/g,'')}').querySelector('button').disabled=true">📱 পাঠান</button>
+        </div>`).join('')}
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
 }
 function exportDueCSV(){
   const q=($('dueSearch')||{value:''}).value.toLowerCase();
