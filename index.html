@@ -1216,6 +1216,17 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
 .product-info .price{font-size:16px;font-weight:800;color:var(--accent);margin-top:2px}
 .product-info .price small{font-size:11px;font-weight:500;color:var(--text2)}
 .product-info .btn-full{margin-top:8px;width:100%}
+.pc-actions{display:flex;gap:6px;margin-top:8px;width:100%}
+.pc-actions .btn{
+  flex:1 1 0;min-width:0;width:auto;
+  padding:8px 4px;font-size:11.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;gap:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+@media(max-width:400px){
+  .pc-actions{flex-direction:column;gap:5px}
+  .pc-actions .btn{width:100%}
+}
 .stock-badge{
   position:absolute;top:6px;right:6px;font-size:10px;font-weight:700;
   padding:3px 8px;border-radius:20px;color:#fff;
@@ -2369,6 +2380,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         </select>
         <button class="btn btn-ghost btn-sm" onclick="clearCustSpendFilter()" title="ফিল্টার মুছুন">✕</button>
         <div class="spacer"></div>
+        <button class="btn btn-whatsapp btn-sm" onclick="openCustomerCampaignQueue()" title="ফিল্টার করা কাস্টমারদের একসাথে বার্তা পাঠান">📣 ক্যাম্পেইন কিউ</button>
         <button class="btn btn-success btn-sm" onclick="exportCustomersCSV()" title="CSV ডাউনলোড">📥 CSV</button>
         <button class="btn btn-ghost btn-sm" onclick="exportAllVCards()" title="সব কাস্টমার Contact ফাইল ডাউনলোড">📇 সব vCard</button>
         <div id="custStatsBadge" style="font-size:13px;color:var(--text2)"></div>
@@ -3523,7 +3535,10 @@ function renderShop(){
         <div class="cat" style="${c.color?`color:${c.color}`:''}">${c.icon||''} ${c.name||'অন্যান্য'}</div>
         <div class="price">${fmt(p.price)} <small>/ ${p.unit||'পিস'}</small></div>
         <div style="cursor:pointer" onclick="openProductReviews('${p.id}')" title="রিভিউ দেখুন">${_starHtml(rt.avg)} <small style="color:var(--text2);font-size:11px">${rt.count?`(${rt.count})`:'রিভিউ দিন'}</small></div>
-        ${inStock?`<button class="btn btn-primary btn-full" onclick="addToCart('${p.id}')">🛒 কার্টে যোগ</button>`
+        ${inStock?`<div class="pc-actions">
+          <button class="btn btn-ghost" onclick="addToCart('${p.id}')" title="কার্টে যোগ করুন">🛒 কার্ট</button>
+          <button class="btn btn-primary" onclick="buyNow('${p.id}')" title="সরাসরি কিনুন">⚡ কিনুন</button>
+        </div>`
         :`<button class="btn btn-ghost btn-full" disabled style="opacity:.5">স্টক শেষ</button>`}
       </div>
     </div>`;
@@ -3654,16 +3669,17 @@ function openWishlist(){
   openModal(`❤️ আমার উইশলিস্ট (${items.length})`, body, `<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
 }
 
-function addToCart(pid){
+function addToCart(pid,silent){
   const p=DB.products.find(x=>x.id===pid);
-  if(!p||p.stock<1){toast('স্টক নেই!','danger');return;}
+  if(!p||p.stock<1){toast('স্টক নেই!','danger');return false;}
   const existing=cart.find(x=>x.productId===pid);
   if(existing){
-    if(existing.qty>=p.stock){toast('সর্বোচ্চ স্টক যোগ হয়েছে','warn');return;}
+    if(existing.qty>=p.stock){toast('সর্বোচ্চ স্টক যোগ হয়েছে','warn');return false;}
     existing.qty++;
   }else{cart.push({productId:pid,name:p.name,price:p.price,qty:1,icon:p.icon||'📦'});}
   updateCartUI();
-  toast(`"${p.name}" কার্টে যোগ হয়েছে ✅`);
+  if(!silent) toast(`"${p.name}" কার্টে যোগ হয়েছে ✅`);
+  return true;
 }
 
 function updateCartUI(){
@@ -3718,26 +3734,71 @@ function placeOrder(){
     if(!currentCust){toast('লগইন করুন অথবা নাম ও ফোন দিন','warn');showCustAuth('login');return;}
     toast('নাম ও ফোন নম্বর দিন','warn');return;
   }
-  const sub=cart.reduce((s,i)=>s+i.price*i.qty,0);
+  const items=cart.map(i=>({productId:i.productId,name:i.name,price:i.price,qty:i.qty}));
+  const order=_createOnlineOrder(items,name,phone);
+  cart=[];updateCartUI();
+  $('cartSidebar').classList.remove('open');
+  $('custName').value='';$('custPhone').value='';
+  showOrderSuccess(order);
+}
+// Shared order-creation core — used by both the cart checkout and direct "কিনুন" buy-now flow.
+function _createOnlineOrder(items,name,phone){
+  const sub=items.reduce((s,i)=>s+i.price*i.qty,0);
   const tax=sub*taxRate()/100;
   const total=sub+tax;
   const order={
     id:`ORD-${nextInvNum()}`,custName:name,custPhone:phone,
     custId:currentCust?.id||null,
-    items:cart.map(i=>({productId:i.productId,name:i.name,price:i.price,qty:i.qty})),
-    subtotal:sub,tax,total,status:'Pending',time:new Date().toISOString(),type:'online',payment:'Online'
+    items,subtotal:sub,tax,total,status:'Pending',time:new Date().toISOString(),type:'online',payment:'Online'
   };
-  cart.forEach(ci=>{const p=DB.products.find(x=>x.id===ci.productId);if(p)p.stock-=ci.qty;});
+  items.forEach(ci=>{const p=DB.products.find(x=>x.id===ci.productId);if(p)p.stock-=ci.qty;});
   save(KEYS.products,DB.products);
   DB.orders.unshift(order);
   save(KEYS.orders,DB.orders);
-  cart=[];updateCartUI();
-  $('cartSidebar').classList.remove('open');
-  $('custName').value='';$('custPhone').value='';
   realtimeUpdate();
   addNotif('📋 নতুন অর্ডার',`${name} — ${fmt(total)} — অর্ডার ID: ${order.id}`,'order');
   logActivity('📋','নতুন অনলাইন অর্ডার',`${name} — ${fmt(total)}`);
   sendPushNotif('নতুন অনলাইন অর্ডার!',`${name} — ${fmt(total)}`,'📋');
+  return order;
+}
+
+// ══════════════════════════════════════
+//  ⚡ BUY NOW — direct one-item order, bypassing the cart entirely
+// ══════════════════════════════════════
+function buyNow(pid){
+  const p=DB.products.find(x=>x.id===pid);
+  if(!p||p.stock<1){toast('স্টক নেই!','danger');return;}
+  const name=(currentCust?.name)||'';
+  const phone=(currentCust?.phone)||'';
+  if(name&&phone){
+    // Already known customer — place the order immediately, no extra steps.
+    const order=_createOnlineOrder([{productId:p.id,name:p.name,price:p.price,qty:1}],name,phone);
+    showOrderSuccess(order);
+    return;
+  }
+  // Not logged in / no saved info — ask just name & phone, then order immediately on submit.
+  openModal(`⚡ সরাসরি অর্ডার — ${p.name}`,`
+    <div style="display:flex;gap:10px;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:14px">
+      <div style="width:44px;height:44px;background:var(--card);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;overflow:hidden">
+        ${p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover">`:(p.icon||'📦')}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+        <div style="font-size:13px;color:var(--accent);font-weight:700">${fmt(p.price)}</div>
+      </div>
+    </div>
+    <div class="form-group"><label>আপনার নাম *</label><input id="bn_name" placeholder="পুরো নাম"></div>
+    <div class="form-group"><label>ফোন নম্বর *</label><input id="bn_phone" type="tel" placeholder="01XXXXXXXXX"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-primary" onclick="confirmBuyNow('${pid}')">⚡ অর্ডার নিশ্চিত করুন</button>`);
+}
+function confirmBuyNow(pid){
+  const p=DB.products.find(x=>x.id===pid);if(!p||p.stock<1){toast('স্টক নেই!','danger');closeModal();return;}
+  const name=($('bn_name')||{value:''}).value.trim();
+  const phone=($('bn_phone')||{value:''}).value.trim();
+  if(!name||!phone){toast('নাম ও ফোন নম্বর দিন','warn');return;}
+  const order=_createOnlineOrder([{productId:p.id,name:p.name,price:p.price,qty:1}],name,phone);
+  closeModal();
   showOrderSuccess(order);
 }
 
@@ -6121,6 +6182,26 @@ function renderCustomers(){
     :'<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:24px">কোনো কাস্টমার নেই</td></tr>';
 }
 
+// ══════════════════════════════════════
+//  📣 CUSTOMER CAMPAIGN QUEUE — bulk WhatsApp to currently filtered segment
+// ══════════════════════════════════════
+function openCustomerCampaignQueue(){
+  const list=(window._custList||[]).filter(c=>c.phone);
+  if(!list.length){toast('বার্তা পাঠানোর মতো ফোন নম্বরসহ কোনো কাস্টমার নেই (ফিল্টার চেক করুন)','warn');return;}
+  openModal(`📣 ক্যাম্পেইন কিউ (${list.length}জন কাস্টমার)`,`
+    <p style="font-size:11px;color:var(--text2);margin-bottom:10px">বর্তমান ফিল্টার/সার্চ অনুযায়ী কাস্টমার লিস্ট — একজন একজন করে প্রমো/সাধারণ বার্তা পাঠান।</p>
+    <div id="custQueueList">
+      ${list.map((c,i)=>`
+        <div id="cq_${i}" style="display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:7px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${c.name}</div>
+            <div style="font-size:11px;color:var(--text2)">${c.phone} — মোট খরচ: ${fmt(c.spent)} (${c.orders}টি অর্ডার)</div>
+          </div>
+          <button class="btn btn-whatsapp btn-sm" onclick="sendWhatsAppToCustomer('${c.phone}','${c.name.replace(/'/g,"\\'")}','promo');document.getElementById('cq_${i}').style.opacity='0.35';document.getElementById('cq_${i}').querySelector('button').disabled=true">📱 পাঠান</button>
+        </div>`).join('')}
+    </div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
+}
 function editCustomer(idx){
   const c=(window._custList||[])[idx];
   if(!c){toast('তথ্য পাওয়া যায়নি','danger');return;}
