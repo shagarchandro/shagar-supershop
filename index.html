@@ -553,6 +553,10 @@ canvas{display:block}
 .rt-dot{display:inline-block;width:8px;height:8px;background:var(--success);border-radius:50%;animation:pulse 2s infinite;margin-right:5px}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .realtime-bar{background:var(--card2);border-bottom:1px solid var(--border);padding:6px 24px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px}
+.hero-stat{text-align:center;color:#fff}
+.hero-stat .hs-num{font-size:22px;font-weight:900;line-height:1}
+.hero-stat .hs-lbl{font-size:11px;opacity:.75;margin-top:3px}
+@keyframes urgencyPulse{0%,100%{opacity:1}50%{opacity:.6}}
 
 /* ── Trust badges bar ── */
 .trust-badges-bar{background:var(--card2);border-bottom:1px solid var(--border);padding:12px 16px;overflow:hidden}
@@ -1736,6 +1740,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.4);backdrop-filter:blur(8px)" onclick="toggleCart()">🛒 Cart দেখুন</button>
         <button id="shopWhatsappBtn" style="display:none" class="btn" style="background:#25d366;color:#fff;border:none">📱 WhatsApp</button>
       </div>
+      <div id="heroStats" style="display:flex;gap:26px;justify-content:center;margin-top:26px;flex-wrap:wrap"></div>
     </div>
   </div>
 
@@ -1757,6 +1762,12 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
   <div id="bestSellersWrap" style="display:none;padding:16px 16px 4px">
     <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px">🔥 বেস্ট সেলার</div>
     <div id="bestSellersStrip" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory"></div>
+  </div>
+
+  <!-- Featured Products strip -->
+  <div id="featuredWrap" style="display:none;padding:16px 16px 4px">
+    <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px">✨ ফিচার্ড পণ্য</div>
+    <div id="featuredStrip" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory"></div>
   </div>
 
   <div class="shop-controls">
@@ -2754,6 +2765,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
           <thead><tr><th>শাখার নাম</th><th>ঠিকানা</th><th>বর্তমান POS</th><th>একশন</th></tr></thead>
           <tbody id="branchTableBody"></tbody>
         </table></div>
+        <div id="branchComparisonWrap" style="display:none"></div>
 
         <div class="section-title" style="margin-top:16px">🔄 স্টক ট্রান্সফার (শাখার মধ্যে)</div>
         <p style="font-size:11px;color:var(--text2);margin-bottom:10px">শাখার মধ্যে পণ্য স্থানান্তরের রেকর্ড রাখুন। ⚠️ এটি শুধু ট্র্যাকিং লগ — মোট স্টক সংখ্যা অপরিবর্তিত থাকে (পণ্য ব্যবসার মধ্যেই থাকে, শুধু স্থান পরিবর্তন হয়)।</p>
@@ -2972,6 +2984,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
     <div>
       <div class="footer-brand" id="footerBrand">🛒 Super<span>Shop</span></div>
       <p class="footer-desc" id="footerDesc">সেরা পণ্য, সেরা দামে। আমাদের অনলাইন ও অফলাইন শপ থেকে কেনাকাটা করুন।</p>
+      <div id="footerRating" style="display:none;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text2)"></div>
       <div class="footer-pay-icons" style="margin-top:12px">
         <span class="pay-chip cash">💵 Cash</span>
         <span class="pay-chip card">💳 Card</span>
@@ -3596,22 +3609,65 @@ function scrollToProduct(pid){
     if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='2px solid var(--accent)';setTimeout(()=>card.style.outline='',1500);}
   },100);
 }
+// ══════════════════════════════════════
+//  ✨ FEATURED PRODUCTS STRIP (shop page)
+// ══════════════════════════════════════
+function renderFeaturedStrip(){
+  const wrap=$('featuredWrap'),strip=$('featuredStrip');
+  if(!wrap||!strip) return;
+  const list=DB.products.filter(p=>p.featured&&p.stock>0);
+  if(!list.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  strip.innerHTML=list.map(p=>`
+    <div onclick="scrollToProduct('${p.id}')" style="flex:0 0 130px;scroll-snap-align:start;background:var(--card);border:1px solid #ffd16655;border-radius:10px;padding:10px;cursor:pointer;transition:.15s;position:relative" onmouseover="this.style.borderColor='#ffd166'" onmouseout="this.style.borderColor='#ffd16655'">
+      <span style="position:absolute;top:4px;right:4px;font-size:13px">✨</span>
+      <div style="width:100%;height:70px;background:var(--card2);border-radius:7px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:6px">
+        ${p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:30px">${p.icon||'📦'}</span>`}
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+      <div style="font-size:12px;font-weight:800;color:var(--accent)">${fmt(p.price)}</div>
+    </div>`).join('');
+}
+// ══════════════════════════════════════
+//  🏆 HERO LIVE STATS (social proof)
+// ══════════════════════════════════════
+function renderHeroStats(){
+  const el=$('heroStats');if(!el)return;
+  const totalProducts=DB.products.filter(p=>p.stock>0).length;
+  const totalCats=DB.cats.length;
+  const custPhones=new Set();
+  (DB.sales||[]).forEach(s=>{if(s.custPhone)custPhones.add(s.custPhone);});
+  (DB.orders||[]).forEach(o=>{if(o.custPhone)custPhones.add(o.custPhone);});
+  const allRatings=(DB.reviews||[]).map(r=>r.rating);
+  const avgRating=allRatings.length?(allRatings.reduce((a,b)=>a+b,0)/allRatings.length):0;
+  const stats=[
+    {num:totalProducts+'+',lbl:'পণ্য'},
+    {num:totalCats,lbl:'ক্যাটাগরি'},
+    {num:custPhones.size+'+',lbl:'সন্তুষ্ট কাস্টমার'},
+  ];
+  if(avgRating>0) stats.push({num:avgRating.toFixed(1)+' ★',lbl:`${allRatings.length}টি রিভিউ`});
+  el.innerHTML=stats.map(s=>`<div class="hero-stat"><div class="hs-num">${s.num}</div><div class="hs-lbl">${s.lbl}</div></div>`).join('');
+}
 function renderShop(){
   const q=$('shopSearch').value.toLowerCase();
   const cat=$('shopCatFilter').value;
   const grid=$('productGrid');
   renderBestSellersStrip();
+  renderFeaturedStrip();
+  renderHeroStats();
   // Populate cat filter
   $('shopCatFilter').innerHTML='<option value="">সব ক্যাটাগরি</option>'+DB.cats.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   $('shopCatFilter').value=cat;
   const products=DB.products.filter(p=>{
     const c=DB.cats.find(x=>x.id===p.cat)||{};
-    return(!q||p.name.toLowerCase().includes(q)||c.name?.toLowerCase().includes(q))&&(!cat||p.cat===cat);
+    const tagMatch=(p.tags||[]).some(t=>t.toLowerCase().includes(q));
+    return(!q||p.name.toLowerCase().includes(q)||c.name?.toLowerCase().includes(q)||tagMatch)&&(!cat||p.cat===cat);
   });
   if(!products.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="ei">🔍</div><p>কোনো পণ্য পাওয়া যায়নি</p></div>';return;}
   grid.innerHTML=products.map(p=>{
     const c=DB.cats.find(x=>x.id===p.cat)||{};
     const inStock=p.stock>0;
+    const isLowStock=inStock&&isLowOrOutStock(p);
     const imgHtml=p.img
       ?`<img src="${p.img}" class="zoomable-img" onclick="event.stopPropagation();openLightbox('${p.img}')" style="width:100%;height:100%;object-fit:cover" title="বড় করে দেখতে ক্লিক করুন">`
       :`<span style="font-size:48px">${p.icon||'📦'}</span>`;
@@ -3619,6 +3675,8 @@ function renderShop(){
     return`<div class="product-card" data-pid="${p.id}">
       <div class="product-img" style="${p.img?'padding:0;overflow:hidden':''}">${imgHtml}
         <span class="stock-badge ${inStock?'in':'out'}" style="z-index:2">${inStock?`স্টক: ${p.stock}`:'শেষ'}</span>
+        ${isLowStock?`<span style="position:absolute;bottom:6px;left:6px;z-index:2;font-size:10px;font-weight:700;background:#ff6b3522;color:#ff6b35;border:1px solid #ff6b3555;padding:2px 8px;border-radius:99px;animation:urgencyPulse 1.5s ease-in-out infinite">🔥 মাত্র ${p.stock}টি বাকি!</span>`:''}
+        ${p.featured?`<span style="position:absolute;top:32px;right:6px;z-index:2;font-size:10px;font-weight:700;background:#ffd166;color:#1a2639;padding:2px 8px;border-radius:20px">✨ ফিচার্ড</span>`:''}
         <span onclick="event.stopPropagation();toggleWishlist('${p.id}')" title="উইশলিস্টে যোগ/বাদ দিন" style="position:absolute;top:6px;left:6px;z-index:2;cursor:pointer;font-size:16px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))">${wishlist.includes(p.id)?'❤️':'🤍'}</span>
       </div>
       <div class="product-info">
@@ -4879,6 +4937,12 @@ function openProductModal(id){
       ${p?.img?`<button class="btn btn-ghost btn-sm" style="margin-top:6px;width:100%" onclick="removeProductImg()">🗑️ ছবি সরান</button>`:''}
     </div>
     <div class="form-group"><label>বিবরণ</label><textarea id="mp_desc">${p?.desc||''}</textarea></div>
+    <div class="form-group"><label>🏷️ সার্চ ট্যাগ <span style="color:var(--text2);font-size:11px">(কমা দিয়ে আলাদা করুন — অতিরিক্ত সার্চ শব্দ, যেমন সমার্থক নাম)</span></label>
+      <input id="mp_tags" value="${(p?.tags||[]).join(', ')}" placeholder="যেমন: কোল্ড ড্রিংক, সফট ড্রিংক">
+    </div>
+    <div class="form-group" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.25);border-radius:8px;padding:10px 12px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600"><input type="checkbox" id="mp_featured" ${p?.featured?'checked':''}> ✨ ফিচার্ড পণ্য (শপ হোমপেজে বিশেষভাবে দেখাবে)</label>
+    </div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
      <button class="btn btn-primary" onclick="saveProduct('${id||''}')">💾 সেভ করুন</button>`);
   window.mp_imgData = p?.img||null;
@@ -4917,11 +4981,13 @@ function saveProduct(id){
   const unit=($('mp_unit')||{value:'পিস'}).value;
   const expiryDate=($('mp_expiry')||{value:''}).value;
   const reorderLevel=parseInt(($('mp_reorder')||{value:0}).value)||0;
+  const tags=($('mp_tags')||{value:''}).value.split(',').map(t=>t.trim()).filter(Boolean);
+  const featured=($('mp_featured')||{checked:false}).checked;
   if(id){
     const p=DB.products.find(x=>x.id===id);
-    Object.assign(p,{name,cat:$('mp_cat').value,price,cost,unit,stock,desc:$('mp_desc').value,icon:$('mp_icon').value,img:imgData,barcode,expiryDate,reorderLevel});
+    Object.assign(p,{name,cat:$('mp_cat').value,price,cost,unit,stock,desc:$('mp_desc').value,icon:$('mp_icon').value,img:imgData,barcode,expiryDate,reorderLevel,tags,featured});
   }else{
-    DB.products.push({id:`p${uid()}`,name,cat:$('mp_cat').value,price,cost,unit,stock,desc:$('mp_desc').value,icon:$('mp_icon').value,img:imgData,barcode,expiryDate,reorderLevel});
+    DB.products.push({id:`p${uid()}`,name,cat:$('mp_cat').value,price,cost,unit,stock,desc:$('mp_desc').value,icon:$('mp_icon').value,img:imgData,barcode,expiryDate,reorderLevel,tags,featured});
   }
   save(KEYS.products,DB.products);closeModal();renderProducts();renderShop();
   toast(id?'পণ্য আপডেট হয়েছে':'নতুন পণ্য যোগ হয়েছে');
@@ -4951,11 +5017,11 @@ function saveRestock(id){
   if(qty<=0){toast('পরিমাণ দিন','warn');return;}
   const p=DB.products.find(x=>x.id===id);if(!p)return;
   const prev=p.stock;
+  const note=($('rs_note')||{value:''}).value;
   p.stock+=qty;
   logStockMovement(id,'in',qty,note||'রিস্টক');
   save(KEYS.products,DB.products);
   closeModal();renderProducts();
-  const note=($('rs_note')||{value:''}).value;
   logActivity('📦','স্টক রিস্টক',`${p.name}: ${prev}→${p.stock} ${p.unit||'পিস'}${note?' | '+note:''}`);
   addNotif('📦 স্টক আপডেট',`${p.name} — ${qty}টি যোগ হয়েছে (মোট: ${p.stock})`,'success');
   toast(`✅ ${p.name}-এ ${qty}টি স্টক যোগ হয়েছে`);
@@ -5676,6 +5742,15 @@ function _buildSale(){
     if(paidAmount<0||paidAmount>total){toast('সঠিক জমার পরিমাণ দিন','warn');return null;}
     dueAmount=total-paidAmount;
     if(dueAmount<=0){toast('সম্পূর্ণ টাকা পরিশোধিত — Due পেমেন্টের প্রয়োজন নেই','warn');return null;}
+    // Credit limit check — warn but don't block, so a manager can still override at the counter.
+    const creditLimit=(DB.settings.custCreditLimits||{})[custPhone];
+    if(creditLimit>0){
+      const existingDue=getDueSales().filter(s=>s.custPhone===custPhone).reduce((s,x)=>s+x.dueAmount,0);
+      const newTotalDue=existingDue+dueAmount;
+      if(newTotalDue>creditLimit){
+        toast(`⚠️ সতর্কতা: এই কাস্টমারের বাকির সীমা ${fmt(creditLimit)}, নতুন মোট বাকি হবে ${fmt(newTotalDue)}`,'warn');
+      }
+    }
   }
 
   // Mark coupon used
@@ -6255,8 +6330,9 @@ function renderCustomers(){
     ?window._custList.map((c,i)=>{
       const loyaltyPts=getLoyaltyPoints(c.phone);
       const custNote=getCustNote(c.phone,c.name);
+      const custDue=c.phone?getDueSales().filter(s=>s.custPhone===c.phone).reduce((s,x)=>s+x.dueAmount,0):0;
       return`<tr>
-    <td><b>${c.name}</b>${c.userId?`<span class="badge badge-success" style="margin-left:6px;font-size:10px">✓ নিবন্ধিত</span>`:''}${tierBadgeHtml(c.spent)} ${segBadge(c)}${loyaltyPts>0?`<span class="loyalty-badge" style="margin-left:6px" onclick="showLoyaltyModal('${c.phone}','${c.name}')" title="Loyalty Points — ক্লিক করুন">⭐${loyaltyPts}</span>`:''}${custNote?`<br><span style="font-size:10px;color:var(--text2);font-style:italic">💬 ${custNote.slice(0,40)}${custNote.length>40?'...':''}</span>`:''}</td>
+    <td><b>${c.name}</b>${c.userId?`<span class="badge badge-success" style="margin-left:6px;font-size:10px">✓ নিবন্ধিত</span>`:''}${tierBadgeHtml(c.spent)} ${segBadge(c)}${loyaltyPts>0?`<span class="loyalty-badge" style="margin-left:6px" onclick="showLoyaltyModal('${c.phone}','${c.name}')" title="Loyalty Points — ক্লিক করুন">⭐${loyaltyPts}</span>`:''}${custDue>0?`<span class="badge badge-danger" style="margin-left:6px;font-size:10px;cursor:pointer" onclick="showPage('due',document.querySelector('.sidebar-item[onclick*=due]'))" title="বাকি আছে">📒 বাকি ${fmt(custDue)}</span>`:''}${custNote?`<br><span style="font-size:10px;color:var(--text2);font-style:italic">💬 ${custNote.slice(0,40)}${custNote.length>40?'...':''}</span>`:''}</td>
     <td>${c.phone||'—'}</td>
     <td><span class="badge badge-info">${c.orders}</span></td>
     <td style="color:var(--success);font-weight:600">${fmt(c.spent)}</td>
@@ -6297,12 +6373,15 @@ function editCustomer(idx){
   const c=(window._custList||[])[idx];
   if(!c){toast('তথ্য পাওয়া যায়নি','danger');return;}
   const bday=getCustBirthday(c.phone,c.name);
+  const creditLimits=DB.settings.custCreditLimits||{};
+  const curLimit=c.phone?(creditLimits[c.phone]||0):0;
   openModal('✏️ কাস্টমার সম্পাদনা',`
     <div class="form-group"><label>নাম *</label><input id="ec_name" value="${c.name}"></div>
     <div class="form-group"><label>ফোন</label><input id="ec_phone" value="${c.phone||''}"></div>
     <div class="form-group"><label>ইমেইল</label><input id="ec_email" value="${c.email||''}"></div>
     <div class="form-group"><label>ঠিকানা</label><input id="ec_addr" value="${c.addr||''}"></div>
     <div class="form-group"><label>🎂 জন্মদিন (ঐচ্ছিক)</label><input id="ec_bday" type="date" value="${bday}"></div>
+    <div class="form-group"><label>💳 বাকি রাখার সীমা (৳) — ০ মানে সীমাহীন</label><input id="ec_credit" type="number" min="0" value="${curLimit||''}" placeholder="যেমন: 5000"></div>
     ${c.userId?`<div class="form-group"><label>নতুন পাসওয়ার্ড (ঐচ্ছিক)</label>
       <div class="pass-wrap"><input id="ec_pass" type="password" placeholder="পরিবর্তন না করলে খালি রাখুন">
       <button class="pass-eye" type="button" onclick="togglePass('ec_pass',this)">👁️</button></div>
@@ -6322,7 +6401,14 @@ function saveCustomerEdit(idx){
   const newEmail=$('ec_email').value.trim();
   const newAddr=$('ec_addr').value.trim();
   const newBday=($('ec_bday')||{value:''}).value;
+  const creditLimit=parseFloat(($('ec_credit')||{value:0}).value)||0;
   saveCustBirthday(newPhone,newName,newBday);
+  if(!DB.settings.custCreditLimits) DB.settings.custCreditLimits={};
+  if(newPhone){
+    if(creditLimit>0) DB.settings.custCreditLimits[newPhone]=creditLimit;
+    else delete DB.settings.custCreditLimits[newPhone];
+    save(KEYS.settings,DB.settings);
+  }
   // Update registered user if exists
   if(c.userId){
     const u=DB.custUsers.find(x=>x.id===c.userId);
@@ -9075,6 +9161,7 @@ function exportAllData(){
     supPayments:DB.supPayments,
     labelSerials:DB.settings.labelSerials,
     advances:DB.settings.advances,
+    custCreditLimits:DB.settings.custCreditLimits,
   };
   const json=JSON.stringify(backup,null,2);
   const blob=new Blob([json],{type:'application/json'});
@@ -9114,6 +9201,7 @@ function importAllData(input){
       if(data.supPayments){DB.supPayments=data.supPayments;save(KEYS.supPayments,DB.supPayments);}
       if(data.labelSerials){DB.settings.labelSerials=data.labelSerials;save(KEYS.settings,DB.settings);}
       if(data.advances){DB.settings.advances=data.advances;save(KEYS.settings,DB.settings);}
+      if(data.custCreditLimits){DB.settings.custCreditLimits=data.custCreditLimits;save(KEYS.settings,DB.settings);}
       if(data.adminUser){DB.adminUser=data.adminUser;save(KEYS.adminUser,DB.adminUser);}
       if(data.adminEmail){DB.adminEmail=data.adminEmail;save(KEYS.adminEmail,DB.adminEmail);}
       if(data.adminPass){DB.adminPass=data.adminPass;save(KEYS.adminPass,DB.adminPass);}
@@ -11436,7 +11524,7 @@ function renderBranchTable(){
   const tb=$('branchTableBody');if(!tb)return;
   const list=DB.settings.branches||[];
   tb.innerHTML=list.length?list.map((b,i)=>`<tr>
-    <td style="font-weight:600">${b.name}</td>
+    <td style="font-weight:600">${b.name}${b.managerName?`<br><span style="font-size:10px;color:var(--text2);font-weight:400">👤 ${b.managerName}</span>`:''}</td>
     <td class="hide-xs">${b.addr||'—'}</td>
     <td>${_currentBranchId===b.id?'<span class="badge badge-success">✓ সক্রিয়</span>':`<button class="btn btn-ghost btn-sm" onclick="setCurrentBranch('${b.id}');renderBranchTable()">নির্বাচন করুন</button>`}</td>
     <td style="display:flex;gap:4px">
@@ -11446,6 +11534,37 @@ function renderBranchTable(){
   </tr>`).join('')
   :'<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:16px">কোনো শাখা যোগ করা হয়নি — একক দোকান হিসেবে চলবে</td></tr>';
   updateBranchSelector();
+  renderBranchComparison();
+}
+// ══════════════════════════════════════
+//  📊 BRANCH PERFORMANCE COMPARISON
+// ══════════════════════════════════════
+function renderBranchComparison(){
+  const el=$('branchComparisonWrap');if(!el)return;
+  const branches=DB.settings.branches||[];
+  if(branches.length<2){el.style.display='none';return;}
+  el.style.display='block';
+  const thisMonth=today().slice(0,7);
+  const stats=branches.map(b=>{
+    const sales=(DB.sales||[]).filter(s=>s.branchId===b.id&&s.time.slice(0,7)===thisMonth);
+    const total=sales.reduce((a,s)=>a+s.total,0);
+    return{name:b.name,total,count:sales.length};
+  }).sort((a,b)=>b.total-a.total);
+  const maxTotal=Math.max(...stats.map(s=>s.total),1);
+  el.innerHTML=`
+    <div class="section-title" style="margin-top:16px">📊 শাখা পারফরম্যান্স তুলনা (এই মাস)</div>
+    ${stats.map((s,i)=>`
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span style="font-weight:600;color:var(--text)">${i===0?'🥇 ':''}${s.name}</span>
+          <span style="color:var(--text2)">${s.count}টি বিল</span>
+        </div>
+        <div style="background:var(--card2);border-radius:99px;height:8px;overflow:hidden">
+          <div style="background:linear-gradient(90deg,var(--accent),var(--accent2));height:100%;width:${(s.total/maxTotal)*100}%;border-radius:99px"></div>
+        </div>
+        <div style="text-align:right;font-size:12px;font-weight:700;color:var(--accent2);margin-top:2px">${fmt(s.total)}</div>
+      </div>`).join('')}
+  `;
 }
 function openBranchModal(idx){
   const b=idx!=null&&idx!==undefined?(DB.settings.branches||[])[idx]:{};
@@ -11453,6 +11572,12 @@ function openBranchModal(idx){
     <div class="form-group"><label>শাখার নাম *</label><input id="br_name" value="${b?.name||''}" placeholder="যেমন: মিরপুর শাখা"></div>
     <div class="form-group"><label>ঠিকানা</label><input id="br_addr" value="${b?.addr||''}" placeholder="শাখার ঠিকানা"></div>
     <div class="form-group"><label>ফোন</label><input id="br_phone" value="${b?.phone||''}" placeholder="01XXXXXXXXX"></div>
+    <div class="form-group"><label>শাখা ম্যানেজার</label>
+      <select id="br_manager" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;width:100%">
+        <option value="">— নির্বাচন করুন —</option>
+        ${(DB.staff||[]).filter(s=>s.active!==false).map(s=>`<option value="${s.id}" ${b?.managerId===s.id?'selected':''}>${s.name}</option>`).join('')}
+      </select>
+    </div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
      <button class="btn btn-primary" onclick="saveBranch(${idx!=null?idx:'null'})">💾 সেভ</button>`);
 }
@@ -11460,7 +11585,9 @@ function saveBranch(idx){
   const name=($('br_name')||{value:''}).value.trim();
   if(!name){toast('শাখার নাম দিন','warn');return;}
   if(!DB.settings.branches) DB.settings.branches=[];
-  const entry={id:idx!=='null'&&idx!=null?(DB.settings.branches[idx]?.id||`br${uid()}`):`br${uid()}`,name,addr:$('br_addr').value,phone:$('br_phone').value};
+  const managerId=($('br_manager')||{value:''}).value;
+  const managerName=managerId?((DB.staff||[]).find(s=>s.id===managerId)?.name||''):'';
+  const entry={id:idx!=='null'&&idx!=null?(DB.settings.branches[idx]?.id||`br${uid()}`):`br${uid()}`,name,addr:$('br_addr').value,phone:$('br_phone').value,managerId,managerName};
   if(idx!=='null'&&idx!=null) DB.settings.branches[idx]=entry;
   else DB.settings.branches.push(entry);
   save(KEYS.settings,DB.settings);
@@ -13368,6 +13495,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(s.instagram) socials.push(`<a href="${s.instagram}" target="_blank" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px">📸 Instagram</a>`);
       if(s.whatsapp) socials.push(`<a href="https://wa.me/88${s.whatsapp.replace(/^0/,'')}" target="_blank" style="background:#25d366;color:#fff;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px">📱 WhatsApp</a>`);
       fs.innerHTML=socials.join('');
+    }
+    // Footer rating summary
+    const fr=$('footerRating');
+    if(fr){
+      const allR=(DB.reviews||[]).map(r=>r.rating);
+      if(allR.length){
+        const avg=allR.reduce((a,b)=>a+b,0)/allR.length;
+        fr.style.display='flex';
+        fr.innerHTML=`${_starHtml(avg,13)} <b style="color:var(--text)">${avg.toFixed(1)}</b> <span>(${allR.length}টি রিভিউ)</span>`;
+      }else{fr.style.display='none';}
     }
     // Footer category quick-links
     const fcl=$('footerCatLinks');
