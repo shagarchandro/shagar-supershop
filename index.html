@@ -4058,11 +4058,13 @@ function buildInvoiceHTML(sale){
       <td style="padding:9px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:700">${cur}${(+(i.price*i.qty)).toLocaleString('en-IN')}</td>
     </tr>`).join('');
   const html=`<!DOCTYPE html>
-<html lang="bn"><head><meta charset="UTF-8"><title>Invoice — ${sale.id}</title>
+<html lang="bn"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice — ${sale.id}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 @page{size:A4;margin:14mm}
-body{font-family:Arial,sans-serif;font-size:13px;color:#1a2639;padding:36px;background:#fff;position:relative}
+html{overflow-x:hidden}
+body{font-family:Arial,sans-serif;font-size:13px;color:#1a2639;padding:36px;background:#fff;position:relative;max-width:100%;overflow-x:hidden}
 .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid ${brand}}
 .shop-name{font-size:26px;font-weight:900;color:${brand}}
 .shop-info{font-size:12px;color:#666;margin-top:5px;line-height:1.8}
@@ -4092,6 +4094,23 @@ tbody tr:nth-child(even){background:#f8fafc}
 .split-item .lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px}
 .split-item .amt{font-size:14px;font-weight:800;color:#1a2639}
 .footer-note{text-align:center;margin-top:20px;padding-top:14px;border-top:1px dashed #ccc;font-size:11px;color:#aaa}
+.table-scroll{width:100%;overflow-x:auto;margin-bottom:16px}
+.table-scroll table{margin-bottom:0;min-width:480px}
+/* ── Mobile responsive (viewing on phone browser, not just A4 print) ── */
+@media(max-width:600px){
+  body{padding:16px}
+  .top{flex-direction:column;gap:14px;margin-bottom:18px;padding-bottom:14px}
+  .top>div{width:100%}
+  .inv-label{text-align:left;font-size:22px}
+  .inv-sub{text-align:left}
+  .status-ribbon{margin-top:8px}
+  .shop-name{font-size:20px}
+  .info-row{flex-direction:column;gap:8px;margin-bottom:16px}
+  .totals-wrap{justify-content:stretch}
+  .totals{width:100%}
+  .split-box{flex-wrap:wrap;gap:14px;justify-content:flex-start}
+  div[style*="justify-content:space-between;align-items:flex-end"]{flex-direction:column;align-items:flex-start!important;gap:16px}
+}
 </style></head><body>
 <div class="top">
   <div style="display:flex;gap:12px;align-items:flex-start">
@@ -4117,10 +4136,10 @@ tbody tr:nth-child(even){background:#f8fafc}
     ${sale.note?`<div class="info-val2">📝 ${sale.note}</div>`:''}
   </div>
 </div>
-<table>
+<div class="table-scroll"><table>
   <thead><tr><th>পণ্য</th><th style="text-align:center">পরিমাণ</th><th style="text-align:right">একক দাম</th><th style="text-align:right">মোট</th></tr></thead>
   <tbody>${itemRows}</tbody>
-</table>
+</table></div>
 ${(sale.splitCash>0||sale.splitMobile>0)?`
 <div class="split-box">
   ${sale.splitCash>0?`<div class="split-item"><div class="lbl">💵 নগদ</div><div class="amt">${cur}${(+sale.splitCash).toFixed(2)}</div></div>`:''}
