@@ -11514,21 +11514,42 @@ function showMonthComparison(){
 //  🧮 BUILT-IN CALCULATOR WIDGET
 // ══════════════════════════════════════
 let _calcExpr='';
+let _calcHistory=JSON.parse(localStorage.getItem('ss_calc_history')||'[]');
+let _calcMemory=parseFloat(localStorage.getItem('ss_calc_memory'))||0;
 function toggleCalculator(){
   const w=$('calcWidget');if(!w)return;
   w.classList.toggle('show');
   if(!_calcExpr) calcUpdateDisplay();
+  renderCalcHistory();
+  updateCalcMemoryBadge();
+  _calcInitDrag();
+}
+// Smart percentage handling: "500+10%" → 500 + (500×10%) = 550 (standard calculator behavior),
+// "500×10%" → 500 × (10/100) = 50. Plain "50%" alone → 0.5.
+function _calcResolvePercent(expr){
+  return expr.replace(/(\d+(?:\.\d+)?)([+\-])(\d+(?:\.\d+)?)%/g,(m,a,op,b)=>`${a}${op}(${a}*${b}/100)`)
+             .replace(/(\d+(?:\.\d+)?)([*/])(\d+(?:\.\d+)?)%/g,(m,a,op,b)=>`${a}${op}(${b}/100)`)
+             .replace(/(\d+(?:\.\d+)?)%/g,(m,a)=>`(${a}/100)`);
 }
 function calcInput(val){
   const disp=$('calcDisplay');if(!disp)return;
   if(val==='C'){_calcExpr='';}
   else if(val==='⌫'){_calcExpr=_calcExpr.slice(0,-1);}
   else if(val==='='){
+    if(!_calcExpr){calcUpdateDisplay();return;}
     try{
-      const evalExpr=_calcExpr.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/%/g,'/100');
+      let evalExpr=_calcExpr.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+      evalExpr=_calcResolvePercent(evalExpr);
       // eslint-disable-next-line no-eval
       const result=Function('"use strict";return ('+evalExpr+')')();
-      _calcExpr=isFinite(result)?String(Math.round(result*10000)/10000):'Error';
+      if(isFinite(result)){
+        const resultStr=String(Math.round(result*10000)/10000);
+        _calcHistory.unshift({expr:_calcExpr,result:resultStr});
+        if(_calcHistory.length>8) _calcHistory=_calcHistory.slice(0,8);
+        localStorage.setItem('ss_calc_history',JSON.stringify(_calcHistory));
+        renderCalcHistory();
+        _calcExpr=resultStr;
+      }else{_calcExpr='Error';}
     }catch(e){_calcExpr='Error';}
   }else{
     if(_calcExpr==='Error') _calcExpr='';
@@ -11539,6 +11560,93 @@ function calcInput(val){
 function calcUpdateDisplay(){
   const disp=$('calcDisplay');if(disp) disp.textContent=_calcExpr||'0';
 }
+function renderCalcHistory(){
+  const el=$('calcHistoryList');if(!el)return;
+  el.innerHTML=_calcHistory.length?_calcHistory.map(h=>`
+    <div onclick="calcUseHistory('${h.result}')" style="display:flex;justify-content:space-between;gap:8px;padding:5px 10px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--border)">
+      <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.expr}</span>
+      <span style="color:var(--text);font-weight:700;flex-shrink:0">= ${h.result}</span>
+    </div>`).join('')
+    :'<div style="padding:8px 10px;font-size:11px;color:var(--text2);text-align:center">কোনো হিসাব নেই</div>';
+}
+function calcUseHistory(val){_calcExpr=val;calcUpdateDisplay();}
+function clearCalcHistory(){
+  _calcHistory=[];localStorage.setItem('ss_calc_history','[]');renderCalcHistory();
+}
+function calcCopyResult(){
+  if(!_calcExpr||_calcExpr==='Error'){toast('কপি করার মতো ফলাফল নেই','warn');return;}
+  navigator.clipboard?.writeText(_calcExpr).then(()=>toast('📋 কপি হয়েছে: '+_calcExpr,'success')).catch(()=>toast('কপি করা যায়নি','warn'));
+}
+// ── Memory functions (M+, M−, MR, MC) ──
+function _calcCurrentValue(){
+  const v=parseFloat(_calcExpr);
+  return isNaN(v)?0:v;
+}
+function calcMemoryAdd(sign){
+  _calcMemory+=sign*_calcCurrentValue();
+  localStorage.setItem('ss_calc_memory',_calcMemory);
+  updateCalcMemoryBadge();
+  toast(sign>0?'M+ মেমোরিতে যোগ হয়েছে':'M− মেমোরি থেকে বিয়োগ হয়েছে','success');
+}
+function calcMemoryRecall(){
+  _calcExpr=String(_calcMemory);
+  calcUpdateDisplay();
+}
+function calcMemoryClear(){
+  _calcMemory=0;
+  localStorage.setItem('ss_calc_memory','0');
+  updateCalcMemoryBadge();
+  toast('মেমোরি খালি করা হয়েছে','warn');
+}
+function updateCalcMemoryBadge(){
+  const b=$('calcMemBadge');if(!b)return;
+  b.style.display=_calcMemory!==0?'inline-block':'none';
+}
+// ── Draggable widget (drag by header) ──
+function _calcInitDrag(){
+  const widget=$('calcWidget'),header=$('calcDragHandle');
+  if(!widget||!header||header.dataset.dragInit) return;
+  header.dataset.dragInit='1';
+  let dragging=false,offX=0,offY=0;
+  const start=(clientX,clientY)=>{
+    dragging=true;
+    const rect=widget.getBoundingClientRect();
+    offX=clientX-rect.left;offY=clientY-rect.top;
+    widget.style.right='auto';widget.style.bottom='auto';
+    widget.style.left=rect.left+'px';widget.style.top=rect.top+'px';
+  };
+  const move=(clientX,clientY)=>{
+    if(!dragging)return;
+    let x=clientX-offX,y=clientY-offY;
+    x=Math.max(4,Math.min(window.innerWidth-widget.offsetWidth-4,x));
+    y=Math.max(4,Math.min(window.innerHeight-widget.offsetHeight-4,y));
+    widget.style.left=x+'px';widget.style.top=y+'px';
+  };
+  const end=()=>{dragging=false;};
+  header.addEventListener('mousedown',e=>{start(e.clientX,e.clientY);e.preventDefault();});
+  window.addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+  window.addEventListener('mouseup',end);
+  header.addEventListener('touchstart',e=>{const t=e.touches[0];start(t.clientX,t.clientY);},{passive:true});
+  window.addEventListener('touchmove',e=>{if(dragging){const t=e.touches[0];move(t.clientX,t.clientY);}},{passive:true});
+  window.addEventListener('touchend',end);
+}
+// Keyboard support while calculator is open
+document.addEventListener('keydown',e=>{
+  const w=$('calcWidget');
+  if(!w||!w.classList.contains('show')) return;
+  const active=document.activeElement;
+  if(active&&['INPUT','TEXTAREA'].includes(active.tagName)) return; // don't hijack typing elsewhere
+  if(/^[0-9]$/.test(e.key)){calcInput(e.key);e.preventDefault();}
+  else if(e.key==='+'){calcInput('+');e.preventDefault();}
+  else if(e.key==='-'){calcInput('−');e.preventDefault();}
+  else if(e.key==='*'){calcInput('×');e.preventDefault();}
+  else if(e.key==='/'){calcInput('÷');e.preventDefault();}
+  else if(e.key==='%'){calcInput('%');e.preventDefault();}
+  else if(e.key==='.'){calcInput('.');e.preventDefault();}
+  else if(e.key==='Enter'||e.key==='='){calcInput('=');e.preventDefault();}
+  else if(e.key==='Backspace'){calcInput('⌫');e.preventDefault();}
+  else if(e.key==='Escape'){calcInput('C');e.preventDefault();}
+});
 
 // ══════════════════════════════════════
 //  📅 EXPENSE CALENDAR HEATMAP VIEW
@@ -13753,11 +13861,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
 <!-- CALCULATOR WIDGET -->
 <button class="calc-fab" id="calcFab" onclick="toggleCalculator()" title="ক্যালকুলেটর">🧮</button>
 <div class="calc-widget" id="calcWidget">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card2);border-bottom:1px solid var(--border)">
-    <span style="font-size:11px;font-weight:700;color:var(--text2)">🧮 ক্যালকুলেটর</span>
+  <div id="calcDragHandle" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card2);border-bottom:1px solid var(--border);cursor:move;user-select:none">
+    <span style="font-size:11px;font-weight:700;color:var(--text2)">🧮 ক্যালকুলেটর <span id="calcMemBadge" style="display:none;background:var(--accent);color:#fff;font-size:9px;padding:1px 5px;border-radius:99px;margin-left:4px">M</span></span>
     <button onclick="toggleCalculator()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px">✕</button>
   </div>
-  <div class="calc-display" id="calcDisplay">0</div>
+  <div id="calcHistoryList" style="max-height:110px;overflow-y:auto;border-bottom:1px solid var(--border)"></div>
+  <div style="display:flex;align-items:center;gap:6px;padding:0 4px">
+    <div class="calc-display" id="calcDisplay" style="flex:1">0</div>
+    <button onclick="calcCopyResult()" title="ফলাফল কপি করুন" style="background:var(--card2);border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:13px;flex-shrink:0">📋</button>
+    <button onclick="clearCalcHistory()" title="হিস্টোরি মুছুন" style="background:var(--card2);border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:13px;flex-shrink:0">🗑️</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px 0">
+    <button class="calc-btn op" onclick="calcMemoryClear()" title="মেমোরি ক্লিয়ার" style="font-size:11px">MC</button>
+    <button class="calc-btn op" onclick="calcMemoryRecall()" title="মেমোরি রিকল" style="font-size:11px">MR</button>
+    <button class="calc-btn op" onclick="calcMemoryAdd(-1)" title="মেমোরি থেকে বিয়োগ" style="font-size:11px">M−</button>
+    <button class="calc-btn op" onclick="calcMemoryAdd(1)" title="মেমোরিতে যোগ" style="font-size:11px">M+</button>
+  </div>
   <div class="calc-grid">
     <button class="calc-btn op" onclick="calcInput('C')">C</button>
     <button class="calc-btn op" onclick="calcInput('⌫')">⌫</button>
