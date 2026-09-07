@@ -1782,6 +1782,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       <option value="">সব ক্যাটাগরি</option>
     </select>
   </div>
+  <div id="shopCatDescBanner" style="display:none"></div>
   <div class="product-grid" id="productGrid"></div>
 </div>
 
@@ -2045,7 +2046,7 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
         <button class="btn btn-primary" onclick="openCatModal()">➕ নতুন ক্যাটাগরি</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th style="width:70px">ক্রম</th><th>ক্যাটাগরির নাম</th><th>আইকন</th><th>রঙ</th><th>মোট পণ্য</th><th class="hide-xs">স্টক মূল্য</th><th>একশন</th></tr></thead>
+        <thead><tr><th style="width:70px">ক্রম</th><th>ক্যাটাগরির নাম</th><th>আইকন</th><th>রঙ</th><th>মোট পণ্য</th><th class="hide-xs">স্টক মূল্য</th><th class="hide-xs">এই মাসের বিক্রয়</th><th>একশন</th></tr></thead>
         <tbody id="catsBody"></tbody>
       </table></div>
     </div>
@@ -3668,6 +3669,15 @@ function renderShop(){
   // Populate cat filter
   $('shopCatFilter').innerHTML='<option value="">সব ক্যাটাগরি</option>'+DB.cats.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   $('shopCatFilter').value=cat;
+  // Category description banner
+  const catDescBanner=$('shopCatDescBanner');
+  if(catDescBanner){
+    const activeCat=cat?DB.cats.find(c=>c.id===cat):null;
+    if(activeCat&&activeCat.desc){
+      catDescBanner.style.display='block';
+      catDescBanner.innerHTML=`<div style="margin:0 16px 12px;padding:10px 14px;background:${activeCat.color||'var(--accent)'}18;border:1px solid ${activeCat.color||'var(--accent)'}44;border-radius:9px;font-size:12px;color:var(--text2)">${activeCat.icon||'🏷️'} <b style="color:var(--text)">${activeCat.name}</b> — ${activeCat.desc}</div>`;
+    }else{catDescBanner.style.display='none';}
+  }
   const products=DB.products.filter(p=>{
     const c=DB.cats.find(x=>x.id===p.cat)||{};
     const tagMatch=(p.tags||[]).some(t=>t.toLowerCase().includes(q));
@@ -5074,26 +5084,38 @@ function renderCats(){
   const body=$('catsBody');
   const q=($('catSearch')||{value:''}).value.toLowerCase();
   const list=DB.cats.map((c,i)=>({...c,_idx:i})).filter(c=>!q||c.name.toLowerCase().includes(q));
+  // Precompute this-month sales revenue per category (from sale line-items)
+  const thisMonth=today().slice(0,7);
+  const catRevenue={};
+  (DB.sales||[]).forEach(s=>{
+    if(s.time.slice(0,7)!==thisMonth) return;
+    (s.items||[]).forEach(i=>{
+      const p=DB.products.find(x=>x.id===i.productId);
+      if(p&&p.cat){catRevenue[p.cat]=(catRevenue[p.cat]||0)+(i.price*i.qty);}
+    });
+  });
   body.innerHTML=list.map((c,vi)=>{
     const catProducts=DB.products.filter(p=>p.cat===c.id);
     const cnt=catProducts.length;
     const stockValue=catProducts.reduce((s,p)=>s+(p.price*p.stock),0);
+    const revenue=catRevenue[c.id]||0;
     return`<tr>
       <td style="display:flex;gap:2px;align-items:center">
         <button class="btn btn-ghost btn-sm" style="padding:3px 7px" onclick="moveCat('${c.id}',-1)" ${c._idx===0?'disabled':''} title="উপরে">▲</button>
         <button class="btn btn-ghost btn-sm" style="padding:3px 7px" onclick="moveCat('${c.id}',1)" ${c._idx===DB.cats.length-1?'disabled':''} title="নিচে">▼</button>
       </td>
-      <td>${c.name}</td><td style="font-size:20px">${c.icon||'🏷️'}</td>
+      <td>${c.name}${c.desc?`<br><span style="font-size:10px;color:var(--text2);font-weight:400">${c.desc}</span>`:''}</td><td style="font-size:20px">${c.icon||'🏷️'}</td>
       <td><span style="display:inline-block;width:18px;height:18px;border-radius:5px;background:${c.color||'#e94560'};border:1px solid var(--border);vertical-align:middle"></span></td>
       <td><span class="badge badge-info">${cnt}</span></td>
       <td class="hide-xs" style="font-size:12px;font-weight:600;color:var(--accent2)">${stockValue>0?fmt(stockValue):'—'}</td>
+      <td class="hide-xs" style="font-size:12px;font-weight:600;color:${revenue>0?'var(--success)':'var(--text2)'}">${revenue>0?fmt(revenue):'—'}</td>
       <td style="display:flex;gap:6px">
         <button class="btn btn-warn btn-sm" onclick="openCatModal('${c.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteCat('${c.id}')">🗑️</button>
       </td>
     </tr>`;
   }).join('');
-  if(!list.length) body.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:16px">কোনো ক্যাটাগরি পাওয়া যায়নি</td></tr>';
+  if(!list.length) body.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:16px">কোনো ক্যাটাগরি পাওয়া যায়নি</td></tr>';
 }
 function moveCat(id,dir){
   const i=DB.cats.findIndex(c=>c.id===id);
@@ -5110,6 +5132,7 @@ function openCatModal(id){
       <div class="form-group"><label>আইকন (ইমোজি)</label><input id="mc_icon" value="${c?.icon||'🏷️'}" style="font-size:18px"></div>
       <div class="form-group"><label>রঙ (শপে দেখানোর জন্য)</label><input id="mc_color" type="color" value="${c?.color||'#e94560'}" style="height:40px;padding:2px;cursor:pointer"></div>
     </div>
+    <div class="form-group"><label>সংক্ষিপ্ত বিবরণ (ঐচ্ছিক — শপ পেজে দেখাবে)</label><input id="mc_desc" value="${c?.desc||''}" placeholder="যেমন: তাজা ফলমূল ও শাকসবজি"></div>
   `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
      <button class="btn btn-primary" onclick="saveCat('${id||''}')">💾 সেভ করুন</button>`);
 }
@@ -5117,9 +5140,11 @@ function openCatModal(id){
 function saveCat(id){
   const name=$('mc_name').value.trim();
   if(!name){toast('নাম দিন','warn');return;}
+  if(DB.cats.find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.id!==id)){toast('এই নামে আরেকটা ক্যাটাগরি আগে থেকেই আছে','warn');return;}
   const color=($('mc_color')||{value:'#e94560'}).value;
-  if(id){const c=DB.cats.find(x=>x.id===id);c.name=name;c.icon=$('mc_icon').value;c.color=color;}
-  else DB.cats.push({id:`c${uid()}`,name,icon:$('mc_icon').value,color});
+  const desc=($('mc_desc')||{value:''}).value.trim();
+  if(id){const c=DB.cats.find(x=>x.id===id);c.name=name;c.icon=$('mc_icon').value;c.color=color;c.desc=desc;}
+  else DB.cats.push({id:`c${uid()}`,name,icon:$('mc_icon').value,color,desc});
   save(KEYS.cats,DB.cats);closeModal();renderCats();populateCatFilters();
   toast('ক্যাটাগরি সেভ হয়েছে');realtimeUpdate();
 }
@@ -12523,7 +12548,7 @@ function renderCashbook(){
   const totalIn=dayEntries.filter(e=>e.type==='in').reduce((s,e)=>s+e.amount,0);
   const totalOut=dayEntries.filter(e=>e.type==='out').reduce((s,e)=>s+e.amount,0);
   // Add today's POS sales as income
-  const posIncome=DB.sales.filter(s=>s.time.slice(0,10)===dateFilter).reduce((s,x)=>s+x.paidAmount||x.total,0);
+  const posIncome=DB.sales.filter(s=>s.time.slice(0,10)===dateFilter).reduce((s,x)=>s+(x.paidAmount||x.total),0);
   const netBalance=totalIn+posIncome-totalOut;
 
   $('cashbookStats').innerHTML=`
@@ -12727,6 +12752,46 @@ setInterval(()=>{if(isAdmin)checkApptReminders();},2*60*1000);
 //  🤖 AI ASSISTANT (Claude API)
 // ══════════════════════════════════════
 const _aiHistory=[];
+const AI_DISPLAY_LOG_KEY='ss_ai_display_log';
+let _aiDisplayLog=JSON.parse(localStorage.getItem(AI_DISPLAY_LOG_KEY)||'[]');
+function _saveAiDisplayLog(){
+  if(_aiDisplayLog.length>60) _aiDisplayLog=_aiDisplayLog.slice(-60);
+  localStorage.setItem(AI_DISPLAY_LOG_KEY,JSON.stringify(_aiDisplayLog));
+}
+function _aiCopyReply(btn){
+  const bubble=btn.closest('div').querySelector('.ai-reply-text');
+  if(!bubble) return;
+  navigator.clipboard?.writeText(bubble.innerText).then(()=>toast('📋 কপি হয়েছে','success')).catch(()=>toast('কপি করা যায়নি','warn'));
+}
+function _renderAiUserBubble(q){
+  const conv=$('aiConversation');if(!conv)return;
+  const userDiv=document.createElement('div');
+  userDiv.style.cssText='display:flex;justify-content:flex-end;margin-bottom:10px';
+  userDiv.innerHTML=`<div style="background:linear-gradient(135deg,var(--accent),#c0223d);color:#fff;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;max-width:80%;line-height:1.5">${q}</div>`;
+  conv.appendChild(userDiv);
+}
+function _renderAiReplyBubble(reply){
+  const conv=$('aiConversation');if(!conv)return;
+  const formatted=reply.replace(/\n/g,'<br>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');
+  const aiDiv=document.createElement('div');
+  aiDiv.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-bottom:10px';
+  aiDiv.innerHTML=`<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#748ffc,#4a6cf7);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 4px 12px rgba(116,143,252,.3)">🤖</div>
+  <div style="flex:1;max-width:88%">
+    <div class="ai-reply-text" style="background:var(--card2);border:1px solid var(--border);padding:12px 16px;border-radius:4px 14px 14px 14px;font-size:13px;line-height:1.7">${formatted}</div>
+    <button onclick="_aiCopyReply(this)" style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;font-family:inherit;margin-top:3px;padding:2px 4px">📋 কপি করুন</button>
+  </div>`;
+  conv.appendChild(aiDiv);
+}
+function restoreAiConversation(){
+  const conv=$('aiConversation');if(!conv||!_aiDisplayLog.length)return;
+  conv.innerHTML='';
+  _aiHistory.length=0;
+  _aiDisplayLog.forEach(m=>{
+    if(m.role==='user'){_renderAiUserBubble(m.text);_aiHistory.push({role:'user',content:m.text});}
+    else{_renderAiReplyBubble(m.text);_aiHistory.push({role:'assistant',content:m.text});}
+  });
+  conv.scrollTop=conv.scrollHeight;
+}
 const AI_KEY_STORE='ss_ai_api_key';
 
 function getAiApiKey(){
@@ -12747,6 +12812,7 @@ function loadAiKeyField(){
   const inp=$('aiApiKey');if(inp&&k) inp.value=k;
   const st=$('aiKeyStatus');
   if(st&&k){st.style.display='block';st.innerHTML='<span style="color:var(--success)">✅ API Key সেট আছে — AI ব্যবহারের জন্য প্রস্তুত</span>';}
+  restoreAiConversation();
 }
 async function testAiKey(){
   const key=($('aiApiKey')||{value:''}).value.trim()||getAiApiKey();
@@ -12758,7 +12824,7 @@ async function testAiKey(){
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:50,messages:[{role:'user',content:'হ্যালো, একটি বাংলা শব্দ বলো।'}]})
+      body:JSON.stringify({model:'claude-sonnet-5',max_tokens:50,messages:[{role:'user',content:'হ্যালো, একটি বাংলা শব্দ বলো।'}]})
     });
     const data=await resp.json();
     if(data.content?.[0]?.text){
@@ -12778,6 +12844,8 @@ async function testAiKey(){
 }
 function clearAiConversation(){
   _aiHistory.length=0;
+  _aiDisplayLog=[];
+  localStorage.removeItem(AI_DISPLAY_LOG_KEY);
   const conv=$('aiConversation');
   if(conv) conv.innerHTML='';
   toast('🗑️ কথোপকথন মুছে ফেলা হয়েছে');
@@ -12815,10 +12883,8 @@ async function askAI(q){
   // Show user message
   const conv=$('aiConversation');
   if(conv){
-    const userDiv=document.createElement('div');
-    userDiv.style.cssText='display:flex;justify-content:flex-end;margin-bottom:10px';
-    userDiv.innerHTML=`<div style="background:linear-gradient(135deg,var(--accent),#c0223d);color:#fff;padding:10px 14px;border-radius:14px 14px 4px 14px;font-size:13px;max-width:80%;line-height:1.5">${q}</div>`;
-    conv.appendChild(userDiv);
+    _renderAiUserBubble(q);
+    _aiDisplayLog.push({role:'user',text:q});_saveAiDisplayLog();
     // Loading bubble
     const loadDiv=document.createElement('div');
     loadDiv.id='aiLoading';
@@ -12841,7 +12907,7 @@ async function askAI(q){
         'anthropic-dangerous-direct-browser-access':'true'
       },
       body:JSON.stringify({
-        model:'claude-sonnet-4-6',max_tokens:1000,
+        model:'claude-sonnet-5',max_tokens:1000,
         system:'তুমি একজন অভিজ্ঞ ব্যবসায়িক পরামর্শদাতা এবং বাংলাদেশি দোকানদারের AI সহকারী। সংক্ষিপ্ত, practical এবং কার্যকর পরামর্শ দাও। সবসময় বাংলায় উত্তর দাও। প্রাসঙ্গিক emoji ব্যবহার করো। তথ্য bullet point বা numbered list-এ দাও।',
         messages:_aiHistory.slice(-8)
       })
@@ -12855,13 +12921,8 @@ async function askAI(q){
     _aiHistory.push({role:'assistant',content:reply});
     const loadEl=$('aiLoading');if(loadEl)loadEl.remove();
     if(conv){
-      const aiDiv=document.createElement('div');
-      aiDiv.style.cssText='display:flex;gap:8px;align-items:flex-start;margin-bottom:10px';
-      // Convert newlines and markdown-like formatting
-      const formatted=reply.replace(/\n/g,'<br>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');
-      aiDiv.innerHTML=`<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#748ffc,#4a6cf7);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 4px 12px rgba(116,143,252,.3)">🤖</div>
-      <div style="background:var(--card2);border:1px solid var(--border);padding:12px 16px;border-radius:4px 14px 14px 14px;font-size:13px;line-height:1.7;max-width:88%">${formatted}</div>`;
-      conv.appendChild(aiDiv);
+      _renderAiReplyBubble(reply);
+      _aiDisplayLog.push({role:'assistant',text:reply});_saveAiDisplayLog();
       conv.scrollTop=conv.scrollHeight;
     }
   }catch(err){
