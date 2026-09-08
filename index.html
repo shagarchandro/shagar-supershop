@@ -2012,6 +2012,11 @@ body.amoled-theme .pos-search-bar input{background:#111;border-color:#222;color:
       <div class="toolbar">
         <input type="text" id="prodSearch" placeholder="🔍 পণ্য খুঁজুন..." oninput="renderProducts()">
         <select id="prodCatFilter" onchange="renderProducts()"><option value="">সব ক্যাটাগরি</option></select>
+        <select id="prodStatusFilter" onchange="renderProducts()">
+          <option value="active">✅ সক্রিয় পণ্য</option>
+          <option value="archived">🗄️ আর্কাইভড</option>
+          <option value="all">সব দেখান</option>
+        </select>
         <div class="spacer"></div>
         <button class="btn btn-ghost btn-sm" onclick="openAdvancedSearch()" title="Advanced Search (Ctrl+F)">🔍 Advanced</button>
         <button class="btn btn-warn btn-sm" onclick="showReorderSuggestions()" title="কম স্টক পণ্যের জন্য রিঅর্ডার সাজেশন">📦 রিঅর্ডার সাজেশন</button>
@@ -3679,6 +3684,7 @@ function renderShop(){
     }else{catDescBanner.style.display='none';}
   }
   const products=DB.products.filter(p=>{
+    if(p.active===false) return false;
     const c=DB.cats.find(x=>x.id===p.cat)||{};
     const tagMatch=(p.tags||[]).some(t=>t.toLowerCase().includes(q));
     return(!q||p.name.toLowerCase().includes(q)||c.name?.toLowerCase().includes(q)||tagMatch)&&(!cat||p.cat===cat);
@@ -4837,8 +4843,13 @@ let _prodSelected=new Set();
 function renderProducts(){
   const q=($('prodSearch')||{value:''}).value.toLowerCase();
   const cat=($('prodCatFilter')||{value:''}).value;
+  const statusF=($('prodStatusFilter')||{value:'active'}).value;
   populateCatFilters();
-  const list=DB.products.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!cat||p.cat===cat));
+  const list=DB.products.filter(p=>{
+    const isActive=p.active!==false;
+    const statusMatch=statusF==='all'||(statusF==='active'?isActive:!isActive);
+    return(!q||p.name.toLowerCase().includes(q))&&(!cat||p.cat===cat)&&statusMatch;
+  });
   const pages=Math.max(1,Math.ceil(list.length/PERPAGE));
   if(prodPage>pages)prodPage=1;
   const slice=list.slice((prodPage-1)*PERPAGE,prodPage*PERPAGE);
@@ -4848,10 +4859,10 @@ function renderProducts(){
     const low=isLowOrOutStock(p);
     const expInfo=getExpiryStatus(p.expiryDate);
     const reorderAlert=p.reorderLevel>0&&p.stock<=p.reorderLevel;
-    return`<tr class="${low?'low-stock':''}">
+    return`<tr class="${low?'low-stock':''}" style="${p.active===false?'opacity:.55':''}">
       <td><input type="checkbox" class="prod-chk" value="${p.id}" ${_prodSelected.has(p.id)?'checked':''} onchange="toggleProductSelect('${p.id}',this)"></td>
       <td>${(prodPage-1)*PERPAGE+i+1}</td>
-      <td><span style="margin-right:6px">${p.icon||'📦'}</span>${p.name}${expInfo?`<span class="badge badge-${expInfo.level}" style="margin-left:6px;font-size:10px">${expInfo.label}</span>`:''}${reorderAlert?`<span class="reorder-badge" style="margin-left:6px">📦 রিঅর্ডার</span>`:''}</td>
+      <td><span style="margin-right:6px">${p.icon||'📦'}</span>${p.name}${p.active===false?`<span class="badge badge-gray" style="margin-left:6px;font-size:10px">🗄️ আর্কাইভড</span>`:''}${expInfo?`<span class="badge badge-${expInfo.level}" style="margin-left:6px;font-size:10px">${expInfo.label}</span>`:''}${reorderAlert?`<span class="reorder-badge" style="margin-left:6px">📦 রিঅর্ডার</span>`:''}</td>
       <td class="hide-xs">${c.icon||''} ${c.name||'—'}</td>
       <td class="hide-xs"><code style="font-size:11px;color:var(--text2)">${p.barcode||'—'}</code></td>
       <td>${fmt(p.price)}<br><span style="font-size:10px;color:var(--text2)">${p.unit||'পিস'}</span></td>
@@ -4869,7 +4880,8 @@ function renderProducts(){
         ${canDo('canEditProduct')?`<button class="btn btn-ghost btn-sm" onclick="openVariantModal('${p.id}')" title="ভ্যারিয়েন্ট (রঙ/সাইজ)"${p.variants?.length?` style="color:var(--accent2)"`:''}>🗃️${p.variants?.length?`<b style="font-size:9px;background:var(--accent);color:#fff;border-radius:99px;padding:0 3px;margin-left:1px">${p.variants.length}</b>`:''}</button>`:''  }
         ${canDo('canEditProduct')?`<button class="btn btn-ghost btn-sm" onclick="cloneProduct('${p.id}')" title="পণ্য কপি করুন">📋</button>`:''}
         ${p.barcode?`<button class="btn btn-ghost btn-sm" onclick="printBarcodeLabel('${p.id}')" title="বারকোড লেবেল প্রিন্ট">🏷️</button>`:''}
-        ${canDo('canDelete')?`<button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">🗑️</button>`:''}
+        ${canDo('canEditProduct')?`<button class="btn btn-ghost btn-sm" onclick="toggleProductActive('${p.id}')" title="${p.active===false?'সক্রিয় করুন':'আর্কাইভ করুন (মুছবে না, শুধু লুকাবে)'}">${p.active===false?'♻️':'🗄️'}</button>`:''}
+        ${canDo('canDelete')?`<button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')" title="স্থায়ীভাবে মুছুন">🗑️</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -5068,6 +5080,14 @@ function saveRestock(id){
   realtimeUpdate();
 }
 
+function toggleProductActive(id){
+  const p=DB.products.find(x=>x.id===id);if(!p)return;
+  p.active=p.active===false?true:false;
+  save(KEYS.products,DB.products);renderProducts();renderShop();
+  toast(p.active?'✅ পণ্য সক্রিয় করা হয়েছে':'🗄️ পণ্য আর্কাইভ করা হয়েছে — POS ও শপে দেখাবে না, তবে ডেটা/ইতিহাস সংরক্ষিত থাকবে','success');
+  logActivity('🗄️','পণ্য স্ট্যাটাস',`${p.name} — ${p.active?'সক্রিয়':'আর্কাইভড'}`);
+  realtimeUpdate();
+}
 function deleteProduct(id){
   if(!canDo('canDelete')){toast('⛔ আপনার পণ্য মুছার অনুমতি নেই','warn');return;}
   confirmWithPin('এই পণ্যটি মুছে ফেলবেন?',()=>{
@@ -5482,6 +5502,7 @@ function renderPOS(){
   const savedScroll=pg?pg.scrollTop:0;
   // Filter products
   let list=DB.products.filter(p=>
+    p.active!==false&&
     (!q||p.name.toLowerCase().includes(q)||
       (p.barcode&&p.barcode.toLowerCase().includes(q))||
       (p.desc&&p.desc.toLowerCase().includes(q)))&&
