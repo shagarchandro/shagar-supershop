@@ -6112,12 +6112,106 @@ function renderDuePage(){
         ${s.dueAmount>0?`<button class="btn btn-success btn-sm" onclick="openCollectDueModal('${s.id}')">💰 আদায়</button>`:'<span class="badge badge-success" style="font-size:10px">✅ পরিশোধিত</span>'}
         ${s.dueAmount>0&&s.custPhone?`<button class="btn btn-whatsapp btn-sm" onclick="sendWhatsAppToCustomer('${s.custPhone}','${s.custName}','due')" title="বাকি পরিশোধের রিমাইন্ডার পাঠান">📱</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick="viewDueHistory('${s.id}')" title="ইতিহাস">📋</button>
+        ${s.custPhone?`<button class="btn btn-ghost btn-sm" onclick="showCustomerDueStatement('${s.custPhone}','${s.custName.replace(/'/g,"\\'")}')" title="কাস্টমার স্টেটমেন্ট">📄</button>`:''}
+        ${s.dueAmount>0&&canDo('canDelete')?`<button class="btn btn-danger btn-sm" onclick="openWriteOffModal('${s.id}')" title="বাকি রাইট-অফ করুন (আদায়যোগ্য নয় বলে চিহ্নিত)">❌</button>`:''}
       </td>
     </tr>`;
   }).join('')
   :'<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:24px">কোনো বাকি বিক্রয় নেই ✅</td></tr>';
 
   updateDueSidebarBadge();
+}
+// ══════════════════════════════════════
+//  📄 CUSTOMER DUE STATEMENT (combined, printable/shareable)
+// ══════════════════════════════════════
+function _buildDueStatementHTML(custPhone,custName){
+  const s=DB.settings;
+  const brand=s.brandColor||'#e94560';
+  const bills=getDueSales().filter(x=>x.custPhone===custPhone);
+  const totalDue=bills.reduce((sum,b)=>sum+b.dueAmount,0);
+  const rows=bills.map(b=>{
+    const ageDays=Math.floor((Date.now()-new Date(b.time).getTime())/86400000);
+    return`<tr>
+      <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px">${b.id}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px">${new Date(b.time).toLocaleDateString('bn-BD')}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:right">${fmt(b.total)}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;color:#00875a">${fmt(b.paidAmount)}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:right;font-weight:700;color:${brand}">${fmt(b.dueAmount)}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;font-size:11px;text-align:center;color:${ageDays>30?'#c0223d':'#888'}">${ageDays} দিন</td>
+    </tr>`;
+  }).join('');
+  return`<!DOCTYPE html><html lang="bn"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>বাকির স্টেটমেন্ট — ${custName}</title>
+  <style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  @page{size:A4;margin:14mm}
+  body{font-family:Arial,sans-serif;font-size:13px;color:#1a2639;padding:30px;background:#fff}
+  @media(max-width:600px){body{padding:16px}}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid ${brand};padding-bottom:14px;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+  .shop-name{font-size:22px;font-weight:900;color:${brand}}
+  .stmt-label{font-size:18px;font-weight:900;text-align:right}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px}
+  thead th{background:#1a2639;color:#fff;padding:9px 8px;font-size:11px;text-align:left}
+  .cust-box{background:#f8fafc;border:1px solid #e2eaf4;border-radius:8px;padding:12px 14px;margin-bottom:18px}
+  .total-box{text-align:right;font-size:20px;font-weight:900;color:${brand};padding:14px;background:#fff5f5;border-radius:9px;border:1px solid ${brand}33}
+  </style></head><body>
+  <div class="top">
+    <div><div class="shop-name">${s.name||'SuperShop'}</div><div style="font-size:11px;color:#666;margin-top:4px">${s.addr||''}<br>📞 ${s.phone||''}</div></div>
+    <div><div class="stmt-label">বাকির স্টেটমেন্ট</div><div style="font-size:11px;color:#888;text-align:right;margin-top:4px">তারিখ: ${new Date().toLocaleDateString('bn-BD')}</div></div>
+  </div>
+  <div class="cust-box"><b>কাস্টমার:</b> ${custName} ${custPhone?`| 📞 ${custPhone}`:''}</div>
+  <table>
+    <thead><tr><th>বিল আইডি</th><th>তারিখ</th><th style="text-align:right">মোট বিল</th><th style="text-align:right">জমা</th><th style="text-align:right">বাকি</th><th style="text-align:center">বয়স</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="total-box">সর্বমোট বাকি: ${fmt(totalDue)}</div>
+  <div style="text-align:center;margin-top:24px;font-size:11px;color:#aaa">${s.name||'SuperShop'} থেকে অনুরোধ — অনুগ্রহ করে যত দ্রুত সম্ভব বাকি পরিশোধ করুন। ধন্যবাদ।</div>
+  </body></html>`;
+}
+function showCustomerDueStatement(custPhone,custName){
+  const bills=getDueSales().filter(x=>x.custPhone===custPhone);
+  if(!bills.length){toast('এই কাস্টমারের কোনো বাকি বিল নেই','warn');return;}
+  const totalDue=bills.reduce((sum,b)=>sum+b.dueAmount,0);
+  openModal(`📄 বাকির স্টেটমেন্ট — ${custName}`,`
+    <div style="text-align:center;padding:10px 0 16px">
+      <div style="font-size:12px;color:var(--text2)">মোট ${bills.length}টি বিল</div>
+      <div style="font-size:26px;font-weight:900;color:var(--danger)">${fmt(totalDue)}</div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);text-align:center">নিচের বাটন দিয়ে PDF ডাউনলোড অথবা সরাসরি WhatsApp-এ শেয়ার করতে পারবেন।</div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
+     <button class="btn btn-info" onclick="exportHtmlToPDF(_buildDueStatementHTML('${custPhone}','${custName.replace(/'/g,"\\'")}'),'Due-Statement-${custName.replace(/[^A-Za-z0-9]/g,'')}.pdf',{landscape:false})">📥 PDF</button>
+     ${navigator.share?`<button class="btn btn-whatsapp" onclick="exportHtmlToPDF(_buildDueStatementHTML('${custPhone}','${custName.replace(/'/g,"\\'")}'),'Due-Statement.pdf',{landscape:false,share:true})">📤 শেয়ার</button>`:''}`);
+}
+
+// ══════════════════════════════════════
+//  ❌ WRITE-OFF (bad debt) — mark uncollectible due as closed
+// ══════════════════════════════════════
+function openWriteOffModal(saleId){
+  const s=DB.sales.find(x=>x.id===saleId);if(!s)return;
+  openModal(`❌ বাকি রাইট-অফ — ${s.custName}`,`
+    <div style="font-size:12px;color:var(--text2);background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.25);border-radius:8px;padding:10px 12px;margin-bottom:14px">
+      ⚠️ এটা এই বিলের বাকি ${fmt(s.dueAmount)} টাকাকে "আদায়যোগ্য নয়" (Bad Debt) হিসেবে চিহ্নিত করবে। এই বাকি আর অ্যাকশন সেন্টার/রিমাইন্ডারে দেখাবে না, তবে হিসাবের জন্য রেকর্ড থেকে যাবে। এটা সাধারণত শুধু তখনই করা উচিত যখন টাকা আদায়ের সম্ভাবনা নেই।
+    </div>
+    <div class="form-group"><label>কারণ (ঐচ্ছিক)</label><input id="wo_reason" placeholder="যেমন: কাস্টমার যোগাযোগ করা যাচ্ছে না"></div>
+  `,`<button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+     <button class="btn btn-danger" onclick="confirmWriteOff('${saleId}')">❌ রাইট-অফ নিশ্চিত করুন</button>`);
+}
+function confirmWriteOff(saleId){
+  const s=DB.sales.find(x=>x.id===saleId);if(!s)return;
+  const reason=($('wo_reason')||{value:''}).value.trim();
+  const amount=s.dueAmount;
+  if(!DB.settings.writeOffs) DB.settings.writeOffs=[];
+  DB.settings.writeOffs.push({id:`wo${uid()}`,saleId,custName:s.custName,custPhone:s.custPhone||'',amount,reason,date:new Date().toISOString(),by:currentStaff?currentStaff.name:(DB.adminUser||'Owner')});
+  save(KEYS.settings,DB.settings);
+  s.writtenOff=true;
+  s.dueAmount=0;
+  if(!s.dueHistory) s.dueHistory=[];
+  s.dueHistory.push({amount:0,time:new Date().toISOString(),note:`❌ রাইট-অফ (Bad Debt): ${reason||'কারণ উল্লেখ করা হয়নি'} — ${fmt(amount)}`,by:currentStaff?currentStaff.name:(DB.adminUser||'Owner')});
+  save(KEYS.sales,DB.sales);
+  closeModal();renderDuePage();
+  toast(`❌ ${fmt(amount)} রাইট-অফ করা হয়েছে`,'warn');
+  logActivity('❌','বাকি রাইট-অফ',`${s.custName} — ${fmt(amount)}${reason?' — '+reason:''}`);
+  realtimeUpdate();
 }
 // ══════════════════════════════════════
 //  📱 DUE REMINDER QUEUE — go through all overdue customers one by one
@@ -9294,6 +9388,7 @@ function exportAllData(){
     labelSerials:DB.settings.labelSerials,
     advances:DB.settings.advances,
     custCreditLimits:DB.settings.custCreditLimits,
+    writeOffs:DB.settings.writeOffs,
   };
   const json=JSON.stringify(backup,null,2);
   const blob=new Blob([json],{type:'application/json'});
@@ -9336,6 +9431,7 @@ function importAllData(input){
       if(data.labelSerials){DB.settings.labelSerials=data.labelSerials;save(KEYS.settings,DB.settings);}
       if(data.advances){DB.settings.advances=data.advances;save(KEYS.settings,DB.settings);}
       if(data.custCreditLimits){DB.settings.custCreditLimits=data.custCreditLimits;save(KEYS.settings,DB.settings);}
+      if(data.writeOffs){DB.settings.writeOffs=data.writeOffs;save(KEYS.settings,DB.settings);}
       if(data.adminUser){DB.adminUser=data.adminUser;save(KEYS.adminUser,DB.adminUser);}
       if(data.adminEmail){DB.adminEmail=data.adminEmail;save(KEYS.adminEmail,DB.adminEmail);}
       if(data.adminPass){DB.adminPass=data.adminPass;save(KEYS.adminPass,DB.adminPass);}
