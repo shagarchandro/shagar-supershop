@@ -3699,14 +3699,14 @@ function renderShop(){
       :`<span style="font-size:48px">${p.icon||'📦'}</span>`;
     const rt=_getProductRating(p.id);
     return`<div class="product-card" data-pid="${p.id}">
-      <div class="product-img" style="${p.img?'padding:0;overflow:hidden':''}">${imgHtml}
+      <div class="product-img" style="${p.img?'padding:0;overflow:hidden':''}" onclick="openProductQuickView('${p.id}')" title="বিস্তারিত দেখতে ক্লিক করুন">${imgHtml}
         <span class="stock-badge ${inStock?'in':'out'}" style="z-index:2">${inStock?`স্টক: ${p.stock}`:'শেষ'}</span>
         ${isLowStock?`<span style="position:absolute;bottom:6px;left:6px;z-index:2;font-size:10px;font-weight:700;background:#ff6b3522;color:#ff6b35;border:1px solid #ff6b3555;padding:2px 8px;border-radius:99px;animation:urgencyPulse 1.5s ease-in-out infinite">🔥 মাত্র ${p.stock}টি বাকি!</span>`:''}
         ${p.featured?`<span style="position:absolute;top:32px;right:6px;z-index:2;font-size:10px;font-weight:700;background:#ffd166;color:#1a2639;padding:2px 8px;border-radius:20px">✨ ফিচার্ড</span>`:''}
         <span onclick="event.stopPropagation();toggleWishlist('${p.id}')" title="উইশলিস্টে যোগ/বাদ দিন" style="position:absolute;top:6px;left:6px;z-index:2;cursor:pointer;font-size:16px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))">${wishlist.includes(p.id)?'❤️':'🤍'}</span>
       </div>
       <div class="product-info">
-        <h3 title="${p.name}">${p.name}</h3>
+        <h3 title="${p.name}" style="cursor:pointer" onclick="openProductQuickView('${p.id}')">${p.name}</h3>
         <div class="cat" style="${c.color?`color:${c.color}`:''}">${c.icon||''} ${c.name||'অন্যান্য'}</div>
         <div class="price">${fmt(p.price)} <small>/ ${p.unit||'পিস'}</small></div>
         <div style="cursor:pointer" onclick="openProductReviews('${p.id}')" title="রিভিউ দেখুন">${_starHtml(rt.avg)} <small style="color:var(--text2);font-size:11px">${rt.count?`(${rt.count})`:'রিভিউ দিন'}</small></div>
@@ -3721,6 +3721,39 @@ function renderShop(){
   // Update realtime bar
   const rtP=$('rtProductCount');
   if(rtP) rtP.textContent=DB.products.filter(p=>p.stock>0).length;
+}
+
+// ══════════════════════════════════════
+//  👁️ PRODUCT QUICK VIEW
+// ══════════════════════════════════════
+function openProductQuickView(pid){
+  const p=DB.products.find(x=>x.id===pid);if(!p)return;
+  const c=DB.cats.find(x=>x.id===p.cat)||{};
+  const inStock=p.stock>0;
+  const rt=_getProductRating(p.id);
+  openModal(p.name,`
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="width:100%;height:200px;background:var(--card2);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+        ${p.img?`<img src="${p.img}" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" onclick="openLightbox('${p.img}')">`:`<span style="font-size:64px">${p.icon||'📦'}</span>`}
+      </div>
+      <div>
+        <div style="font-size:12px;color:${c.color||'var(--text2)'}">${c.icon||''} ${c.name||'অন্যান্য'}</div>
+        <div style="font-size:22px;font-weight:900;color:var(--accent);margin-top:4px">${fmt(p.price)} <small style="font-size:13px;font-weight:500;color:var(--text2)">/ ${p.unit||'পিস'}</small></div>
+        <div style="margin-top:4px;cursor:pointer" onclick="closeModal();openProductReviews('${p.id}')">${_starHtml(rt.avg,15)} <small style="color:var(--text2);font-size:12px">${rt.count?`(${rt.count}টি রিভিউ)`:'এখনো রিভিউ নেই'}</small></div>
+        ${p.desc?`<p style="font-size:13px;color:var(--text2);margin-top:10px;line-height:1.6">${p.desc}</p>`:''}
+        <div style="font-size:12px;margin-top:10px;color:var(--text2)">${inStock?`✅ স্টকে আছে — ${p.stock} ${p.unit||'পিস'}`:'⛔ স্টক শেষ'}</div>
+      </div>
+    </div>
+  `,inStock?`<button class="btn btn-ghost" onclick="closeModal();addToCart('${p.id}')">🛒 কার্টে যোগ</button>
+     <button class="btn btn-primary" onclick="closeModal();buyNow('${p.id}')">⚡ সরাসরি কিনুন</button>
+     <button class="btn btn-whatsapp" onclick="shareProductWhatsApp('${p.id}')" title="কাস্টমারকে পণ্যটি শেয়ার করুন">📤</button>`
+    :`<button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>`);
+}
+function shareProductWhatsApp(pid){
+  const p=DB.products.find(x=>x.id===pid);if(!p)return;
+  const s=DB.settings;
+  const msg=`🛍️ *${p.name}*\n\n💰 দাম: ${fmt(p.price)} / ${p.unit||'পিস'}\n${p.desc?`📝 ${p.desc}\n\n`:''}${p.stock>0?'✅ স্টকে আছে':'⛔ স্টক শেষ'}\n\n🏪 ${s.name||'SuperShop'}\n📞 ${s.phone||''}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');
 }
 
 // ══════════════════════════════════════
@@ -12821,8 +12854,10 @@ function renderAppointments(){
     <td><span class="badge ${statusBadges[a.status]||'badge-gray'}">${statusIcons[a.status]||''} ${a.status==='pending'?'অপেক্ষমান':a.status==='confirmed'?'নিশ্চিত':a.status==='done'?'সম্পন্ন':'বাতিল'}</span></td>
     <td style="font-size:12px;color:var(--text2)">${a.note||'—'}</td>
     <td style="display:flex;gap:4px">
-      <button class="btn btn-ghost btn-sm" onclick="updateApptStatus('${a.id}','confirmed')" title="নিশ্চিত করুন">✅</button>
-      <button class="btn btn-ghost btn-sm" onclick="updateApptStatus('${a.id}','done')" title="সম্পন্ন">✔️</button>
+      ${a.status==='pending'?`<button class="btn btn-ghost btn-sm" onclick="updateApptStatus('${a.id}','confirmed')" title="নিশ্চিত করুন">✅</button>`:''}
+      ${a.status!=='done'&&a.status!=='cancelled'?`<button class="btn btn-ghost btn-sm" onclick="updateApptStatus('${a.id}','done')" title="সম্পন্ন">✔️</button>`:''}
+      ${a.status!=='cancelled'&&a.status!=='done'?`<button class="btn btn-ghost btn-sm" onclick="updateApptStatus('${a.id}','cancelled')" title="বাতিল করুন">❌</button>`:''}
+      <button class="btn btn-warn btn-sm" onclick="openApptModal('${a.id}')" title="সম্পাদনা">✏️</button>
       <button class="btn btn-whatsapp btn-sm" onclick="apptWhatsApp('${a.id}')" title="WhatsApp রিমাইন্ডার">📱</button>
       <button class="btn btn-danger btn-sm" onclick="deleteAppt('${a.id}')">🗑️</button>
     </td>
@@ -12851,9 +12886,13 @@ function saveAppt(id){
   const time=($('ap_time')||{value:''}).value;
   if(!name||!date||!time){toast('নাম, তারিখ ও সময় দিন','warn');return;}
   const list=getAppointments();
-  const entry={id:id||`ap${uid()}`,custName:name,phone:($('ap_phone')||{value:''}).value,date,time,service:($('ap_service')||{value:''}).value,note:($('ap_note')||{value:''}).value,status:'pending',createdAt:new Date().toISOString()};
-  if(id){const idx=list.findIndex(x=>x.id===id);if(idx>=0)list[idx]={...list[idx],...entry};}
-  else list.push(entry);
+  const fields={custName:name,phone:($('ap_phone')||{value:''}).value,date,time,service:($('ap_service')||{value:''}).value,note:($('ap_note')||{value:''}).value};
+  if(id){
+    const idx=list.findIndex(x=>x.id===id);
+    if(idx>=0) list[idx]={...list[idx],...fields}; // status/createdAt preserved as-is
+  }else{
+    list.push({id:`ap${uid()}`,...fields,status:'pending',createdAt:new Date().toISOString()});
+  }
   saveAppointments(list);closeModal();renderAppointments();
   toast('📆 অ্যাপয়েন্টমেন্ট সেভ হয়েছে ✅');
   logActivity('📆','নতুন অ্যাপয়েন্টমেন্ট',`${name} — ${date} ${time}`);
